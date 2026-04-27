@@ -1,0 +1,14 @@
+{
+  "name": "nomi-week1-setup",
+  "version": "0.1.0",
+  "private": true,
+  "type": "commonjs",
+  "scripts": {
+    "import:restaurants": "node scripts/importRestaurants.js"
+  },
+  "dependencies": {
+    "csv-parse": "^5.5.6",
+    "dotenv": "^16.4.5",
+    "firebase-admin": "^12.2.0"
+  }
+}

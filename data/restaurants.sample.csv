@@ -1,0 +1,3 @@
+name,place_id,lat,lng,budget_level,mood_tags,is_open_monday,noise_level,is_local_concept,address,phone,website,google_rating
+Sample Tasca,place_abc123,38.7102,-9.1404,2,"tasca,hidden_gem",true,medium,true,"Rua Example 10, Lisbon","+351210000000","https://example.com",4.4
+Sample Terrace Spot,place_def456,38.7138,-9.1450,3,"terrace,chill",false,quiet,false,"Rua Sample 20, Lisbon","+351219999999","https://example.org",4.6

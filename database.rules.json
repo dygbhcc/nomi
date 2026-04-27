@@ -1,0 +1,21 @@
+{
+  "rules": {
+    ".read": "auth != null",
+    "votes": {
+      "$roomId": {
+        "$userId": {
+          ".read": "auth != null",
+          ".write": "auth != null && auth.uid === $userId"
+        }
+      }
+    },
+    "occupancy": {
+      "$restaurantId": {
+        "live": {
+          ".read": true,
+          ".write": "auth != null"
+        }
+      }
+    }
+  }
+}
