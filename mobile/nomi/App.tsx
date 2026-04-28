@@ -1,5 +1,7 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { SafeAreaProvider } from "react-native-safe-area-context";
+import AsyncStorage from "@react-native-async-storage/async-storage";
+import OnboardingScreen from "./screens/OnboardingScreen";
 import MoodScreen from "./screens/MoodScreen";
 import BudgetScreen from "./screens/BudgetScreen";
 import DistanceScreen from "./screens/DistanceScreen";
@@ -13,7 +15,10 @@ import ProfileScreen from "./screens/ProfileScreen";
 import LeaderboardScreen from "./screens/LeaderboardScreen";
 import ValidateScreen from "./screens/ValidateScreen";
 
+const ONBOARDED_KEY = "nomi_has_onboarded";
+
 type Screen =
+  | "onboarding"
   | "mood"
   | "budget"
   | "distance"
@@ -28,18 +33,41 @@ type Screen =
   | "validate";
 
 export default function App() {
-  const [screen, setScreen] = useState<Screen>("mood");
+  const [screen, setScreen] = useState<Screen | null>(null);
   const [selectedMoods, setSelectedMoods] = useState<string[]>([]);
   const [selectedBudget, setSelectedBudget] = useState<number | null>(null);
   const [detailRestaurant, setDetailRestaurant] = useState<Restaurant | null>(null);
   const [roomCode, setRoomCode] = useState("");
   const [participants, setParticipants] = useState<string[]>([]);
   const [winnerName, setWinnerName] = useState("");
-  // Track where to return after validate screen
   const [returnScreen, setReturnScreen] = useState<Screen>("mood");
+
+  // Check onboarding status on startup
+  useEffect(() => {
+    AsyncStorage.getItem(ONBOARDED_KEY).then((value) => {
+      setScreen(value === "true" ? "mood" : "onboarding");
+    });
+  }, []);
+
+  const handleOnboardingDone = async () => {
+    await AsyncStorage.setItem(ONBOARDED_KEY, "true");
+    setScreen("mood");
+  };
+
+  // Loading state while checking AsyncStorage
+  if (screen === null) {
+    return (
+      <SafeAreaProvider>
+        <></>
+      </SafeAreaProvider>
+    );
+  }
 
   return (
     <SafeAreaProvider>
+      {screen === "onboarding" && (
+        <OnboardingScreen onDone={handleOnboardingDone} />
+      )}
       {screen === "mood" && (
         <MoodScreen
           onContinue={(moods) => {
