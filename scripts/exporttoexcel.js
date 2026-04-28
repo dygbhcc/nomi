@@ -22,35 +22,185 @@ const db = admin.firestore();
 
 const GOOGLE_PLACES_API_KEY = "AIzaSyDKrlkf5rUemQK46mj25RA3_ab0Z0UW_s8";
 const PLACES_BASE_URL = "https://maps.googleapis.com/maps/api/place";
+const lisbonAndSurroundings = [
+  // ── Lisbon Central ─────────────────────────────────────
+  {name: "Chiado",              lat: 38.7102, lng: -9.1404, radius: 800,  zone: "lisbon_central"},
+  {name: "Alfama",              lat: 38.7139, lng: -9.1334, radius: 800,  zone: "lisbon_central"},
+  {name: "Bairro Alto",         lat: 38.7138, lng: -9.1450, radius: 800,  zone: "lisbon_central"},
+  {name: "Mouraria",            lat: 38.7162, lng: -9.1347, radius: 800,  zone: "lisbon_central"},
+  {name: "Príncipe Real",       lat: 38.7157, lng: -9.1487, radius: 800,  zone: "lisbon_central"},
+  {name: "Graça",               lat: 38.7185, lng: -9.1310, radius: 800,  zone: "lisbon_central"},
+  {name: "Santos",              lat: 38.7065, lng: -9.1530, radius: 800,  zone: "lisbon_central"},
+  {name: "Estrela",             lat: 38.7135, lng: -9.1590, radius: 800,  zone: "lisbon_central"},
+  {name: "Cais do Sodré",       lat: 38.7065, lng: -9.1440, radius: 600,  zone: "lisbon_central"},
+  {name: "Baixa",               lat: 38.7110, lng: -9.1370, radius: 600,  zone: "lisbon_central"},
+  {name: "Avenida da Liberdade",lat: 38.7200, lng: -9.1460, radius: 600,  zone: "lisbon_central"},
+  {name: "Campo de Ourique",    lat: 38.7180, lng: -9.1680, radius: 800,  zone: "lisbon_central"},
+  {name: "Alcântara",           lat: 38.7050, lng: -9.1750, radius: 800,  zone: "lisbon_central"},
+  {name: "Belém",               lat: 38.6970, lng: -9.2060, radius: 1000, zone: "lisbon_central"},
+  {name: "Intendente",          lat: 38.7195, lng: -9.1370, radius: 600,  zone: "lisbon_central"},
+  {name: "Anjos",               lat: 38.7240, lng: -9.1370, radius: 600,  zone: "lisbon_central"},
+  {name: "Lapa",                lat: 38.7100, lng: -9.1600, radius: 600,  zone: "lisbon_central"},
+  {name: "Madragoa",            lat: 38.7080, lng: -9.1560, radius: 600,  zone: "lisbon_central"},
+  {name: "Parque das Nações",   lat: 38.7630, lng: -9.0940, radius: 1000, zone: "lisbon_central"},
+  {name: "Avenidas Novas",      lat: 38.7350, lng: -9.1470, radius: 800,  zone: "lisbon_central"},
 
-const lisbonNeighborhoods = [
-  // Central
-  {name: "Chiado", lat: 38.7102, lng: -9.1404, radius: 800},
-  {name: "Alfama", lat: 38.7139, lng: -9.1334, radius: 800},
-  {name: "Bairro Alto", lat: 38.7138, lng: -9.145, radius: 800},
-  {name: "Mouraria", lat: 38.7162, lng: -9.1347, radius: 800},
-  {name: "Principe Real", lat: 38.7157, lng: -9.1487, radius: 800},
-  // Extended neighborhoods
-  {name: "Graça", lat: 38.7185, lng: -9.1310, radius: 800},
-  {name: "Santos", lat: 38.7065, lng: -9.1530, radius: 800},
-  {name: "Estrela", lat: 38.7135, lng: -9.1590, radius: 800},
-  {name: "Cais do Sodré", lat: 38.7065, lng: -9.1440, radius: 600},
-  {name: "Baixa", lat: 38.7110, lng: -9.1370, radius: 600},
-  {name: "Avenida da Liberdade", lat: 38.7200, lng: -9.1460, radius: 600},
-  {name: "Campo de Ourique", lat: 38.7180, lng: -9.1680, radius: 800},
-  {name: "Alcântara", lat: 38.7050, lng: -9.1750, radius: 800},
-  {name: "Belém", lat: 38.6970, lng: -9.2060, radius: 1000},
-  {name: "Intendente", lat: 38.7195, lng: -9.1370, radius: 600},
-  {name: "Anjos", lat: 38.7240, lng: -9.1370, radius: 600},
-  {name: "Lapa", lat: 38.7100, lng: -9.1600, radius: 600},
-  {name: "Madragoa", lat: 38.7080, lng: -9.1560, radius: 600},
-  {name: "Parque das Nações", lat: 38.7630, lng: -9.0940, radius: 1000},
-  {name: "Avenidas Novas", lat: 38.7350, lng: -9.1470, radius: 800},
+  // ── LİZBON KUZEY & DOĞU ──────────────────────────────────────
+  {name: "Benfica",             lat: 38.7450, lng: -9.1970, radius: 800,  zone: "lisbon_north"},
+  {name: "Alvalade",            lat: 38.7470, lng: -9.1430, radius: 800,  zone: "lisbon_north"},
+  {name: "Telheiras",           lat: 38.7590, lng: -9.1640, radius: 800,  zone: "lisbon_north"},
+  {name: "Odivelas",            lat: 38.7960, lng: -9.1800, radius: 1000, zone: "lisbon_north"},
+  {name: "Loures",              lat: 38.8310, lng: -9.1680, radius: 1000, zone: "lisbon_north"},
+  {name: "Lumiar",              lat: 38.7680, lng: -9.1570, radius: 800,  zone: "lisbon_north"},
+  {name: "Carnide",             lat: 38.7650, lng: -9.2020, radius: 800,  zone: "lisbon_north"},
+  {name: "Amadora",             lat: 38.7540, lng: -9.2290, radius: 1000, zone: "lisbon_north"},
+
+  // ── South Bank (Setúbal Peninsula) ───────────────────
+  {name: "Almada",              lat: 38.6796, lng: -9.1574, radius: 1000, zone: "south_bank"},
+  {name: "Cacilhas",            lat: 38.6825, lng: -9.1547, radius: 600,  zone: "south_bank"},
+  {name: "Costa da Caparica",   lat: 38.6427, lng: -9.2350, radius: 1200, zone: "south_bank"},
+  {name: "Barreiro",            lat: 38.6629, lng: -9.0720, radius: 1000, zone: "south_bank"},
+  {name: "Setúbal",             lat: 38.5244, lng: -8.8882, radius: 1200, zone: "south_bank"},
+
+  // ── ESTORIL  ──────────────────────────
+  {name: "Belém — Torre",       lat: 38.6920, lng: -9.2160, radius: 800,  zone: "estoril_line"},
+  {name: "Algés",               lat: 38.7005, lng: -9.2280, radius: 800,  zone: "estoril_line"},
+  {name: "Dafundo",             lat: 38.7010, lng: -9.2400, radius: 600,  zone: "estoril_line"},
+  {name: "Cruz Quebrada",       lat: 38.7010, lng: -9.2540, radius: 600,  zone: "estoril_line"},
+  {name: "Oeiras",              lat: 38.6965, lng: -9.3049, radius: 1000, zone: "estoril_line"},
+  {name: "Paço de Arcos",       lat: 38.6938, lng: -9.3028, radius: 800,  zone: "estoril_line"},
+  {name: "Caxias",              lat: 38.7033, lng: -9.3150, radius: 600,  zone: "estoril_line"},
+
+  // ── CASCAIS ───────────────────────────────────────────────────
+  {name: "Cascais Centro",      lat: 38.6969, lng: -9.4214, radius: 1000, zone: "cascais"},
+  {name: "Cascais Beira Mar",   lat: 38.6939, lng: -9.4184, radius: 600,  zone: "cascais"},
+  {name: "Monte Estoril",       lat: 38.7039, lng: -9.3980, radius: 800,  zone: "cascais"},
+  {name: "Estoril",             lat: 38.7073, lng: -9.3939, radius: 800,  zone: "cascais"},
+  {name: "São João do Estoril", lat: 38.7085, lng: -9.3760, radius: 600,  zone: "cascais"},
+  {name: "Birre",               lat: 38.7210, lng: -9.4090, radius: 800,  zone: "cascais"},
+  {name: "Alcabideche",         lat: 38.7330, lng: -9.4270, radius: 800,  zone: "cascais"},
+  {name: "Guincho",             lat: 38.7280, lng: -9.4720, radius: 600,  zone: "cascais"},
+  // Cascais
+  {name: "Cascais Quinta",      lat: 38.7050, lng: -9.4500, radius: 1000, zone: "cascais"},
+
+  // ── SINTRA ────────────────────────────────────────────────────
+  {name: "Sintra Centro",       lat: 38.7974, lng: -9.3869, radius: 1000, zone: "sintra"},
+  {name: "Sintra Vila",         lat: 38.7958, lng: -9.3908, radius: 600,  zone: "sintra"},
+  {name: "Colares",             lat: 38.7965, lng: -9.4550, radius: 800,  zone: "sintra"},
+  {name: "Praia das Maçãs",     lat: 38.8270, lng: -9.4750, radius: 600,  zone: "sintra"},
+  {name: "Azenhas do Mar",      lat: 38.8374, lng: -9.4690, radius: 400,  zone: "sintra"},
+  {name: "Ericeira",            lat: 38.9620, lng: -9.4160, radius: 1000, zone: "sintra"},
+  {name: "Mafra",               lat: 38.9350, lng: -9.3270, radius: 1000, zone: "sintra"},
+  {name: "Rio de Mouro",        lat: 38.7740, lng: -9.3300, radius: 800,  zone: "sintra"},
+  {name: "Agualva-Cacém",       lat: 38.7650, lng: -9.2970, radius: 1000, zone: "sintra"},
+
+  // ── SETÚBAL ────────────────────────────────
+  {name: "Sesimbra",            lat: 38.4440, lng: -9.1020, radius: 1000, zone: "setubal"},
+  {name: "Palmela",             lat: 38.5707, lng: -8.9020, radius: 800,  zone: "setubal"},
+  {name: "Azeitão",             lat: 38.5280, lng: -8.9750, radius: 800,  zone: "setubal"},
 ];
 
+// ── ZONE TANIMLARI ─────────────────────────────────────────────
+const ZONES = {
+  lisbon_central: {
+    label:       "Lisbon Central",
+    emoji:       "🏙",
+    priority:    1,           // MVP önce burası
+    max_results: 40,          // Places API sonuç limiti
+    seed_target: 100,         // başlangıç restoran hedefi
+  },
+  lisbon_north: {
+    label:       "Lisbon North",
+    emoji:       "🏘",
+    priority:    2,
+    max_results: 30,
+    seed_target: 40,
+  },
+  estoril_line: {
+    label:       "Estoril Line",
+    emoji:       "🚂",
+    priority:    3,
+    max_results: 20,
+    seed_target: 30,
+  },
+  cascais: {
+    label:       "Cascais",
+    emoji:       "⛵",
+    priority:    4,
+    max_results: 30,
+    seed_target: 50,
+  },
+  sintra: {
+    label:       "Sintra",
+    emoji:       "🏰",
+    priority:    5,
+    max_results: 25,
+    seed_target: 40,
+  },
+  south_bank: {
+    label:       "Margem Sul",
+    emoji:       "🌉",
+    priority:    6,
+    max_results: 20,
+    seed_target: 30,
+  },
+  setubal: {
+    label:       "Setúbal & Sesimbra",
+    emoji:       "🏖",
+    priority:    7,
+    max_results: 20,
+    seed_target: 30,
+  },
+};
+
+// ── YARDIMCI FONKSİYONLAR ─────────────────────────────────────
+
+// Sadece belirli zone'ları getir
+const getByZone = (zone) =>
+  lisbonAndSurroundings.filter(n => n.zone === zone);
+
+// MVP için önce sadece merkez
+const MVP_NEIGHBORHOODS = getByZone("lisbon_central");
+
+// Öncelik sırasına göre sıralı tüm liste
+const SORTED_NEIGHBORHOODS = [...lisbonAndSurroundings]
+  .sort((a, b) => {
+    const pa = ZONES[a.zone]?.priority ?? 99;
+    const pb = ZONES[b.zone]?.priority ?? 99;
+    return pa - pb;
+  });
+
+// Places API çağrısı için hazır format
+const toPlacesQuery = (neighborhood) => ({
+  location:  `${neighborhood.lat},${neighborhood.lng}`,
+  radius:    neighborhood.radius,
+  type:      "restaurant",
+  zone:      neighborhood.zone,
+  zone_label: ZONES[neighborhood.zone]?.label,
+});
+
+module.exports = {
+  lisbonAndSurroundings,
+  ZONES,
+  MVP_NEIGHBORHOODS,
+  SORTED_NEIGHBORHOODS,
+  getByZone,
+  toPlacesQuery,
+};
 const MOOD_OPTIONS = [
-  "romantic", "trendy", "cozy", "lively", "traditional",
-  "family_friendly", "business", "casual", "fine_dining", "hipster",
+  "romantic",
+  "energetic", 
+  "chill",
+  "explorer",
+  "focus",
+  "retreat",
+  "hungry_quick",   
+  "celebrating",
+  "tasca",
+  "fado",
+  "petiscos",
+  "miradouro",
+  "marisqueira",
 ];
 const NOISE_OPTIONS = ["quiet", "moderate", "loud"];
 const BUDGET_OPTIONS = ["1 (cheap)", "2 (moderate)", "3 (expensive)", "4 (very expensive)"];
@@ -138,7 +288,7 @@ function buildRestaurantDocument(place, neighborhood) {
 async function warmupAndFetch() {
   const allRestaurants = new Map();
 
-  for (const neighborhood of lisbonNeighborhoods) {
+  for (const neighborhood of lisbonAndSurroundings) {
     console.log(`Scanning ${neighborhood.name}...`);
     const nearby = await nearbySearch({
       lat: neighborhood.lat,
