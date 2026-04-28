@@ -9,6 +9,7 @@ import GroupScreen from "./screens/GroupScreen";
 import WaitingRoomScreen from "./screens/WaitingRoomScreen";
 import VotingScreen from "./screens/VotingScreen";
 import ResultScreen from "./screens/ResultScreen";
+import ProfileScreen from "./screens/ProfileScreen";
 
 type Screen =
   | "mood"
@@ -19,7 +20,8 @@ type Screen =
   | "group"
   | "waitingRoom"
   | "voting"
-  | "result";
+  | "result"
+  | "profile";
 
 export default function App() {
   const [screen, setScreen] = useState<Screen>("mood");
@@ -40,6 +42,7 @@ export default function App() {
           }}
           onSkip={() => setScreen("budget")}
           onGroup={() => setScreen("group")}
+          onProfile={() => setScreen("profile")}
         />
       )}
       {screen === "budget" && (
@@ -110,6 +113,11 @@ export default function App() {
         <ResultScreen
           winnerName={winnerName}
           onDone={() => setScreen("mood")}
+        />
+      )}
+      {screen === "profile" && (
+        <ProfileScreen
+          onNavigate={(s) => setScreen(s as Screen)}
         />
       )}
     </SafeAreaProvider>

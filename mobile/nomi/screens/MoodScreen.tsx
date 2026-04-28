@@ -37,6 +37,7 @@ type Props = {
   onContinue: (selectedMoods: string[]) => void;
   onSkip: () => void;
   onGroup: () => void;
+  onProfile?: () => void;
 };
 
 function ProgressBar() {
@@ -55,7 +56,7 @@ function ProgressBar() {
   );
 }
 
-export default function MoodScreen({ onContinue, onSkip, onGroup }: Props) {
+export default function MoodScreen({ onContinue, onSkip, onGroup, onProfile }: Props) {
   const [selectedMoods, setSelectedMoods] = useState<string[]>([]);
 
   const toggleMood = (id: string) => {
@@ -95,6 +96,11 @@ export default function MoodScreen({ onContinue, onSkip, onGroup }: Props) {
         <TouchableOpacity style={styles.skipButton} onPress={onSkip}>
           <Text style={styles.skipText}>Skip</Text>
         </TouchableOpacity>
+        {onProfile && (
+          <TouchableOpacity style={styles.profileButton} onPress={onProfile}>
+            <Text style={styles.profileIcon}>{"\u{1F464}"}</Text>
+          </TouchableOpacity>
+        )}
       </View>
 
       <Text style={styles.title}>How are you feeling?</Text>
@@ -167,6 +173,13 @@ const styles = StyleSheet.create({
   skipText: {
     color: TEXT_SECONDARY,
     fontSize: 15,
+  },
+  profileButton: {
+    marginLeft: 12,
+    paddingVertical: 4,
+  },
+  profileIcon: {
+    fontSize: 18,
   },
   title: {
     color: TEXT_PRIMARY,
