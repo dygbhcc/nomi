@@ -7,8 +7,19 @@ import SwipeScreen, { type Restaurant } from "./screens/SwipeScreen";
 import RestaurantDetailScreen from "./screens/RestaurantDetailScreen";
 import GroupScreen from "./screens/GroupScreen";
 import WaitingRoomScreen from "./screens/WaitingRoomScreen";
+import VotingScreen from "./screens/VotingScreen";
+import ResultScreen from "./screens/ResultScreen";
 
-type Screen = "mood" | "budget" | "distance" | "swipe" | "detail" | "group" | "waitingRoom";
+type Screen =
+  | "mood"
+  | "budget"
+  | "distance"
+  | "swipe"
+  | "detail"
+  | "group"
+  | "waitingRoom"
+  | "voting"
+  | "result";
 
 export default function App() {
   const [screen, setScreen] = useState<Screen>("mood");
@@ -16,6 +27,8 @@ export default function App() {
   const [selectedBudget, setSelectedBudget] = useState<number | null>(null);
   const [detailRestaurant, setDetailRestaurant] = useState<Restaurant | null>(null);
   const [roomCode, setRoomCode] = useState("");
+  const [participants, setParticipants] = useState<string[]>([]);
+  const [winnerName, setWinnerName] = useState("");
 
   return (
     <SafeAreaProvider>
@@ -76,6 +89,27 @@ export default function App() {
         <WaitingRoomScreen
           roomCode={roomCode}
           onBack={() => setScreen("group")}
+          onStartVoting={(names) => {
+            setParticipants(names);
+            setScreen("voting");
+          }}
+        />
+      )}
+      {screen === "voting" && (
+        <VotingScreen
+          roomCode={roomCode}
+          participants={participants}
+          onFinish={(winner) => {
+            setWinnerName(winner);
+            setScreen("result");
+          }}
+          onBack={() => setScreen("waitingRoom")}
+        />
+      )}
+      {screen === "result" && (
+        <ResultScreen
+          winnerName={winnerName}
+          onDone={() => setScreen("mood")}
         />
       )}
     </SafeAreaProvider>
