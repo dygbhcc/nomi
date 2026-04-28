@@ -153,16 +153,16 @@ const ZONES = {
   },
 };
 
-// ── YARDIMCI FONKSİYONLAR ─────────────────────────────────────
+// ── Helper Functions ──────────────────────────────────────
 
-// Sadece belirli zone'ları getir
+//  only specific zone's neighborhoods
 const getByZone = (zone) =>
   lisbonAndSurroundings.filter(n => n.zone === zone);
 
-// MVP için önce sadece merkez
+// for mvp, we focus on Lisbon Central first
 const MVP_NEIGHBORHOODS = getByZone("lisbon_central");
 
-// Öncelik sırasına göre sıralı tüm liste
+// proritiesed neighborhood list (MVP zone first, then others by defined priority)
 const SORTED_NEIGHBORHOODS = [...lisbonAndSurroundings]
   .sort((a, b) => {
     const pa = ZONES[a.zone]?.priority ?? 99;
@@ -170,7 +170,7 @@ const SORTED_NEIGHBORHOODS = [...lisbonAndSurroundings]
     return pa - pb;
   });
 
-// Places API çağrısı için hazır format
+
 const toPlacesQuery = (neighborhood) => ({
   location:  `${neighborhood.lat},${neighborhood.lng}`,
   radius:    neighborhood.radius,
