@@ -207,9 +207,12 @@ export default function ProfileScreen({ onNavigate }: Props) {
           <Text style={styles.tabIcon}>{"\u{1F3E0}"}</Text>
           <Text style={styles.tabLabel}>Home</Text>
         </TouchableOpacity>
-        <TouchableOpacity style={styles.tab}>
+        <TouchableOpacity
+          style={styles.tab}
+          onPress={() => onNavigate("validate")}
+        >
           <Text style={styles.tabIcon}>{"\u{1F50D}"}</Text>
-          <Text style={styles.tabLabel}>Explore</Text>
+          <Text style={styles.tabLabel}>Validate</Text>
         </TouchableOpacity>
         <TouchableOpacity
           style={styles.tab}
@@ -217,6 +220,13 @@ export default function ProfileScreen({ onNavigate }: Props) {
         >
           <Text style={styles.tabIcon}>{"\u{1F465}"}</Text>
           <Text style={styles.tabLabel}>Group</Text>
+        </TouchableOpacity>
+        <TouchableOpacity
+          style={styles.tab}
+          onPress={() => onNavigate("leaderboard")}
+        >
+          <Text style={styles.tabIcon}>{"\u{1F3C6}"}</Text>
+          <Text style={styles.tabLabel}>Ranking</Text>
         </TouchableOpacity>
         <TouchableOpacity style={[styles.tab]}>
           <Text style={[styles.tabIcon, styles.tabActive]}>{"\u{1F464}"}</Text>

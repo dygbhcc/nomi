@@ -10,6 +10,8 @@ import WaitingRoomScreen from "./screens/WaitingRoomScreen";
 import VotingScreen from "./screens/VotingScreen";
 import ResultScreen from "./screens/ResultScreen";
 import ProfileScreen from "./screens/ProfileScreen";
+import LeaderboardScreen from "./screens/LeaderboardScreen";
+import ValidateScreen from "./screens/ValidateScreen";
 
 type Screen =
   | "mood"
@@ -21,7 +23,9 @@ type Screen =
   | "waitingRoom"
   | "voting"
   | "result"
-  | "profile";
+  | "profile"
+  | "leaderboard"
+  | "validate";
 
 export default function App() {
   const [screen, setScreen] = useState<Screen>("mood");
@@ -31,6 +35,8 @@ export default function App() {
   const [roomCode, setRoomCode] = useState("");
   const [participants, setParticipants] = useState<string[]>([]);
   const [winnerName, setWinnerName] = useState("");
+  // Track where to return after validate screen
+  const [returnScreen, setReturnScreen] = useState<Screen>("mood");
 
   return (
     <SafeAreaProvider>
@@ -118,6 +124,17 @@ export default function App() {
       {screen === "profile" && (
         <ProfileScreen
           onNavigate={(s) => setScreen(s as Screen)}
+        />
+      )}
+      {screen === "leaderboard" && (
+        <LeaderboardScreen
+          onNavigate={(s) => setScreen(s as Screen)}
+        />
+      )}
+      {screen === "validate" && (
+        <ValidateScreen
+          onDone={() => setScreen(returnScreen)}
+          onSkip={() => setScreen(returnScreen)}
         />
       )}
     </SafeAreaProvider>
