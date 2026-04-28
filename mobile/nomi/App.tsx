@@ -9,11 +9,12 @@ import SwipeScreen, { type Restaurant } from "./screens/SwipeScreen";
 import RestaurantDetailScreen from "./screens/RestaurantDetailScreen";
 import GroupScreen from "./screens/GroupScreen";
 import WaitingRoomScreen from "./screens/WaitingRoomScreen";
-import VotingScreen from "./screens/VotingScreen";
+import VotingScreen, { type VotingResult } from "./screens/VotingScreen";
 import ResultScreen from "./screens/ResultScreen";
 import ProfileScreen from "./screens/ProfileScreen";
 import LeaderboardScreen from "./screens/LeaderboardScreen";
 import ValidateScreen from "./screens/ValidateScreen";
+import SettingsScreen from "./screens/SettingsScreen";
 
 const ONBOARDED_KEY = "nomi_has_onboarded";
 
@@ -30,7 +31,8 @@ type Screen =
   | "result"
   | "profile"
   | "leaderboard"
-  | "validate";
+  | "validate"
+  | "settings";
 
 export default function App() {
   const [screen, setScreen] = useState<Screen | null>(null);
@@ -39,7 +41,7 @@ export default function App() {
   const [detailRestaurant, setDetailRestaurant] = useState<Restaurant | null>(null);
   const [roomCode, setRoomCode] = useState("");
   const [participants, setParticipants] = useState<string[]>([]);
-  const [winnerName, setWinnerName] = useState("");
+  const [votingResult, setVotingResult] = useState<VotingResult | null>(null);
   const [returnScreen, setReturnScreen] = useState<Screen>("mood");
 
   // Check onboarding status on startup
@@ -136,17 +138,28 @@ export default function App() {
         <VotingScreen
           roomCode={roomCode}
           participants={participants}
-          onFinish={(winner) => {
-            setWinnerName(winner);
+          onFinish={(result) => {
+            setVotingResult(result);
             setScreen("result");
           }}
           onBack={() => setScreen("waitingRoom")}
         />
       )}
-      {screen === "result" && (
+      {screen === "result" && votingResult && (
         <ResultScreen
-          winnerName={winnerName}
-          onDone={() => setScreen("mood")}
+          restaurant={votingResult.restaurant}
+          totalVoters={votingResult.totalVoters}
+          likedBy={votingResult.likedBy}
+          isCurrentUserWinner={true}
+          roomCode={votingResult.roomCode}
+          onStartOver={() => {
+            setVotingResult(null);
+            setSelectedMoods([]);
+            setSelectedBudget(null);
+            setRoomCode("");
+            setParticipants([]);
+            setScreen("mood");
+          }}
         />
       )}
       {screen === "profile" && (
@@ -163,6 +176,11 @@ export default function App() {
         <ValidateScreen
           onDone={() => setScreen(returnScreen)}
           onSkip={() => setScreen(returnScreen)}
+        />
+      )}
+      {screen === "settings" && (
+        <SettingsScreen
+          onBack={() => setScreen("profile")}
         />
       )}
     </SafeAreaProvider>

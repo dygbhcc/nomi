@@ -93,6 +93,13 @@ export default function ProfileScreen({ onNavigate }: Props) {
         contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}
       >
+        {/* --- Settings Gear --- */}
+        <View style={styles.settingsRow}>
+          <TouchableOpacity onPress={() => onNavigate("settings")}>
+            <Text style={styles.settingsIcon}>{"\u2699\uFE0F"}</Text>
+          </TouchableOpacity>
+        </View>
+
         {/* --- Avatar & Info --- */}
         <View style={styles.profileSection}>
           <View style={styles.avatar}>
@@ -246,10 +253,20 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
   },
 
+  // --- Settings ---
+  settingsRow: {
+    flexDirection: "row",
+    justifyContent: "flex-end",
+    paddingTop: 8,
+  },
+  settingsIcon: {
+    fontSize: 22,
+  },
+
   // --- Profile ---
   profileSection: {
     alignItems: "center",
-    paddingTop: 24,
+    paddingTop: 8,
     paddingBottom: 8,
   },
   avatar: {

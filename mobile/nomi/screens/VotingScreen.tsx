@@ -53,10 +53,17 @@ function budgetSymbol(level: number): string {
   return "\u20AC".repeat(level);
 }
 
+export type VotingResult = {
+  restaurant: Restaurant;
+  totalVoters: number;
+  likedBy: number;
+  roomCode: string;
+};
+
 type Props = {
   roomCode: string;
   participants: string[];
-  onFinish: (winnerName: string) => void;
+  onFinish: (result: VotingResult) => void;
   onBack: () => void;
 };
 
@@ -135,7 +142,12 @@ export default function VotingScreen({ roomCode, participants, onFinish, onBack 
     }
     const winner = MOCK_RESTAURANTS.find((r) => r.id === bestId)!;
     // Auto-navigate to result
-    setTimeout(() => onFinish(winner.name), 0);
+    setTimeout(() => onFinish({
+      restaurant: winner,
+      totalVoters: participants.length,
+      likedBy: bestScore,
+      roomCode,
+    }), 0);
     return (
       <SafeAreaView style={styles.container}>
         <StatusBar style="light" />
