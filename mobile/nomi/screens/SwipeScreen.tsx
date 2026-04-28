@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect } from "react";
+import React, { useState, useRef } from "react";
 import {
   View,
   Text,
@@ -10,7 +10,6 @@ import {
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { StatusBar } from "expo-status-bar";
-import ValidateScreen from "./ValidateScreen";
 
 type Restaurant = {
   id: string;
@@ -54,16 +53,9 @@ type Props = {
 export { type Restaurant };
 
 export default function SwipeScreen({ onBack, onChangePreferences, onDetail }: Props) {
-  const [loading, setLoading] = useState(true);
   const [currentIndex, setCurrentIndex] = useState(0);
   const [batchStart, setBatchStart] = useState(0);
   const [liked, setLiked] = useState<string[]>([]);
-
-  useEffect(() => {
-    const delay = 1000 + Math.random() * 2000; // 1-3 seconds
-    const timer = setTimeout(() => setLoading(false), delay);
-    return () => clearTimeout(timer);
-  }, []);
 
   const translateX = useRef(new Animated.Value(0)).current;
   const rotate = translateX.interpolate({
@@ -127,16 +119,6 @@ export default function SwipeScreen({ onBack, onChangePreferences, onDetail }: P
     setBatchStart(batchEnd);
     setCurrentIndex(0);
   };
-
-  // Show validate mini-game while "loading" restaurant data
-  if (loading) {
-    return (
-      <ValidateScreen
-        onDone={() => setLoading(false)}
-        onSkip={() => setLoading(false)}
-      />
-    );
-  }
 
   if (allDone) {
     return (

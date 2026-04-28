@@ -1,29 +1,32 @@
-import React, { useState } from "react";
+import React, { useState, useRef } from "react";
 import {
   View,
   Text,
   TouchableOpacity,
   StyleSheet,
   FlatList,
+  Animated,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { StatusBar } from "expo-status-bar";
+import * as Haptics from "expo-haptics";
 
 type Mood = {
   id: string;
   label: string;
   emoji: string;
+  hint: string;
 };
 
 const MOODS: Mood[] = [
-  { id: "romantic", label: "Romantic", emoji: "\u{1F56F}" },
-  { id: "energetic", label: "Energetic", emoji: "\u26A1" },
-  { id: "chill", label: "Chill", emoji: "\u{1F60A}" },
-  { id: "adventurous", label: "Adventurous", emoji: "\u{1F9ED}" },
-  { id: "focus", label: "Focus", emoji: "\u{1F3AF}" },
-  { id: "retreat", label: "Retreat", emoji: "\u{1F9D8}" },
-  { id: "hungry&quick", label: "Hungry & Quick", emoji: "\u{1F354}" },
-  { id: "celebrating", label: "Celebrating", emoji: "\u{1F389}" },
+  { id: "romantic", label: "Romantic", emoji: "\u{1F56F}", hint: "Dim lights, date night" },
+  { id: "energetic", label: "Energetic", emoji: "\u26A1", hint: "Loud, buzzing, fun" },
+  { id: "chill", label: "Chill", emoji: "\u{1F60A}", hint: "Warm, relaxed, no rush" },
+  { id: "explorer", label: "Explore", emoji: "\u{1F9ED}", hint: "New spots, off the beaten path" },
+  { id: "focus", label: "Focus", emoji: "\u{1F3AF}", hint: "Quiet, good wifi, calm" },
+  { id: "retreat", label: "Retreat", emoji: "\u{1F9D8}", hint: "Peaceful, slow, recharge" },
+  { id: "hungry&quick", label: "Hungry & Quick", emoji: "\u{1F354}", hint: "Fast, filling, no wait" },
+  { id: "celebrating", label: "Celebrating", emoji: "\u{1F389}", hint: "Party vibes, special night" },
 ];
 
 const ACCENT = "#7F77DD";
@@ -58,11 +61,37 @@ function ProgressBar() {
 
 export default function MoodScreen({ onContinue, onSkip, onGroup, onProfile }: Props) {
   const [selectedMoods, setSelectedMoods] = useState<string[]>([]);
+  const [isSurprising, setIsSurprising] = useState(false);
 
   const toggleMood = (id: string) => {
     setSelectedMoods((prev) =>
       prev.includes(id) ? prev.filter((m) => m !== id) : [...prev, id]
     );
+  };
+
+  const handleSurprise = () => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+    setIsSurprising(true);
+
+    // Flash effect: rapidly cycle random highlights
+    let flashCount = 0;
+    const flashInterval = setInterval(() => {
+      const shuffled = [...MOODS].sort(() => Math.random() - 0.5);
+      setSelectedMoods(shuffled.slice(0, 3).map((m) => m.id));
+      flashCount++;
+      if (flashCount >= 4) {
+        clearInterval(flashInterval);
+        // Settle on final picks
+        const finalShuffled = [...MOODS].sort(() => Math.random() - 0.5);
+        const randomPicks = finalShuffled.slice(0, Math.floor(Math.random() * 2) + 2);
+        const finalIds = randomPicks.map((m) => m.id);
+        setSelectedMoods(finalIds);
+        setTimeout(() => {
+          setIsSurprising(false);
+          onContinue(finalIds);
+        }, 600);
+      }
+    }, 75);
   };
 
   const hasSelection = selectedMoods.length > 0;
@@ -78,6 +107,9 @@ export default function MoodScreen({ onContinue, onSkip, onGroup, onProfile }: P
         <Text style={styles.cardEmoji}>{item.emoji}</Text>
         <Text style={[styles.cardLabel, isSelected && styles.cardLabelSelected]}>
           {item.label}
+        </Text>
+        <Text style={[styles.cardHint, isSelected && styles.cardHintSelected]}>
+          {item.hint}
         </Text>
       </TouchableOpacity>
     );
@@ -116,6 +148,15 @@ export default function MoodScreen({ onContinue, onSkip, onGroup, onProfile }: P
       />
 
       <View style={styles.bottomContainer}>
+        <TouchableOpacity
+          style={styles.surpriseButton}
+          activeOpacity={0.8}
+          onPress={handleSurprise}
+          disabled={isSurprising}
+        >
+          <Text style={styles.surpriseText}>Surprise me {"\u{1F3B2}"}</Text>
+        </TouchableOpacity>
+
         <TouchableOpacity
           style={[styles.continueButton, !hasSelection && styles.continueButtonDisabled]}
           disabled={!hasSelection}
@@ -183,24 +224,24 @@ const styles = StyleSheet.create({
   },
   title: {
     color: TEXT_PRIMARY,
-    fontSize: 26,
+    fontSize: 24,
     fontWeight: "700",
     paddingHorizontal: 20,
-    marginTop: 32,
-    marginBottom: 24,
+    marginTop: 20,
+    marginBottom: 14,
   },
   gridContainer: {
     paddingHorizontal: 20,
   },
   gridRow: {
-    gap: 12,
-    marginBottom: 12,
+    gap: 10,
+    marginBottom: 10,
   },
   card: {
     flex: 1,
     backgroundColor: CARD_BG,
-    borderRadius: 16,
-    paddingVertical: 24,
+    borderRadius: 14,
+    paddingVertical: 14,
     alignItems: "center",
     justifyContent: "center",
     borderWidth: 2,
@@ -211,26 +252,47 @@ const styles = StyleSheet.create({
     backgroundColor: "rgba(127, 119, 221, 0.12)",
   },
   cardEmoji: {
-    fontSize: 32,
-    marginBottom: 8,
+    fontSize: 26,
+    marginBottom: 4,
   },
   cardLabel: {
     color: TEXT_PRIMARY,
-    fontSize: 15,
+    fontSize: 13,
     fontWeight: "600",
   },
   cardLabelSelected: {
     color: ACCENT,
   },
+  cardHint: {
+    color: "#666666",
+    fontSize: 10,
+    marginTop: 2,
+  },
+  cardHintSelected: {
+    color: "#9988DD",
+  },
   bottomContainer: {
     paddingHorizontal: 20,
-    paddingBottom: 24,
+    paddingBottom: 20,
     marginTop: "auto",
+  },
+  surpriseButton: {
+    borderWidth: 1.5,
+    borderColor: ACCENT,
+    borderRadius: 12,
+    paddingVertical: 10,
+    alignItems: "center",
+    marginBottom: 10,
+  },
+  surpriseText: {
+    color: ACCENT,
+    fontSize: 14,
+    fontWeight: "600",
   },
   continueButton: {
     backgroundColor: ACCENT,
-    borderRadius: 14,
-    paddingVertical: 16,
+    borderRadius: 12,
+    paddingVertical: 14,
     alignItems: "center",
   },
   continueButtonDisabled: {
