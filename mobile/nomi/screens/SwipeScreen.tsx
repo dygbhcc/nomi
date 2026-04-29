@@ -59,16 +59,16 @@ const MOCK_RESTAURANTS: Restaurant[] = [
     budget: 3,
     moods: ["fresh", "energetic"],
     reason: "Fresh seafood, buzzing energy",
-    // photo: require("../assets/images/restaurants/acevicheria.png")
+    photo: require("../assets/images/restaurants/cevicheria.jpg")
   },
   {
     id: "5",
-    name: "Taberna Albricoque",
+    name: "Solar dos Presuntos",
     distance: "1.8 km",
-    budget: 1,
-    moods: ["cozy", "pet_friendly"],
-    reason: "Pet friendly cozy spot",
-    // photo: require("../assets/images/restaurants/taberna_albricoque.png")
+    budget: 2,
+    moods: ["cozy"],
+    reason: "Traditional Portuguese cuisine",
+    photo: require("../assets/images/restaurants/solar.jpg")
   },
 ];
 

@@ -7,6 +7,8 @@ import {
   ScrollView,
   Animated,
   Dimensions,
+  Image,
+  ImageSourcePropType,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { StatusBar } from "expo-status-bar";
@@ -29,6 +31,7 @@ type Restaurant = {
   budget: number;
   moods: string[];
   reason: string;
+  photo?: ImageSourcePropType;
 };
 
 type Props = {
@@ -218,11 +221,15 @@ export default function ResultScreen({
 
         {/* --- Winner Card --- */}
         <View style={styles.winnerCard}>
-          <View style={styles.winnerPhotoPlaceholder}>
-            <Text style={styles.winnerPhotoText}>
-              {restaurant.name.charAt(0)}
-            </Text>
-          </View>
+          {restaurant.photo ? (
+            <Image source={restaurant.photo} style={styles.winnerPhoto} resizeMode="cover" />
+          ) : (
+            <View style={styles.winnerPhotoPlaceholder}>
+              <Text style={styles.winnerPhotoText}>
+                {restaurant.name.charAt(0)}
+              </Text>
+            </View>
+          )}
 
           <View style={styles.winnerInfo}>
             <Text style={styles.winnerName}>{restaurant.name}</Text>
@@ -368,8 +375,12 @@ const styles = StyleSheet.create({
     width: "100%",
     marginBottom: 16,
   },
+  winnerPhoto: {
+    width: "100%",
+    height: 200,
+  },
   winnerPhotoPlaceholder: {
-    height: 140,
+    height: 200,
     backgroundColor: "#1A1A2E",
     alignItems: "center",
     justifyContent: "center",

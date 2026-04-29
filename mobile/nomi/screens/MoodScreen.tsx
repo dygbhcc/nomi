@@ -14,6 +14,7 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { StatusBar } from "expo-status-bar";
 import * as Haptics from "expo-haptics";
 import { Colors, Shadows, Spacing, BorderRadius } from "../theme/colors";
+import BottomNavigationBar from "../components/BottomNavigationBar";
 
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get("window");
 const CARD_WIDTH = (SCREEN_WIDTH - 20 * 2 - 12) / 2; // 2 columns, 20px padding, 12px gap
@@ -31,7 +32,7 @@ const MOODS: Mood[] = [
   { id: "romantic", label: "Romantic", image: require("../assets/images/romantic_old.png"), hint: "Dim lights, date night" },
   { id: "energetic", label: "Energetic", image: require("../assets/images/energetic.png"), hint: "Loud, buzzing, fun" },
   { id: "chill", label: "Chill", image: require("../assets/images/chill.png"), hint: "Warm, relaxed, no rush" },
-  { id: "explorer", label: "Explore", image: require("../assets/images/explore.png"), hint: "New spots, off the beaten path" },
+  { id: "explorer", label: "Explore", image: require("../assets/images/explore.png"), hint: "New spots, hidden gems" },
   { id: "focus", label: "Focus", image: require("../assets/images/focus.png"), hint: "Quiet, good wifi, calm" },
   { id: "hungry&quick", label: "Hungry & Quick", image: require("../assets/images/hungry.png"), hint: "Fast, filling, no wait" },
   { id: "surprise", label: "I don't know, surprise me", image: require("../assets/images/surprise.png"), hint: "Unexpected, exciting, fun" },
@@ -51,6 +52,7 @@ type Props = {
   onSkip: () => void;
   onGroup: () => void;
   onProfile?: () => void;
+  onNavigate: (screen: string) => void;
 };
 
 function ProgressBar() {
@@ -69,7 +71,7 @@ function ProgressBar() {
   );
 }
 
-export default function MoodScreen({ onContinue, onSkip, onGroup, onProfile }: Props) {
+export default function MoodScreen({ onContinue, onSkip, onGroup, onProfile, onNavigate }: Props) {
   const [selectedMoods, setSelectedMoods] = useState<string[]>([]);
   const [isSurprising, setIsSurprising] = useState(false);
 
@@ -176,7 +178,7 @@ export default function MoodScreen({ onContinue, onSkip, onGroup, onProfile }: P
 
       <ScrollView
         style={{ flex: 1 }}
-        contentContainerStyle={styles.gridContainer}
+        contentContainerStyle={[styles.gridContainer, { paddingBottom: 160 }]}
         showsVerticalScrollIndicator={false}
       >
         <Text style={styles.title}>How are you feeling?</Text>
@@ -208,6 +210,8 @@ export default function MoodScreen({ onContinue, onSkip, onGroup, onProfile }: P
           <Text style={styles.continueText}>Continue</Text>
         </TouchableOpacity>
       </View>
+
+      <BottomNavigationBar activeTab="home" onNavigate={onNavigate} />
     </SafeAreaView>
   );
 }
@@ -220,9 +224,9 @@ const styles = StyleSheet.create({
   header: {
     flexDirection: "row",
     alignItems: "center",
-    paddingHorizontal: 20,
+    paddingHorizontal: 16,
     paddingTop: 12,
-    paddingBottom: 12,
+    paddingBottom: 8,
   },
   groupButton: {
     flexDirection: "row",
@@ -270,8 +274,8 @@ const styles = StyleSheet.create({
     fontSize: 24,
     fontWeight: "700",
     paddingHorizontal: 20,
-    marginTop: 24,
-    marginBottom: 30,
+    marginTop: 16,
+    marginBottom: 16,
     
   },
   gridContainer: {
@@ -304,20 +308,16 @@ const styles = StyleSheet.create({
     width: "100%",
     flexDirection: "row",
     alignItems: "center",
-    paddingHorizontal: 20,
-    paddingVertical: 24,
-    gap: 16,
-  },
-  cardEmoji: {
-    fontSize: 40,
-    marginBottom: 10,
+    paddingHorizontal: 16,
+    paddingVertical: 20,
+    gap: 12,
   },
   cardImage: {
     width: "100%",
     height: CARD_IMAGE_HEIGHT,
     resizeMode: "contain",
-    paddingHorizontal: 12,
-    paddingTop: 12,
+    paddingHorizontal: 8,
+    paddingTop: 8,
   },
   cardImageSmall: {
     width: 70,
@@ -329,8 +329,8 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: "600",
     textAlign: "center",
-    marginTop: 8,
-    paddingHorizontal: 8,
+    marginTop: 6,
+    paddingHorizontal: 6,
   },
   cardLabelSelected: {
     color: ACCENT,
@@ -340,8 +340,8 @@ const styles = StyleSheet.create({
     fontSize: 11,
     textAlign: "center",
     marginTop: 2,
-    marginBottom: 12,
-    paddingHorizontal: 8,
+    marginBottom: 10,
+    paddingHorizontal: 6,
   },
   cardHintSelected: {
     color: "#6B63B5",
@@ -363,10 +363,14 @@ const styles = StyleSheet.create({
     fontWeight: "bold",
   },
   bottomContainer: {
+    position: "absolute",
+    bottom: 70,
+    left: 0,
+    right: 0,
     paddingHorizontal: 20,
-  
     paddingTop: 16,
-    paddingBottom: 20,
+    paddingBottom: 16,
+    backgroundColor: BG,
   },
   
   

@@ -13,6 +13,7 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { StatusBar } from "expo-status-bar";
 import { Colors } from "../theme/colors";
 import SwipeVoteCard from "../components/SwipeVoteCard";
+import BottomNavigationBar from "../components/BottomNavigationBar";
 
 const ACCENT = Colors.accent;
 const BG = Colors.background;
@@ -58,6 +59,7 @@ const MOCK_VALIDATE_QUEUE: ValidateItem[] = [
     address: "Rua Dom Pedro V 129",
     mood: "energetic",
     photoColor: "#1A0D0D",
+    photo: require("../assets/images/restaurants/cevicheria.jpg")
   },
   {
     id: "4",
@@ -73,6 +75,7 @@ const MOCK_VALIDATE_QUEUE: ValidateItem[] = [
     address: "Rua Portas de Santo Ant\u00E3o 150",
     mood: "cozy",
     photoColor: "#0D0D1A",
+    photo: require("../assets/images/restaurants/solar.jpg")
   },
 ];
 
@@ -90,9 +93,10 @@ function moodLabel(mood: string): string {
 type Props = {
   onDone: () => void;
   onSkip: () => void;
+  onNavigate: (screen: string) => void;
 };
 
-export default function ValidateScreen({ onDone, onSkip }: Props) {
+export default function ValidateScreen({ onDone, onSkip, onNavigate }: Props) {
   const [currentIndex, setCurrentIndex] = useState(0);
   const [validated, setValidated] = useState(0);
   const [totalPoints, setTotalPoints] = useState(0);
@@ -310,6 +314,8 @@ export default function ValidateScreen({ onDone, onSkip }: Props) {
       <TouchableOpacity style={styles.skipButton} onPress={onSkip}>
         <Text style={styles.skipText}>Skip for now</Text>
       </TouchableOpacity>
+
+      <BottomNavigationBar activeTab="validate" onNavigate={onNavigate} />
     </SafeAreaView>
   );
 }
@@ -458,7 +464,7 @@ const styles = StyleSheet.create({
   skipButton: {
     alignItems: "center",
     paddingVertical: 14,
-    paddingBottom: 28,
+    paddingBottom: 100,
   },
   skipText: {
     color: TEXT_SECONDARY,

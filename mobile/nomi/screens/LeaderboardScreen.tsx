@@ -10,6 +10,7 @@ import {
 import { SafeAreaView } from "react-native-safe-area-context";
 import { StatusBar } from "expo-status-bar";
 import { Colors } from "../theme/colors";
+import BottomNavigationBar from "../components/BottomNavigationBar";
 
 const ACCENT = Colors.accent;
 const BG = Colors.background;
@@ -231,41 +232,7 @@ export default function LeaderboardScreen({ onNavigate }: Props) {
         <View style={{ height: 80 }} />
       </ScrollView>
 
-      {/* --- Bottom Tab Bar --- */}
-      <View style={styles.tabBar}>
-        <TouchableOpacity
-          style={styles.tab}
-          onPress={() => onNavigate("mood")}
-        >
-          <Text style={styles.tabIcon}>{"\u{1F3E0}"}</Text>
-          <Text style={styles.tabLabel}>Home</Text>
-        </TouchableOpacity>
-        <TouchableOpacity
-          style={styles.tab}
-          onPress={() => onNavigate("validate")}
-        >
-          <Text style={styles.tabIcon}>{"\u{1F50D}"}</Text>
-          <Text style={styles.tabLabel}>Validate</Text>
-        </TouchableOpacity>
-        <TouchableOpacity
-          style={styles.tab}
-          onPress={() => onNavigate("group")}
-        >
-          <Text style={styles.tabIcon}>{"\u{1F465}"}</Text>
-          <Text style={styles.tabLabel}>Group</Text>
-        </TouchableOpacity>
-        <TouchableOpacity style={styles.tab}>
-          <Text style={[styles.tabIcon, styles.tabActive]}>{"\u{1F3C6}"}</Text>
-          <Text style={[styles.tabLabel, styles.tabActive]}>Ranking</Text>
-        </TouchableOpacity>
-        <TouchableOpacity
-          style={styles.tab}
-          onPress={() => onNavigate("profile")}
-        >
-          <Text style={styles.tabIcon}>{"\u{1F464}"}</Text>
-          <Text style={styles.tabLabel}>Profile</Text>
-        </TouchableOpacity>
-      </View>
+      <BottomNavigationBar activeTab="ranking" onNavigate={onNavigate} />
     </SafeAreaView>
   );
 }
@@ -451,35 +418,5 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: "600",
     textAlign: "center",
-  },
-
-  // --- Tab Bar ---
-  tabBar: {
-    position: "absolute",
-    bottom: 0,
-    left: 0,
-    right: 0,
-    flexDirection: "row",
-    backgroundColor: CARD_BG,
-    borderTopWidth: 1,
-    borderTopColor: Colors.stepInactive,
-    paddingBottom: 28,
-    paddingTop: 10,
-  },
-  tab: {
-    flex: 1,
-    alignItems: "center",
-  },
-  tabIcon: {
-    fontSize: 22,
-    marginBottom: 2,
-  },
-  tabLabel: {
-    color: TEXT_SECONDARY,
-    fontSize: 11,
-    fontWeight: "500",
-  },
-  tabActive: {
-    color: ACCENT,
   },
 });

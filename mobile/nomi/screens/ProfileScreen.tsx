@@ -6,10 +6,13 @@ import {
   StyleSheet,
   ScrollView,
   Dimensions,
+  Image,
+  ImageSourcePropType,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { StatusBar } from "expo-status-bar";
 import { Colors } from "../theme/colors";
+import BottomNavigationBar from "../components/BottomNavigationBar";
 
 const ACCENT = Colors.accent;
 const BG = Colors.background;
@@ -58,9 +61,27 @@ const ALL_BADGES: Badge[] = [
 
 // --- Mock Data ---
 const MOCK_SAVED_RESTAURANTS = [
-  { id: "1", name: "Taberna da Rua das Flores", distance: "0.3 km", budget: 2 },
-  { id: "3", name: "Cantinho do Avillez", distance: "1.2 km", budget: 3 },
-  { id: "4", name: "A Cevicheria", distance: "0.5 km", budget: 3 },
+  {
+    id: "1",
+    name: "Taberna da Rua das Flores",
+    distance: "0.3 km",
+    budget: 2,
+    photo: require("../assets/images/restaurants/taberna-rua-das-flores.jpg")
+  },
+  {
+    id: "3",
+    name: "Cantinho do Avillez",
+    distance: "1.2 km",
+    budget: 3,
+    photo: require("../assets/images/restaurants/catinho.jpg")
+  },
+  {
+    id: "2",
+    name: "ZeroZero",
+    distance: "0.8 km",
+    budget: 2,
+    photo: require("../assets/images/restaurants/zerozero.jpg")
+  },
 ];
 
 const MOCK_USER = {
@@ -185,13 +206,17 @@ export default function ProfileScreen({ onNavigate }: Props) {
           showsHorizontalScrollIndicator={false}
           contentContainerStyle={styles.savedRow}
         >
-          {user.savedRestaurants.map((r) => (
+          {user.savedRestaurants.map((r: any) => (
             <View key={r.id} style={styles.savedCard}>
-              <View style={styles.savedPhoto}>
-                <Text style={styles.savedPhotoText}>
-                  {r.name.charAt(0)}
-                </Text>
-              </View>
+              {r.photo ? (
+                <Image source={r.photo} style={styles.savedPhoto} resizeMode="cover" />
+              ) : (
+                <View style={[styles.savedPhoto, { backgroundColor: "#1A1A2E" }]}>
+                  <Text style={styles.savedPhotoText}>
+                    {r.name.charAt(0)}
+                  </Text>
+                </View>
+              )}
               <Text style={styles.savedName} numberOfLines={1}>
                 {r.name}
               </Text>
@@ -206,41 +231,7 @@ export default function ProfileScreen({ onNavigate }: Props) {
         <View style={{ height: 80 }} />
       </ScrollView>
 
-      {/* --- Bottom Tab Bar --- */}
-      <View style={styles.tabBar}>
-        <TouchableOpacity
-          style={styles.tab}
-          onPress={() => onNavigate("mood")}
-        >
-          <Text style={styles.tabIcon}>{"\u{1F3E0}"}</Text>
-          <Text style={styles.tabLabel}>Home</Text>
-        </TouchableOpacity>
-        <TouchableOpacity
-          style={styles.tab}
-          onPress={() => onNavigate("validate")}
-        >
-          <Text style={styles.tabIcon}>{"\u{1F50D}"}</Text>
-          <Text style={styles.tabLabel}>Validate</Text>
-        </TouchableOpacity>
-        <TouchableOpacity
-          style={styles.tab}
-          onPress={() => onNavigate("group")}
-        >
-          <Text style={styles.tabIcon}>{"\u{1F465}"}</Text>
-          <Text style={styles.tabLabel}>Group</Text>
-        </TouchableOpacity>
-        <TouchableOpacity
-          style={styles.tab}
-          onPress={() => onNavigate("leaderboard")}
-        >
-          <Text style={styles.tabIcon}>{"\u{1F3C6}"}</Text>
-          <Text style={styles.tabLabel}>Ranking</Text>
-        </TouchableOpacity>
-        <TouchableOpacity style={[styles.tab]}>
-          <Text style={[styles.tabIcon, styles.tabActive]}>{"\u{1F464}"}</Text>
-          <Text style={[styles.tabLabel, styles.tabActive]}>Profile</Text>
-        </TouchableOpacity>
-      </View>
+      <BottomNavigationBar activeTab="profile" onNavigate={onNavigate} />
     </SafeAreaView>
   );
 }
@@ -267,48 +258,48 @@ const styles = StyleSheet.create({
   // --- Profile ---
   profileSection: {
     alignItems: "center",
-    paddingTop: 8,
-    paddingBottom: 8,
+    paddingTop: 4,
+    paddingBottom: 4,
   },
   avatar: {
-    width: 88,
-    height: 88,
-    borderRadius: 44,
+    width: 72,
+    height: 72,
+    borderRadius: 36,
     backgroundColor: ACCENT,
     alignItems: "center",
     justifyContent: "center",
-    marginBottom: 12,
+    marginBottom: 10,
   },
   avatarText: {
     color: TEXT_PRIMARY,
-    fontSize: 32,
+    fontSize: 26,
     fontWeight: "700",
   },
   displayName: {
     color: TEXT_PRIMARY,
-    fontSize: 22,
+    fontSize: 20,
     fontWeight: "700",
   },
   memberSince: {
     color: TEXT_SECONDARY,
-    fontSize: 14,
-    marginTop: 4,
+    fontSize: 13,
+    marginTop: 3,
   },
   totalPoints: {
     color: ACCENT,
-    fontSize: 48,
+    fontSize: 36,
     fontWeight: "800",
-    marginTop: 16,
+    marginTop: 12,
   },
   pointsLabel: {
     color: TEXT_SECONDARY,
-    fontSize: 14,
+    fontSize: 13,
     marginTop: -4,
   },
 
   // --- Level ---
   levelSection: {
-    marginTop: 24,
+    marginTop: 16,
     backgroundColor: CARD_BG,
     borderRadius: 16,
     padding: 16,
@@ -361,23 +352,23 @@ const styles = StyleSheet.create({
   badgeCard: {
     width: (SCREEN_WIDTH - 52) / 2,
     backgroundColor: CARD_BG,
-    borderRadius: 14,
-    padding: 14,
+    borderRadius: 12,
+    padding: 10,
     alignItems: "center",
   },
   badgeCardLocked: {
     opacity: 0.45,
   },
   badgeEmoji: {
-    fontSize: 28,
-    marginBottom: 6,
+    fontSize: 24,
+    marginBottom: 4,
   },
   grayscale: {
     opacity: 0.6,
   },
   badgeName: {
     color: TEXT_PRIMARY,
-    fontSize: 13,
+    fontSize: 12,
     fontWeight: "600",
     textAlign: "center",
   },
@@ -386,9 +377,9 @@ const styles = StyleSheet.create({
   },
   badgeCondition: {
     color: TEXT_SECONDARY,
-    fontSize: 11,
+    fontSize: 10,
     textAlign: "center",
-    marginTop: 2,
+    marginTop: 1,
   },
   badgeConditionLocked: {
     color: Colors.textSecondary,
@@ -400,14 +391,14 @@ const styles = StyleSheet.create({
     paddingRight: 20,
   },
   savedCard: {
-    width: 140,
+    width: 160,
     backgroundColor: CARD_BG,
     borderRadius: 14,
     overflow: "hidden",
   },
   savedPhoto: {
-    height: 80,
-    backgroundColor: "#1A1A2E",
+    height: 120,
+    width: "100%",
     alignItems: "center",
     justifyContent: "center",
   },
@@ -429,35 +420,5 @@ const styles = StyleSheet.create({
     paddingHorizontal: 10,
     paddingBottom: 10,
     paddingTop: 2,
-  },
-
-  // --- Tab Bar ---
-  tabBar: {
-    position: "absolute",
-    bottom: 0,
-    left: 0,
-    right: 0,
-    flexDirection: "row",
-    backgroundColor: CARD_BG,
-    borderTopWidth: 1,
-    borderTopColor: Colors.stepInactive,
-    paddingBottom: 28,
-    paddingTop: 10,
-  },
-  tab: {
-    flex: 1,
-    alignItems: "center",
-  },
-  tabIcon: {
-    fontSize: 22,
-    marginBottom: 2,
-  },
-  tabLabel: {
-    color: TEXT_SECONDARY,
-    fontSize: 11,
-    fontWeight: "500",
-  },
-  tabActive: {
-    color: ACCENT,
   },
 });

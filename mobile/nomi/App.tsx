@@ -78,6 +78,7 @@ export default function App() {
           onSkip={() => setScreen("budget")}
           onGroup={() => setScreen("group")}
           onProfile={() => setScreen("profile")}
+          onNavigate={(s) => setScreen(s as Screen)}
         />
       )}
       {screen === "budget" && (
@@ -89,6 +90,7 @@ export default function App() {
             setScreen("swipe");
           }}
           onBack={() => setScreen("mood")}
+          onNavigate={(s) => setScreen(s as Screen)}
         />
       )}
       {screen === "swipe" && (
@@ -114,6 +116,7 @@ export default function App() {
             setRoomCode(code);
             setScreen("waitingRoom");
           }}
+          onNavigate={(s) => setScreen(s as Screen)}
         />
       )}
       {screen === "waitingRoom" && (
@@ -169,6 +172,7 @@ export default function App() {
         <ValidateScreen
           onDone={() => setScreen(returnScreen)}
           onSkip={() => setScreen(returnScreen)}
+          onNavigate={(s) => setScreen(s as Screen)}
         />
       )}
       {screen === "settings" && (

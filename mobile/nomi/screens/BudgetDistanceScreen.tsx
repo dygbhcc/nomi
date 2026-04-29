@@ -9,6 +9,7 @@ import {
 import { SafeAreaView } from "react-native-safe-area-context";
 import { StatusBar } from "expo-status-bar";
 import { Colors, Shadows, Spacing, BorderRadius } from "../theme/colors";
+import BottomNavigationBar from "../components/BottomNavigationBar";
 
 type BudgetOption = {
   value: number;
@@ -48,6 +49,7 @@ type Props = {
   onContinue: (budget: number, distance: number) => void;
   onBack: () => void;
   onSkip?: () => void;
+  onNavigate: (screen: string) => void;
 };
 
 function ProgressBar() {
@@ -66,7 +68,7 @@ function ProgressBar() {
   );
 }
 
-export default function BudgetDistanceScreen({ onContinue, onBack, onSkip }: Props) {
+export default function BudgetDistanceScreen({ onContinue, onBack, onSkip, onNavigate }: Props) {
   const [selectedBudget, setSelectedBudget] = useState<number | null>(null);
   const [selectedDistance, setSelectedDistance] = useState<number | null>(null);
 
@@ -104,7 +106,7 @@ export default function BudgetDistanceScreen({ onContinue, onBack, onSkip }: Pro
 
       <ScrollView
         style={{ flex: 1 }}
-        contentContainerStyle={styles.scrollContent}
+        contentContainerStyle={[styles.scrollContent, { paddingBottom: 160 }]}
         showsVerticalScrollIndicator={false}
       >
         {/* Budget Section */}
@@ -170,6 +172,8 @@ export default function BudgetDistanceScreen({ onContinue, onBack, onSkip }: Pro
           <Text style={styles.continueText}>Find Restaurants</Text>
         </TouchableOpacity>
       </View>
+
+      <BottomNavigationBar activeTab="home" onNavigate={onNavigate} />
     </SafeAreaView>
   );
 }
@@ -284,9 +288,14 @@ const styles = StyleSheet.create({
     color: TEXT_PRIMARY,
   },
   bottomContainer: {
+    position: "absolute",
+    bottom: 70,
+    left: 0,
+    right: 0,
     paddingHorizontal: 20,
     paddingTop: 16,
-    paddingBottom: 24,
+    paddingBottom: 16,
+    backgroundColor: BG,
   },
   continueButton: {
     width: "100%",

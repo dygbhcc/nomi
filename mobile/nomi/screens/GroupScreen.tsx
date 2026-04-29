@@ -10,6 +10,7 @@ import {
 import { SafeAreaView } from "react-native-safe-area-context";
 import { StatusBar } from "expo-status-bar";
 import { Colors } from "../theme/colors";
+import BottomNavigationBar from "../components/BottomNavigationBar";
 
 const ACCENT = Colors.accent;
 const BG = Colors.background;
@@ -30,9 +31,10 @@ function generateRoomCode(): string {
 type Props = {
   onBack: () => void;
   onJoinRoom: (code: string) => void;
+  onNavigate: (screen: string) => void;
 };
 
-export default function GroupScreen({ onBack, onJoinRoom }: Props) {
+export default function GroupScreen({ onBack, onJoinRoom, onNavigate }: Props) {
   const [roomCode, setRoomCode] = useState<string | null>(null);
   const [joinInput, setJoinInput] = useState("");
 
@@ -146,6 +148,8 @@ export default function GroupScreen({ onBack, onJoinRoom }: Props) {
           </View>
         </View>
       </View>
+
+      <BottomNavigationBar activeTab="group" onNavigate={onNavigate} />
     </SafeAreaView>
   );
 }
@@ -287,7 +291,7 @@ const styles = StyleSheet.create({
   },
   stepsSection: {
     marginTop: "auto",
-    marginBottom: 32,
+    marginBottom: 100,
   },
   stepsTitle: {
     color: TEXT_SECONDARY,
