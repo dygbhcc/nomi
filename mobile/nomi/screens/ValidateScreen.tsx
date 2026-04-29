@@ -7,15 +7,18 @@ import {
   Dimensions,
   Animated,
   PanResponder,
+  ImageSourcePropType,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { StatusBar } from "expo-status-bar";
+import { Colors } from "../theme/colors";
+import SwipeVoteCard from "../components/SwipeVoteCard";
 
-const ACCENT = "#7F77DD";
-const BG = "#0D0D0D";
-const CARD_BG = "#1A1A1A";
-const TEXT_PRIMARY = "#FFFFFF";
-const TEXT_SECONDARY = "#888888";
+const ACCENT = Colors.accent;
+const BG = Colors.background;
+const CARD_BG = Colors.cardBackground;
+const TEXT_PRIMARY = Colors.textPrimary;
+const TEXT_SECONDARY = Colors.textSecondary;
 const GREEN = "#2ECC71";
 const RED = "#E74C3C";
 
@@ -29,14 +32,48 @@ type ValidateItem = {
   address: string;
   mood: string;
   photoColor: string;
+  photo?: ImageSourcePropType;
 };
 
 const MOCK_VALIDATE_QUEUE: ValidateItem[] = [
-  { id: "1", name: "Taberna da Rua das Flores", address: "Rua das Flores 103", mood: "romantic", photoColor: "#1A1A2E" },
-  { id: "2", name: "ZeroZero", address: "Rua do Passadi\u00E7o 35", mood: "fresh", photoColor: "#0D1A0D" },
-  { id: "3", name: "A Cevicheria", address: "Rua Dom Pedro V 129", mood: "energetic", photoColor: "#1A0D0D" },
-  { id: "4", name: "Cantinho do Avillez", address: "Rua dos Duques de Bragan\u00E7a 7", mood: "hidden_gem", photoColor: "#1A1A0D" },
-  { id: "5", name: "Solar dos Presuntos", address: "Rua Portas de Santo Ant\u00E3o 150", mood: "cozy", photoColor: "#0D0D1A" },
+  {
+    id: "1",
+    name: "Taberna da Rua das Flores",
+    address: "Rua das Flores 103",
+    mood: "romantic",
+    photoColor: "#1A1A2E",
+    photo: require("../assets/images/restaurants/taberna-rua-das-flores.jpg")
+  },
+  {
+    id: "2",
+    name: "ZeroZero",
+    address: "Rua do Passadi\u00E7o 35",
+    mood: "fresh",
+    photoColor: "#0D1A0D",
+    photo: require("../assets/images/restaurants/zerozero.jpg")
+  },
+  {
+    id: "3",
+    name: "A Cevicheria",
+    address: "Rua Dom Pedro V 129",
+    mood: "energetic",
+    photoColor: "#1A0D0D",
+  },
+  {
+    id: "4",
+    name: "Cantinho do Avillez",
+    address: "Rua dos Duques de Bragan\u00E7a 7",
+    mood: "hidden_gem",
+    photoColor: "#1A1A0D",
+    photo: require("../assets/images/restaurants/catinho.jpg")
+  },
+  {
+    id: "5",
+    name: "Solar dos Presuntos",
+    address: "Rua Portas de Santo Ant\u00E3o 150",
+    mood: "cozy",
+    photoColor: "#0D0D1A",
+  },
 ];
 
 function moodLabel(mood: string): string {
@@ -154,7 +191,7 @@ export default function ValidateScreen({ onDone, onSkip }: Props) {
   if (allDone) {
     return (
       <SafeAreaView style={styles.container}>
-        <StatusBar style="light" />
+        <StatusBar style="dark" />
         <View style={styles.doneContainer}>
           <Text style={styles.doneEmoji}>{"\u{1F525}"}</Text>
           <Text style={styles.doneTitle}>You're on fire!</Text>
@@ -182,7 +219,7 @@ export default function ValidateScreen({ onDone, onSkip }: Props) {
 
   return (
     <SafeAreaView style={styles.container}>
-      <StatusBar style="light" />
+      <StatusBar style="dark" />
 
       {/* --- Header --- */}
       <View style={styles.header}>
@@ -200,39 +237,21 @@ export default function ValidateScreen({ onDone, onSkip }: Props) {
 
       {/* --- Card --- */}
       <View style={styles.cardWrapper}>
-        <Animated.View
-          style={[
-            styles.card,
-            {
-              transform: [
-                { translateX },
-                { rotate },
-                { scale: cardScale },
-              ],
-            },
-          ]}
-          {...panResponder.panHandlers}
-        >
-          {/* YES overlay */}
-          <Animated.View style={[styles.swipeOverlay, styles.yesOverlay, { opacity: yesOpacity }]}>
-            <Text style={styles.swipeOverlayText}>YES</Text>
-          </Animated.View>
-          {/* NO overlay */}
-          <Animated.View style={[styles.swipeOverlay, styles.noOverlay, { opacity: noOpacity }]}>
-            <Text style={[styles.swipeOverlayText, { color: RED }]}>NO</Text>
-          </Animated.View>
-
-          {/* Photo placeholder */}
-          <View style={[styles.photoPlaceholder, { backgroundColor: item.photoColor }]}>
-            <Text style={styles.photoInitial}>{item.name.charAt(0)}</Text>
-          </View>
-
-          {/* Info */}
-          <View style={styles.cardInfo}>
-            <Text style={styles.cardName}>{item.name}</Text>
-            <Text style={styles.cardAddress}>{item.address}</Text>
-          </View>
-        </Animated.View>
+        <SwipeVoteCard
+          name={item.name}
+          address={item.address}
+          photo={item.photo}
+          photoColor={item.photoColor}
+          translateX={translateX}
+          rotate={rotate}
+          scale={cardScale}
+          likeOpacity={yesOpacity}
+          nopeOpacity={noOpacity}
+          panHandlers={panResponder.panHandlers}
+          likeLabel="YES"
+          rejectLabel="NO"
+          rejectColor={RED}
+        />
 
         {/* Points fly-up */}
         <Animated.View
@@ -332,58 +351,6 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
     maxHeight: SCREEN_HEIGHT * 0.5,
   },
-  card: {
-    flex: 1,
-    backgroundColor: CARD_BG,
-    borderRadius: 20,
-    overflow: "hidden",
-  },
-  swipeOverlay: {
-    position: "absolute",
-    top: 30,
-    zIndex: 10,
-    paddingHorizontal: 16,
-    paddingVertical: 8,
-    borderRadius: 8,
-    borderWidth: 3,
-  },
-  yesOverlay: {
-    left: 20,
-    borderColor: GREEN,
-  },
-  noOverlay: {
-    right: 20,
-    borderColor: RED,
-  },
-  swipeOverlayText: {
-    fontSize: 26,
-    fontWeight: "800",
-    color: GREEN,
-  },
-  photoPlaceholder: {
-    flex: 1,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  photoInitial: {
-    color: ACCENT,
-    fontSize: 56,
-    fontWeight: "700",
-    opacity: 0.3,
-  },
-  cardInfo: {
-    padding: 16,
-  },
-  cardName: {
-    color: TEXT_PRIMARY,
-    fontSize: 18,
-    fontWeight: "700",
-  },
-  cardAddress: {
-    color: TEXT_SECONDARY,
-    fontSize: 13,
-    marginTop: 4,
-  },
 
   // --- Points fly-up ---
   pointsFlyup: {
@@ -477,7 +444,7 @@ const styles = StyleSheet.create({
   },
   progressBarBg: {
     height: 6,
-    backgroundColor: "#2A2A2A",
+    backgroundColor: Colors.stepInactive,
     borderRadius: 3,
     overflow: "hidden",
   },

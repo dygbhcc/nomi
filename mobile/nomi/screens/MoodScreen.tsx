@@ -4,14 +4,20 @@ import {
   Text,
   TouchableOpacity,
   StyleSheet,
-  FlatList,
+  ScrollView,
   Animated,
   Image,
   ImageSourcePropType,
+  Dimensions,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { StatusBar } from "expo-status-bar";
 import * as Haptics from "expo-haptics";
+import { Colors, Shadows, Spacing, BorderRadius } from "../theme/colors";
+
+const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get("window");
+const CARD_WIDTH = (SCREEN_WIDTH - 20 * 2 - 12) / 2; // 2 columns, 20px padding, 12px gap
+const CARD_IMAGE_HEIGHT = CARD_WIDTH * 0.65; // image takes 65% of card width
 
 type Mood = {
   id: string;
@@ -22,22 +28,23 @@ type Mood = {
 };
 
 const MOODS: Mood[] = [
-  { id: "romantic", label: "Romantic", image: require("../assets/images/romantic.png"), hint: "Dim lights, date night" },
+  { id: "romantic", label: "Romantic", image: require("../assets/images/romantic_old.png"), hint: "Dim lights, date night" },
   { id: "energetic", label: "Energetic", image: require("../assets/images/energetic.png"), hint: "Loud, buzzing, fun" },
   { id: "chill", label: "Chill", image: require("../assets/images/chill.png"), hint: "Warm, relaxed, no rush" },
   { id: "explorer", label: "Explore", image: require("../assets/images/explore.png"), hint: "New spots, off the beaten path" },
   { id: "focus", label: "Focus", image: require("../assets/images/focus.png"), hint: "Quiet, good wifi, calm" },
   { id: "hungry&quick", label: "Hungry & Quick", image: require("../assets/images/hungry.png"), hint: "Fast, filling, no wait" },
-  { id: "surprising", label: "I don't know, surprise me", emoji: "\u{1F60E}", hint: "Unexpected, exciting, fun" },
+  { id: "surprise", label: "I don't know, surprise me", image: require("../assets/images/surprise.png"), hint: "Unexpected, exciting, fun" },
 
 ];
 
-const ACCENT = "#7F77DD";
-const BG = "#F5F5F0";
-const CARD_BG = "#FFFFFF";
-const TEXT_PRIMARY = "#1A1A1A";
-const TEXT_SECONDARY = "#666666";
-const STEP_INACTIVE = "#E0E0E0";
+// Using central theme
+const ACCENT = Colors.accent;
+const BG = Colors.background;
+const CARD_BG = Colors.cardBackground;
+const TEXT_PRIMARY = Colors.textPrimary;
+const TEXT_SECONDARY = Colors.textSecondary;
+const STEP_INACTIVE = Colors.stepInactive;
 
 type Props = {
   onContinue: (selectedMoods: string[]) => void;
@@ -49,7 +56,7 @@ type Props = {
 function ProgressBar() {
   return (
     <View style={styles.progressRow}>
-      {[0, 1, 2].map((step) => (
+      {[0, 1].map((step) => (
         <View
           key={step}
           style={[
@@ -99,25 +106,50 @@ export default function MoodScreen({ onContinue, onSkip, onGroup, onProfile }: P
 
   const hasSelection = selectedMoods.length > 0;
 
-  const renderMoodCard = ({ item }: { item: Mood }) => {
+  const renderMoodCard = ({ item, index }: { item: Mood; index: number }) => {
+    const isLast = index === MOODS.length - 1;
     const isSelected = selectedMoods.includes(item.id);
+
     return (
       <TouchableOpacity
         activeOpacity={0.7}
-        style={[styles.card, isSelected && styles.cardSelected]}
-        onPress={() => toggleMood(item.id)}
+        style={[
+          styles.card,
+          isSelected && styles.cardSelected,
+          isLast && styles.cardFullWidth,
+        ]}
+        onPress={() => item.id === 'surprise' ? handleSurprise() : toggleMood(item.id)}
       >
-        {item.image ? (
-          <Image source={item.image} style={styles.cardImage} />
+        {isLast ? (
+          <>
+            {item.image && <Image source={item.image} style={styles.cardImageSmall} />}
+            <View style={{ flex: 1 }}>
+              <Text style={[styles.cardLabel, isSelected && styles.cardLabelSelected]}>
+                {item.label}
+              </Text>
+              <Text style={[styles.cardHint, isSelected && styles.cardHintSelected]}>
+                {item.hint}
+              </Text>
+            </View>
+          </>
         ) : (
-          <Text style={styles.cardEmoji}>{item.emoji}</Text>
+          <>
+            
+            <Image source={item.image} style={styles.cardImage} />
+    
+            <Text style={[styles.cardLabel, isSelected && styles.cardLabelSelected]}>
+              {item.label}
+            </Text>
+            <Text style={[styles.cardHint, isSelected && styles.cardHintSelected]}>
+              {item.hint}
+            </Text>
+            {isSelected && (
+              <View style={styles.checkmark}>
+                <Text style={styles.checkmarkText}>✓</Text>
+              </View>
+            )}
+          </>
         )}
-        <Text style={[styles.cardLabel, isSelected && styles.cardLabelSelected]}>
-          {item.label}
-        </Text>
-        <Text style={[styles.cardHint, isSelected && styles.cardHintSelected]}>
-          {item.hint}
-        </Text>
       </TouchableOpacity>
     );
   };
@@ -142,19 +174,29 @@ export default function MoodScreen({ onContinue, onSkip, onGroup, onProfile }: P
         )}
       </View>
 
-      <FlatList
+      <ScrollView
         style={{ flex: 1 }}
-        data={MOODS}
-        renderItem={renderMoodCard}
-        keyExtractor={(item) => item.id}
-        numColumns={2}
-        columnWrapperStyle={styles.gridRow}
         contentContainerStyle={styles.gridContainer}
         showsVerticalScrollIndicator={false}
-        ListHeaderComponent={
-          <Text style={styles.title}>How are you feeling?</Text>
-        }
-      />
+      >
+        <Text style={styles.title}>How are you feeling?</Text>
+
+        {(() => {
+          // Create rows: pair items except last one
+          const rows = [];
+          const items = MOODS.slice(0, -1); // all except last
+          for (let i = 0; i < items.length; i += 2) {
+            rows.push([items[i], items[i + 1]].filter(Boolean));
+          }
+          rows.push([MOODS[MOODS.length - 1]]); // surprise as own row
+
+          return rows.map((row, rowIndex) => (
+            <View key={rowIndex} style={styles.gridRow}>
+              {row.map((item) => renderMoodCard({ item, index: MOODS.indexOf(item) }))}
+            </View>
+          ));
+        })()}
+      </ScrollView>
 
       <View style={styles.bottomContainer}>
         <TouchableOpacity
@@ -180,6 +222,7 @@ const styles = StyleSheet.create({
     alignItems: "center",
     paddingHorizontal: 20,
     paddingTop: 12,
+    paddingBottom: 12,
   },
   groupButton: {
     flexDirection: "row",
@@ -228,26 +271,23 @@ const styles = StyleSheet.create({
     fontWeight: "700",
     paddingHorizontal: 20,
     marginTop: 24,
-    marginBottom: 24,
+    marginBottom: 30,
+    
   },
   gridContainer: {
     paddingHorizontal: 20,
     paddingBottom: 16,
   },
   gridRow: {
+    flexDirection: "row",
     gap: 12,
     marginBottom: 12,
   },
   card: {
-    flex: 1,
+    width: CARD_WIDTH,
     backgroundColor: CARD_BG,
     borderRadius: 16,
-    paddingTop: 20,
-    paddingBottom: 16,
-    paddingHorizontal: 12,
-    minHeight: 130,
-    alignItems: "center",
-    justifyContent: "flex-start",
+    overflow: "hidden",
     borderWidth: 2,
     borderColor: "transparent",
     shadowColor: "#000",
@@ -260,35 +300,67 @@ const styles = StyleSheet.create({
     borderColor: ACCENT,
     backgroundColor: "rgba(127, 119, 221, 0.08)",
   },
+  cardFullWidth: {
+    width: "100%",
+    flexDirection: "row",
+    alignItems: "center",
+    paddingHorizontal: 20,
+    paddingVertical: 24,
+    gap: 16,
+  },
   cardEmoji: {
-    fontSize: 36,
-    marginBottom: 8,
+    fontSize: 40,
+    marginBottom: 10,
   },
   cardImage: {
+    width: "100%",
+    height: CARD_IMAGE_HEIGHT,
+    resizeMode: "contain",
+    paddingHorizontal: 12,
+    paddingTop: 12,
+  },
+  cardImageSmall: {
     width: 70,
     height: 70,
-    marginBottom: 8,
     resizeMode: "contain",
   },
   cardLabel: {
     color: TEXT_PRIMARY,
-    fontSize: 14,
+    fontSize: 16,
     fontWeight: "600",
     textAlign: "center",
-    marginBottom: 4,
+    marginTop: 8,
+    paddingHorizontal: 8,
   },
   cardLabelSelected: {
     color: ACCENT,
   },
   cardHint: {
     color: "#888888",
-    fontSize: 10,
-    lineHeight: 14,
+    fontSize: 11,
     textAlign: "center",
-    paddingHorizontal: 4,
+    marginTop: 2,
+    marginBottom: 12,
+    paddingHorizontal: 8,
   },
   cardHintSelected: {
     color: "#6B63B5",
+  },
+  checkmark: {
+    position: "absolute",
+    top: 8,
+    right: 8,
+    width: 22,
+    height: 22,
+    borderRadius: 11,
+    backgroundColor: ACCENT,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  checkmarkText: {
+    color: "#FFFFFF",
+    fontSize: 12,
+    fontWeight: "bold",
   },
   bottomContainer: {
     paddingHorizontal: 20,

@@ -3,8 +3,7 @@ import { SafeAreaProvider } from "react-native-safe-area-context";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import OnboardingScreen from "./screens/OnboardingScreen";
 import MoodScreen from "./screens/MoodScreen";
-import BudgetScreen from "./screens/BudgetScreen";
-import DistanceScreen from "./screens/DistanceScreen";
+import BudgetDistanceScreen from "./screens/BudgetDistanceScreen";
 import SwipeScreen, { type Restaurant } from "./screens/SwipeScreen";
 import RestaurantDetailScreen from "./screens/RestaurantDetailScreen";
 import GroupScreen from "./screens/GroupScreen";
@@ -22,7 +21,6 @@ type Screen =
   | "onboarding"
   | "mood"
   | "budget"
-  | "distance"
   | "swipe"
   | "detail"
   | "group"
@@ -38,6 +36,7 @@ export default function App() {
   const [screen, setScreen] = useState<Screen | null>(null);
   const [selectedMoods, setSelectedMoods] = useState<string[]>([]);
   const [selectedBudget, setSelectedBudget] = useState<number | null>(null);
+  const [selectedDistance, setSelectedDistance] = useState<number | null>(null);
   const [detailRestaurant, setDetailRestaurant] = useState<Restaurant | null>(null);
   const [roomCode, setRoomCode] = useState("");
   const [participants, setParticipants] = useState<string[]>([]);
@@ -82,26 +81,19 @@ export default function App() {
         />
       )}
       {screen === "budget" && (
-        <BudgetScreen
+        <BudgetDistanceScreen
           selectedMoods={selectedMoods}
-          onContinue={(budget) => {
+          onContinue={(budget, distance) => {
             setSelectedBudget(budget);
-            setScreen("distance");
+            setSelectedDistance(distance);
+            setScreen("swipe");
           }}
           onBack={() => setScreen("mood")}
         />
       )}
-      {screen === "distance" && (
-        <DistanceScreen
-          selectedMoods={selectedMoods}
-          selectedBudget={selectedBudget}
-          onContinue={() => setScreen("swipe")}
-          onBack={() => setScreen("budget")}
-        />
-      )}
       {screen === "swipe" && (
         <SwipeScreen
-          onBack={() => setScreen("distance")}
+          onBack={() => setScreen("budget")}
           onChangePreferences={() => setScreen("mood")}
           onDetail={(restaurant) => {
             setDetailRestaurant(restaurant);
@@ -156,6 +148,7 @@ export default function App() {
             setVotingResult(null);
             setSelectedMoods([]);
             setSelectedBudget(null);
+            setSelectedDistance(null);
             setRoomCode("");
             setParticipants([]);
             setScreen("mood");

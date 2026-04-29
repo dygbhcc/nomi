@@ -7,9 +7,12 @@ import {
   Dimensions,
   Animated,
   PanResponder,
+  ImageSourcePropType,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { StatusBar } from "expo-status-bar";
+import { Colors } from "../theme/colors";
+import SwipeVoteCard from "../components/SwipeVoteCard";
 
 type Restaurant = {
   id: string;
@@ -18,14 +21,53 @@ type Restaurant = {
   budget: number;
   moods: string[];
   reason: string;
+  photo?: ImageSourcePropType;
 };
 
 const MOCK_RESTAURANTS: Restaurant[] = [
-  { id: "1", name: "Taberna da Rua das Flores", distance: "0.3 km", budget: 2, moods: ["romantic", "cozy"], reason: "Perfect match for your romantic + cozy mood" },
-  { id: "2", name: "ZeroZero", distance: "0.8 km", budget: 2, moods: ["fresh", "lively"], reason: "Great fresh vibe with energetic crowd" },
-  { id: "3", name: "Cantinho do Avillez", distance: "1.2 km", budget: 3, moods: ["hidden_gem", "romantic"], reason: "Hidden gem with intimate atmosphere" },
-  { id: "4", name: "A Cevicheria", distance: "0.5 km", budget: 3, moods: ["fresh", "energetic"], reason: "Fresh seafood, buzzing energy" },
-  { id: "5", name: "Taberna Albricoque", distance: "1.8 km", budget: 1, moods: ["cozy", "pet_friendly"], reason: "Pet friendly cozy spot" },
+  {
+    id: "1",
+    name: "Taberna da Rua das Flores",
+    distance: "0.3 km",
+    budget: 2,
+    moods: ["romantic", "cozy"],
+    reason: "Perfect match for your romantic + cozy mood",
+    photo: require("../assets/images/restaurants/taberna-rua-das-flores.jpg"),
+  },
+  {
+    id: "2",
+    name: "ZeroZero",
+    distance: "0.8 km",
+    budget: 2,
+    moods: ["fresh", "lively"],
+    reason: "Great fresh vibe with energetic crowd",
+    photo: require("../assets/images/restaurants/zerozero.jpg"),
+  },
+  {
+    id: "3",
+    name: "Cantinho do Avillez",
+    distance: "1.2 km",
+    budget: 3,
+    moods: ["hidden_gem", "romantic"],
+    reason: "Hidden gem with intimate atmosphere",
+    photo: require("../assets/images/restaurants/catinho.jpg"),
+  },
+  {
+    id: "4",
+    name: "A Cevicheria",
+    distance: "0.5 km",
+    budget: 3,
+    moods: ["fresh", "energetic"],
+    reason: "Fresh seafood, buzzing energy",
+  },
+  {
+    id: "5",
+    name: "Taberna Albricoque",
+    distance: "1.8 km",
+    budget: 1,
+    moods: ["cozy", "pet_friendly"],
+    reason: "Pet friendly cozy spot",
+  },
 ];
 
 // Mock vote data per restaurant (simulating other participants' votes)
@@ -41,12 +83,12 @@ const AVATAR_COLORS = ["#6B5FCC", "#9B8FEE", "#5A4FBB", "#7F77DD"];
 const SWIPE_THRESHOLD = 100;
 const { width: SCREEN_WIDTH } = Dimensions.get("window");
 
-const ACCENT = "#7F77DD";
-const BG = "#0D0D0D";
-const CARD_BG = "#1A1A1A";
+const ACCENT = Colors.accent;
+const BG = Colors.background;
+const CARD_BG = Colors.cardBackground;
 const PHOTO_BG = "#1A1A2E";
-const TEXT_PRIMARY = "#FFFFFF";
-const TEXT_SECONDARY = "#888888";
+const TEXT_PRIMARY = Colors.textPrimary;
+const TEXT_SECONDARY = Colors.textSecondary;
 const REJECT_COLOR = "#E74C3C";
 
 function budgetSymbol(level: number): string {
@@ -150,7 +192,7 @@ export default function VotingScreen({ roomCode, participants, onFinish, onBack 
     }), 0);
     return (
       <SafeAreaView style={styles.container}>
-        <StatusBar style="light" />
+        <StatusBar style="dark" />
         <View style={styles.doneContainer}>
           <Text style={styles.doneEmoji}>{"\u{1F4CA}"}</Text>
           <Text style={styles.doneTitle}>Counting votes...</Text>
@@ -163,7 +205,7 @@ export default function VotingScreen({ roomCode, participants, onFinish, onBack 
 
   return (
     <SafeAreaView style={styles.container}>
-      <StatusBar style="light" />
+      <StatusBar style="dark" />
 
       {/* Top bar: room code + participant avatars */}
       <View style={styles.topBar}>
@@ -187,51 +229,26 @@ export default function VotingScreen({ roomCode, participants, onFinish, onBack 
 
       {/* Card */}
       <View style={styles.cardWrapper}>
-        <Animated.View
-          style={[styles.card, { transform: [{ translateX }, { rotate }] }]}
-          {...panResponder.panHandlers}
-        >
-          <Animated.View style={[styles.swipeLabel, styles.likeLabel, { opacity: likeOpacity }]}>
-            <Text style={styles.swipeLabelText}>LIKE</Text>
-          </Animated.View>
-          <Animated.View style={[styles.swipeLabel, styles.nopeLabel, { opacity: nopeOpacity }]}>
-            <Text style={[styles.swipeLabelText, { color: REJECT_COLOR }]}>NOPE</Text>
-          </Animated.View>
-
-          <View style={styles.photoSection} />
-
-          <View style={styles.infoSection}>
-            <Text style={styles.restaurantName}>{restaurant.name}</Text>
-
-            <View style={styles.metaRow}>
-              <Text style={styles.metaText}>{restaurant.distance}</Text>
-              <Text style={styles.metaDot}>{"\u00B7"}</Text>
-              <Text style={styles.metaText}>{budgetSymbol(restaurant.budget)}</Text>
-            </View>
-
-            <View style={styles.moodRow}>
-              {restaurant.moods.map((mood) => (
-                <View key={mood} style={styles.moodBadge}>
-                  <Text style={styles.moodBadgeText}>{mood}</Text>
-                </View>
-              ))}
-            </View>
-
-            {/* Live vote counter */}
-            <View style={styles.voteRow}>
-              <View style={styles.voteAvatars}>
-                {voteData.avatars.map((initial, i) => (
-                  <View key={initial} style={[styles.voteDot, { backgroundColor: AVATAR_COLORS[i % AVATAR_COLORS.length], marginLeft: i > 0 ? -6 : 0 }]}>
-                    <Text style={styles.voteDotText}>{initial}</Text>
-                  </View>
-                ))}
-              </View>
-              <Text style={styles.voteText}>
-                {voteData.liked}/{participants.length} liked this
-              </Text>
-            </View>
-          </View>
-        </Animated.View>
+        <SwipeVoteCard
+          name={restaurant.name}
+          photo={restaurant.photo}
+          distance={restaurant.distance}
+          budget={restaurant.budget}
+          moods={restaurant.moods}
+          voteData={{
+            avatars: voteData.avatars,
+            liked: voteData.liked,
+            total: participants.length,
+          }}
+          translateX={translateX}
+          rotate={rotate}
+          likeOpacity={likeOpacity}
+          nopeOpacity={nopeOpacity}
+          panHandlers={panResponder.panHandlers}
+          likeLabel="LIKE"
+          rejectLabel="NOPE"
+          rejectColor={REJECT_COLOR}
+        />
       </View>
 
       {/* Action buttons */}
@@ -270,7 +287,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 10,
     paddingVertical: 4,
     borderWidth: 1,
-    borderColor: "#2A2A2A",
+    borderColor: Colors.border,
   },
   roomCodeText: {
     color: ACCENT,
@@ -304,109 +321,6 @@ const styles = StyleSheet.create({
     flex: 1,
     paddingHorizontal: 16,
     paddingBottom: 8,
-  },
-  card: {
-    flex: 1,
-    backgroundColor: CARD_BG,
-    borderRadius: 20,
-    overflow: "hidden",
-  },
-  swipeLabel: {
-    position: "absolute",
-    top: 40,
-    zIndex: 10,
-    paddingHorizontal: 16,
-    paddingVertical: 8,
-    borderRadius: 8,
-    borderWidth: 3,
-  },
-  likeLabel: {
-    left: 20,
-    borderColor: ACCENT,
-  },
-  nopeLabel: {
-    right: 20,
-    borderColor: REJECT_COLOR,
-  },
-  swipeLabelText: {
-    fontSize: 24,
-    fontWeight: "800",
-    color: ACCENT,
-  },
-  photoSection: {
-    flex: 7,
-    backgroundColor: PHOTO_BG,
-  },
-  infoSection: {
-    flex: 3,
-    padding: 16,
-    justifyContent: "center",
-  },
-  restaurantName: {
-    color: TEXT_PRIMARY,
-    fontSize: 20,
-    fontWeight: "700",
-    marginBottom: 6,
-  },
-  metaRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    marginBottom: 8,
-  },
-  metaText: {
-    color: TEXT_SECONDARY,
-    fontSize: 14,
-  },
-  metaDot: {
-    color: TEXT_SECONDARY,
-    fontSize: 14,
-    marginHorizontal: 6,
-  },
-  moodRow: {
-    flexDirection: "row",
-    gap: 8,
-    marginBottom: 8,
-  },
-  moodBadge: {
-    backgroundColor: "rgba(127, 119, 221, 0.2)",
-    paddingHorizontal: 12,
-    paddingVertical: 4,
-    borderRadius: 12,
-  },
-  moodBadgeText: {
-    color: ACCENT,
-    fontSize: 12,
-    fontWeight: "600",
-  },
-  voteRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    backgroundColor: "rgba(255,255,255,0.05)",
-    borderRadius: 10,
-    paddingVertical: 8,
-    paddingHorizontal: 12,
-  },
-  voteAvatars: {
-    flexDirection: "row",
-    marginRight: 10,
-  },
-  voteDot: {
-    width: 22,
-    height: 22,
-    borderRadius: 11,
-    alignItems: "center",
-    justifyContent: "center",
-    borderWidth: 2,
-    borderColor: CARD_BG,
-  },
-  voteDotText: {
-    color: TEXT_PRIMARY,
-    fontSize: 9,
-    fontWeight: "700",
-  },
-  voteText: {
-    color: TEXT_SECONDARY,
-    fontSize: 13,
   },
   actionRow: {
     flexDirection: "row",

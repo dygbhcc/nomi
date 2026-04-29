@@ -9,13 +9,14 @@ import {
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { StatusBar } from "expo-status-bar";
+import { Colors } from "../theme/colors";
 
-const ACCENT = "#7F77DD";
-const ACCENT_DARK = "#3C3489";
-const BG = "#0D0D0D";
-const CARD_BG = "#1A1A1A";
-const TEXT_PRIMARY = "#FFFFFF";
-const TEXT_SECONDARY = "#888888";
+// Using central theme
+const ACCENT = Colors.accent;
+const BG = Colors.background;
+const CARD_BG = Colors.cardBackground;
+const TEXT_PRIMARY = Colors.textPrimary;
+const TEXT_SECONDARY = Colors.textSecondary;
 
 const { width: SCREEN_WIDTH } = Dimensions.get("window");
 
@@ -122,7 +123,7 @@ const ilStyles = StyleSheet.create({
     backgroundColor: ACCENT,
     alignItems: "center",
     justifyContent: "center",
-    shadowColor: ACCENT_DARK,
+    shadowColor: "#000",
     shadowOffset: { width: 0, height: 0 },
     shadowOpacity: 0.6,
     shadowRadius: 40,
@@ -261,7 +262,7 @@ export default function OnboardingScreen({ onDone }: Props) {
 
   return (
     <SafeAreaView style={styles.container}>
-      <StatusBar style="light" />
+      <StatusBar style="dark" />
 
       {/* Skip */}
       <View style={styles.skipRow}>

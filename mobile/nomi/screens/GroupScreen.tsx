@@ -9,13 +9,14 @@ import {
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { StatusBar } from "expo-status-bar";
+import { Colors } from "../theme/colors";
 
-const ACCENT = "#7F77DD";
-const BG = "#0D0D0D";
-const CARD_BG = "#1A1A1A";
-const TEXT_PRIMARY = "#FFFFFF";
-const TEXT_SECONDARY = "#888888";
-const INPUT_BG = "#1A1A1A";
+const ACCENT = Colors.accent;
+const BG = Colors.background;
+const CARD_BG = Colors.cardBackground;
+const TEXT_PRIMARY = Colors.textPrimary;
+const TEXT_SECONDARY = Colors.textSecondary;
+const INPUT_BG = Colors.cardBackground;
 
 function generateRoomCode(): string {
   const chars = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
@@ -57,7 +58,7 @@ export default function GroupScreen({ onBack, onJoinRoom }: Props) {
 
   return (
     <SafeAreaView style={styles.container}>
-      <StatusBar style="light" />
+      <StatusBar style="dark" />
 
       {/* Header */}
       <View style={styles.header}>
@@ -107,7 +108,7 @@ export default function GroupScreen({ onBack, onJoinRoom }: Props) {
               <TextInput
                 style={styles.joinInput}
                 placeholder="Enter room code"
-                placeholderTextColor="#555555"
+                placeholderTextColor={Colors.textSecondary}
                 value={joinInput}
                 onChangeText={(text) => setJoinInput(text.toUpperCase().slice(0, 6))}
                 autoCapitalize="characters"
@@ -246,7 +247,7 @@ const styles = StyleSheet.create({
   dividerLine: {
     flex: 1,
     height: 1,
-    backgroundColor: "#2A2A2A",
+    backgroundColor: Colors.stepInactive,
   },
   dividerText: {
     color: TEXT_SECONDARY,
@@ -267,7 +268,7 @@ const styles = StyleSheet.create({
     fontSize: 16,
     letterSpacing: 2,
     borderWidth: 1,
-    borderColor: "#2A2A2A",
+    borderColor: Colors.border,
   },
   joinButton: {
     backgroundColor: ACCENT,
@@ -317,7 +318,7 @@ const styles = StyleSheet.create({
   stepConnector: {
     width: 20,
     height: 1,
-    backgroundColor: "#2A2A2A",
+    backgroundColor: Colors.stepInactive,
     marginHorizontal: 4,
   },
 });

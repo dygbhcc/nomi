@@ -7,9 +7,12 @@ import {
   Dimensions,
   Animated,
   PanResponder,
+  Image,
+  ImageSourcePropType,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { StatusBar } from "expo-status-bar";
+import { Colors } from "../theme/colors";
 
 type Restaurant = {
   id: string;
@@ -18,26 +21,68 @@ type Restaurant = {
   budget: number;
   moods: string[];
   reason: string;
+  photo?: ImageSourcePropType;
 };
 
 const MOCK_RESTAURANTS: Restaurant[] = [
-  { id: "1", name: "Taberna da Rua das Flores", distance: "0.3 km", budget: 2, moods: ["romantic", "cozy"], reason: "Perfect match for your romantic + cozy mood" },
-  { id: "2", name: "ZeroZero", distance: "0.8 km", budget: 2, moods: ["fresh", "lively"], reason: "Great fresh vibe with energetic crowd" },
-  { id: "3", name: "Cantinho do Avillez", distance: "1.2 km", budget: 3, moods: ["hidden_gem", "romantic"], reason: "Hidden gem with intimate atmosphere" },
-  { id: "4", name: "A Cevicheria", distance: "0.5 km", budget: 3, moods: ["fresh", "energetic"], reason: "Fresh seafood, buzzing energy" },
-  { id: "5", name: "Taberna Albricoque", distance: "1.8 km", budget: 1, moods: ["cozy", "pet_friendly"], reason: "Pet friendly cozy spot" },
+  {
+    id: "1",
+    name: "Taberna da Rua das Flores",
+    distance: "0.3 km",
+    budget: 2,
+    moods: ["romantic", "cozy"],
+    reason: "Perfect match for your romantic + cozy mood",
+    photo: require("../assets/images/restaurants/taberna-rua-das-flores.jpg")
+  },
+  {
+    id: "2",
+    name: "ZeroZero",
+    distance: "0.8 km",
+    budget: 2,
+    moods: ["fresh", "lively"],
+    reason: "Great fresh vibe with energetic crowd",
+    photo: require("../assets/images/restaurants/zerozero.jpg")
+  },
+  {
+    id: "3",
+    name: "Cantinho do Avillez",
+    distance: "1.2 km",
+    budget: 3,
+    moods: ["hidden_gem", "romantic"],
+    reason: "Hidden gem with intimate atmosphere",
+    photo: require("../assets/images/restaurants/catinho.jpg")
+  },
+  {
+    id: "4",
+    name: "A Cevicheria",
+    distance: "0.5 km",
+    budget: 3,
+    moods: ["fresh", "energetic"],
+    reason: "Fresh seafood, buzzing energy",
+    // photo: require("../assets/images/restaurants/acevicheria.png")
+  },
+  {
+    id: "5",
+    name: "Taberna Albricoque",
+    distance: "1.8 km",
+    budget: 1,
+    moods: ["cozy", "pet_friendly"],
+    reason: "Pet friendly cozy spot",
+    // photo: require("../assets/images/restaurants/taberna_albricoque.png")
+  },
 ];
 
 const BATCH_SIZE = 3;
 const SWIPE_THRESHOLD = 100;
-const { width: SCREEN_WIDTH } = Dimensions.get("window");
+const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get("window");
 
-const ACCENT = "#7F77DD";
-const BG = "#0D0D0D";
-const CARD_BG = "#1A1A1A";
-const PHOTO_BG = "#1A1A2E";
-const TEXT_PRIMARY = "#FFFFFF";
-const TEXT_SECONDARY = "#888888";
+// Using central theme
+const ACCENT = Colors.accent;
+const BG = Colors.background;
+const CARD_BG = Colors.cardBackground;
+const PHOTO_BG = "#E8E8E8"; // Light gray for photo background
+const TEXT_PRIMARY = Colors.textPrimary;
+const TEXT_SECONDARY = Colors.textSecondary;
 const REJECT_COLOR = "#E74C3C";
 
 function budgetSymbol(level: number): string {
@@ -123,7 +168,7 @@ export default function SwipeScreen({ onBack, onChangePreferences, onDetail }: P
   if (allDone) {
     return (
       <SafeAreaView style={styles.container}>
-        <StatusBar style="light" />
+        <StatusBar style="dark" />
         <View style={styles.emptyContainer}>
           <Text style={styles.emptyEmoji}>{"\u{1F37D}"}</Text>
           <Text style={styles.emptyTitle}>No more restaurants</Text>
@@ -143,7 +188,7 @@ export default function SwipeScreen({ onBack, onChangePreferences, onDetail }: P
   if (batchDone) {
     return (
       <SafeAreaView style={styles.container}>
-        <StatusBar style="light" />
+        <StatusBar style="dark" />
         <View style={styles.emptyContainer}>
           <Text style={styles.emptyEmoji}>{"\u{1F50D}"}</Text>
           <Text style={styles.emptyTitle}>
@@ -188,8 +233,12 @@ export default function SwipeScreen({ onBack, onChangePreferences, onDetail }: P
             <Text style={[styles.swipeLabelText, { color: REJECT_COLOR }]}>NOPE</Text>
           </Animated.View>
 
-          {/* Photo placeholder */}
-          <View style={styles.photoSection} />
+          {/* Photo */}
+          {restaurant.photo ? (
+            <Image source={restaurant.photo} style={styles.photoSection} />
+          ) : (
+            <View style={styles.photoSection} />
+          )}
 
           {/* Info section */}
           <View style={styles.infoSection}>
@@ -234,6 +283,7 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: BG,
+    justifyContent: "space-between",
   },
   header: {
     flexDirection: "row",
@@ -263,15 +313,18 @@ const styles = StyleSheet.create({
     fontWeight: "600",
   },
   cardWrapper: {
-    flex: 1,
     paddingHorizontal: 16,
-    paddingBottom: 8,
+    paddingBottom: 0,
   },
   card: {
-    flex: 1,
     backgroundColor: CARD_BG,
     borderRadius: 20,
     overflow: "hidden",
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.08,
+    shadowRadius: 12,
+    elevation: 4,
   },
   swipeLabel: {
     position: "absolute",
@@ -296,24 +349,26 @@ const styles = StyleSheet.create({
     color: ACCENT,
   },
   photoSection: {
-    flex: 7,
+    height: SCREEN_HEIGHT * 0.40,
+    width: "100%",
+    resizeMode: "cover",
     backgroundColor: PHOTO_BG,
   },
   infoSection: {
-    flex: 3,
     padding: 16,
-    justifyContent: "center",
+    paddingBottom: 20,
+    backgroundColor: CARD_BG,
   },
   restaurantName: {
     color: TEXT_PRIMARY,
     fontSize: 20,
     fontWeight: "700",
-    marginBottom: 6,
+    marginBottom: 4,
   },
   metaRow: {
     flexDirection: "row",
     alignItems: "center",
-    marginBottom: 10,
+    marginBottom: 8,
   },
   metaText: {
     color: TEXT_SECONDARY,
@@ -326,7 +381,7 @@ const styles = StyleSheet.create({
   },
   moodRow: {
     flexDirection: "row",
-    gap: 8,
+    gap: 6,
     marginBottom: 10,
   },
   moodBadge: {
@@ -341,9 +396,9 @@ const styles = StyleSheet.create({
     fontWeight: "600",
   },
   reasonBox: {
-    backgroundColor: "rgba(255, 255, 255, 0.05)",
+    backgroundColor: "rgba(127, 119, 221, 0.08)",
     borderRadius: 10,
-    padding: 10,
+    padding: 12,
   },
   reasonLabel: {
     color: ACCENT,
@@ -360,16 +415,17 @@ const styles = StyleSheet.create({
   actionRow: {
     flexDirection: "row",
     justifyContent: "center",
-    gap: 40,
-    paddingVertical: 16,
-    paddingBottom: 24,
+    alignItems: "center",
+    gap: 48,
+    paddingTop: 16,
+    paddingBottom: 16,
   },
   rejectButton: {
-    width: 64,
-    height: 64,
-    borderRadius: 32,
-    backgroundColor: "rgba(231, 76, 60, 0.15)",
-    borderWidth: 2,
+    width: 60,
+    height: 60,
+    borderRadius: 30,
+    backgroundColor: "#FFF0EF",
+    borderWidth: 1.5,
     borderColor: REJECT_COLOR,
     alignItems: "center",
     justifyContent: "center",
@@ -380,11 +436,11 @@ const styles = StyleSheet.create({
     fontWeight: "700",
   },
   likeButton: {
-    width: 64,
-    height: 64,
-    borderRadius: 32,
-    backgroundColor: "rgba(127, 119, 221, 0.15)",
-    borderWidth: 2,
+    width: 60,
+    height: 60,
+    borderRadius: 30,
+    backgroundColor: "#F0EFFE",
+    borderWidth: 1.5,
     borderColor: ACCENT,
     alignItems: "center",
     justifyContent: "center",

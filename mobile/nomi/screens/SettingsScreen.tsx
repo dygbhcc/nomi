@@ -12,12 +12,13 @@ import {
 import { SafeAreaView } from "react-native-safe-area-context";
 import { StatusBar } from "expo-status-bar";
 import AsyncStorage from "@react-native-async-storage/async-storage";
+import { Colors } from "../theme/colors";
 
-const ACCENT = "#7F77DD";
-const BG = "#0D0D0D";
-const CARD_BG = "#1A1A1A";
-const TEXT_PRIMARY = "#FFFFFF";
-const TEXT_SECONDARY = "#888888";
+const ACCENT = Colors.accent;
+const BG = Colors.background;
+const CARD_BG = Colors.cardBackground;
+const TEXT_PRIMARY = Colors.textPrimary;
+const TEXT_SECONDARY = Colors.textSecondary;
 const RED = "#E74C3C";
 
 // --- Storage Keys ---
@@ -107,7 +108,7 @@ export default function SettingsScreen({ onBack }: Props) {
 
   return (
     <SafeAreaView style={styles.container}>
-      <StatusBar style="light" />
+      <StatusBar style="dark" />
 
       {/* Header */}
       <View style={styles.header}>
@@ -321,7 +322,7 @@ function ToggleRow({
         value={value}
         onValueChange={onToggle}
         disabled={disabled}
-        trackColor={{ false: "#2A2A2A", true: ACCENT }}
+        trackColor={{ false: Colors.stepInactive, true: ACCENT }}
         thumbColor={TEXT_PRIMARY}
       />
     </View>
@@ -373,7 +374,7 @@ const styles = StyleSheet.create({
   },
   divider: {
     height: 1,
-    backgroundColor: "#2A2A2A",
+    backgroundColor: Colors.stepInactive,
     marginHorizontal: 16,
   },
 
@@ -440,7 +441,7 @@ const styles = StyleSheet.create({
     paddingBottom: 12,
   },
   textInput: {
-    backgroundColor: "#2A2A2A",
+    backgroundColor: Colors.stepInactive,
     color: TEXT_PRIMARY,
     borderRadius: 10,
     paddingHorizontal: 14,
@@ -455,7 +456,7 @@ const styles = StyleSheet.create({
     gap: 6,
   },
   pickerOption: {
-    backgroundColor: "#2A2A2A",
+    backgroundColor: Colors.stepInactive,
     borderRadius: 10,
     paddingVertical: 10,
     paddingHorizontal: 14,
@@ -478,7 +479,7 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   budgetOption: {
-    backgroundColor: "#2A2A2A",
+    backgroundColor: Colors.stepInactive,
     borderRadius: 10,
     paddingVertical: 8,
     paddingHorizontal: 14,

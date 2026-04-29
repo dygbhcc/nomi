@@ -10,12 +10,13 @@ import {
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { StatusBar } from "expo-status-bar";
+import { Colors } from "../theme/colors";
 
-const ACCENT = "#7F77DD";
-const BG = "#0D0D0D";
-const CARD_BG = "#1A1A1A";
-const TEXT_PRIMARY = "#FFFFFF";
-const TEXT_SECONDARY = "#888888";
+const ACCENT = Colors.accent;
+const BG = Colors.background;
+const CARD_BG = Colors.cardBackground;
+const TEXT_PRIMARY = Colors.textPrimary;
+const TEXT_SECONDARY = Colors.textSecondary;
 const GOLD = "#FFD700";
 const GREEN = "#2ECC71";
 
@@ -194,7 +195,7 @@ export default function ResultScreen({
 
   return (
     <SafeAreaView style={styles.container}>
-      <StatusBar style="light" />
+      <StatusBar style="dark" />
       <ConfettiAnimation />
 
       <ScrollView
@@ -261,7 +262,7 @@ export default function ResultScreen({
                     backgroundColor:
                       i < likedBy
                         ? AVATAR_COLORS[i % AVATAR_COLORS.length]
-                        : "#2A2A2A",
+                        : Colors.stepInactive,
                     marginLeft: i > 0 ? -6 : 0,
                   },
                 ]}

@@ -9,12 +9,13 @@ import {
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { StatusBar } from "expo-status-bar";
+import { Colors } from "../theme/colors";
 
-const ACCENT = "#7F77DD";
-const BG = "#0D0D0D";
-const CARD_BG = "#1A1A1A";
-const TEXT_PRIMARY = "#FFFFFF";
-const TEXT_SECONDARY = "#888888";
+const ACCENT = Colors.accent;
+const BG = Colors.background;
+const CARD_BG = Colors.cardBackground;
+const TEXT_PRIMARY = Colors.textPrimary;
+const TEXT_SECONDARY = Colors.textSecondary;
 const HIGHLIGHT_BG = "#1A1830";
 const GOLD = "#FFD700";
 const SILVER = "#C0C0C0";
@@ -103,7 +104,7 @@ export default function LeaderboardScreen({ onNavigate }: Props) {
 
   return (
     <SafeAreaView style={styles.container}>
-      <StatusBar style="light" />
+      <StatusBar style="dark" />
       <ScrollView
         contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}
@@ -404,7 +405,7 @@ const styles = StyleSheet.create({
     width: 38,
     height: 38,
     borderRadius: 19,
-    backgroundColor: "#2A2A3A",
+    backgroundColor: Colors.stepInactive,
     alignItems: "center",
     justifyContent: "center",
     marginLeft: 8,
@@ -459,9 +460,9 @@ const styles = StyleSheet.create({
     left: 0,
     right: 0,
     flexDirection: "row",
-    backgroundColor: "#111111",
+    backgroundColor: CARD_BG,
     borderTopWidth: 1,
-    borderTopColor: "#222",
+    borderTopColor: Colors.stepInactive,
     paddingBottom: 28,
     paddingTop: 10,
   },

@@ -9,6 +9,7 @@ import {
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { StatusBar } from "expo-status-bar";
+import { Colors } from "../theme/colors";
 
 type Participant = {
   id: string;
@@ -26,11 +27,11 @@ const INITIAL_PARTICIPANTS: Participant[] = [
   { id: "3", name: "Miguel", initials: "M", ready: false, color: AVATAR_COLORS[2] },
 ];
 
-const ACCENT = "#7F77DD";
-const BG = "#0D0D0D";
-const CARD_BG = "#1A1A1A";
-const TEXT_PRIMARY = "#FFFFFF";
-const TEXT_SECONDARY = "#888888";
+const ACCENT = Colors.accent;
+const BG = Colors.background;
+const CARD_BG = Colors.cardBackground;
+const TEXT_PRIMARY = Colors.textPrimary;
+const TEXT_SECONDARY = Colors.textSecondary;
 const GREEN = "#2ECC71";
 
 type Props = {
@@ -80,7 +81,7 @@ export default function WaitingRoomScreen({ roomCode, onBack, onStartVoting }: P
 
   return (
     <SafeAreaView style={styles.container}>
-      <StatusBar style="light" />
+      <StatusBar style="dark" />
 
       {/* Room code top section */}
       <View style={styles.codeSection}>

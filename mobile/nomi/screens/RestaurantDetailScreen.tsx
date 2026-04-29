@@ -4,12 +4,13 @@ import {
   Text,
   TouchableOpacity,
   StyleSheet,
-  ScrollView,
   Linking,
   Dimensions,
+  Image,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { StatusBar } from "expo-status-bar";
+import { Colors } from "../theme/colors";
 
 export type Restaurant = {
   id: string;
@@ -21,6 +22,7 @@ export type Restaurant = {
   cuisine?: string;
   noiseLevel?: "quiet" | "moderate" | "loud";
   isOpenNow?: boolean;
+  photo?: any;
 };
 
 type DayHours = {
@@ -31,21 +33,21 @@ type DayHours = {
 
 const MOCK_HOURS: DayHours[] = [
   { day: "Monday", hours: "Closed", closed: true },
-  { day: "Tuesday", hours: "12:00 \u2013 15:00, 19:00 \u2013 23:00", closed: false },
-  { day: "Wednesday", hours: "12:00 \u2013 15:00, 19:00 \u2013 23:00", closed: false },
-  { day: "Thursday", hours: "12:00 \u2013 15:00, 19:00 \u2013 23:00", closed: false },
-  { day: "Friday", hours: "12:00 \u2013 15:00, 19:00 \u2013 00:00", closed: false },
-  { day: "Saturday", hours: "12:00 \u2013 00:00", closed: false },
-  { day: "Sunday", hours: "12:00 \u2013 16:00", closed: false },
+  { day: "Tuesday", hours: "12:00 – 15:00, 19:00 – 23:00", closed: false },
+  { day: "Wednesday", hours: "12:00 – 15:00, 19:00 – 23:00", closed: false },
+  { day: "Thursday", hours: "12:00 – 15:00, 19:00 – 23:00", closed: false },
+  { day: "Friday", hours: "12:00 – 15:00, 19:00 – 00:00", closed: false },
+  { day: "Saturday", hours: "12:00 – 00:00", closed: false },
+  { day: "Sunday", hours: "12:00 – 16:00", closed: false },
 ];
 
-const ACCENT = "#7F77DD";
-const BG = "#0D0D0D";
-const CARD_BG = "#1A1A1A";
+const ACCENT = Colors.accent;
+const BG = Colors.background;
+const CARD_BG = Colors.cardBackground;
 const PHOTO_BG = "#1A1A2E";
 const REASON_BG = "#1A1830";
-const TEXT_PRIMARY = "#FFFFFF";
-const TEXT_SECONDARY = "#888888";
+const TEXT_PRIMARY = Colors.textPrimary;
+const TEXT_SECONDARY = Colors.textSecondary;
 const GREEN = "#2ECC71";
 
 const { height: SCREEN_HEIGHT } = Dimensions.get("window");
@@ -82,41 +84,45 @@ export default function RestaurantDetailScreen({ restaurant, onBack }: Props) {
   };
 
   return (
-    <SafeAreaView style={styles.container} edges={["bottom"]}>
-      <StatusBar style="light" />
+    <SafeAreaView style={styles.container}>
+      <StatusBar style="dark" />
 
-      <ScrollView bounces={false} showsVerticalScrollIndicator={false}>
-        {/* Hero image */}
-        <View style={styles.heroContainer}>
-          <View style={styles.hero} />
+      {/* Hero image */}
+      <View style={styles.heroContainer}>
+        {restaurant.photo ? (
+          <Image source={restaurant.photo} style={styles.heroImage} />
+        ) : (
+          <View style={styles.heroImage} />
+        )}
 
-          {/* Back button */}
-          <SafeAreaView style={styles.backButtonContainer} edges={["top"]}>
-            <TouchableOpacity style={styles.backButton} onPress={onBack}>
-              <Text style={styles.backIcon}>{"\u2190"}</Text>
-            </TouchableOpacity>
-          </SafeAreaView>
+        {/* Back button */}
+        <SafeAreaView style={styles.backButtonContainer} edges={["top"]}>
+          <TouchableOpacity style={styles.backButton} onPress={onBack}>
+            <Text style={styles.backIcon}>{"\u2190"}</Text>
+          </TouchableOpacity>
+        </SafeAreaView>
 
-          {/* Bottom overlay: open badge + save */}
-          <View style={styles.heroOverlay}>
+        {/* Bottom overlay: save button */}
+        <View style={styles.heroOverlay}>
+          <TouchableOpacity style={styles.saveButton} onPress={() => setSaved(!saved)}>
+            <Text style={styles.saveIcon}>{saved ? "\u{1F516}" : "\u{1F517}"}</Text>
+          </TouchableOpacity>
+        </View>
+      </View>
+
+      {/* Content */}
+      <View style={styles.content}>
+        {/* Name + meta */}
+        <View>
+          <View style={styles.nameRow}>
+            <Text style={styles.name}>{restaurant.name}</Text>
             {restaurant.isOpenNow !== false && (
               <View style={styles.openBadge}>
                 <View style={styles.openDot} />
-                <Text style={styles.openText}>Open now</Text>
+                <Text style={styles.openText}>Open</Text>
               </View>
             )}
-            <TouchableOpacity style={styles.saveButton} onPress={() => setSaved(!saved)}>
-              <Text style={styles.saveIcon}>{saved ? "\u{1F516}" : "\u{1F517}"}</Text>
-            </TouchableOpacity>
           </View>
-        </View>
-
-        {/* Content */}
-        <View style={styles.content}>
-          {/* Name */}
-          <Text style={styles.name}>{restaurant.name}</Text>
-
-          {/* Meta line */}
           <Text style={styles.meta}>
             {[
               restaurant.cuisine || "Portuguese",
@@ -124,93 +130,91 @@ export default function RestaurantDetailScreen({ restaurant, onBack }: Props) {
               "~20 min wait",
             ].join(" \u00B7 ")}
           </Text>
+        </View>
 
-          {/* Why for you */}
-          <View style={styles.reasonBox}>
-            <Text style={styles.reasonLabel}>Why for you?</Text>
-            <Text style={styles.reasonText}>{restaurant.reason}</Text>
-            <View style={styles.reasonTags}>
-              {restaurant.moods.map((mood) => (
-                <View key={mood} style={styles.reasonTag}>
-                  <Text style={styles.reasonTagText}>{mood}</Text>
-                </View>
-              ))}
-              <View style={styles.reasonTag}>
-                <Text style={styles.reasonTagText}>{budgetSymbol(restaurant.budget)}</Text>
+        {/* Why for you */}
+        <View style={styles.reasonBox}>
+          <Text style={styles.reasonLabel}>WHY FOR YOU?</Text>
+          <Text style={styles.reasonText}>{restaurant.reason}</Text>
+          <View style={styles.badgeRow}>
+            {restaurant.moods.map((mood) => (
+              <View key={mood} style={styles.moodBadge}>
+                <Text style={styles.moodBadgeText}>{mood}</Text>
               </View>
-              <View style={styles.reasonTag}>
-                <Text style={styles.reasonTagText}>{restaurant.distance}</Text>
-              </View>
+            ))}
+            <View style={styles.moodBadge}>
+              <Text style={styles.moodBadgeText}>{budgetSymbol(restaurant.budget)}</Text>
             </View>
-          </View>
-
-          {/* Opening hours */}
-          <Text style={styles.sectionTitle}>Opening Hours</Text>
-          <View style={styles.hoursContainer}>
-            {MOCK_HOURS.map((entry, index) => {
-              const isToday = index === todayIndex;
-              return (
-                <View key={entry.day} style={[styles.hoursRow, isToday && styles.hoursRowToday]}>
-                  <Text
-                    style={[
-                      styles.hoursDay,
-                      entry.closed && styles.hoursClosed,
-                      isToday && styles.hoursTodayText,
-                    ]}
-                  >
-                    {entry.day}
-                  </Text>
-                  <Text
-                    style={[
-                      styles.hoursTime,
-                      entry.closed && styles.hoursClosed,
-                      isToday && styles.hoursTodayText,
-                    ]}
-                  >
-                    {entry.hours}
-                  </Text>
-                </View>
-              );
-            })}
-          </View>
-
-          {/* Action buttons 2x2 */}
-          <Text style={styles.sectionTitle}>Actions</Text>
-          <View style={styles.actionsGrid}>
-            <TouchableOpacity style={styles.actionCard} onPress={openReserve}>
-              <Text style={styles.actionEmoji}>{"\u{1F4C5}"}</Text>
-              <Text style={styles.actionLabel}>Reserve</Text>
-            </TouchableOpacity>
-            <TouchableOpacity style={styles.actionCard} onPress={openDirections}>
-              <Text style={styles.actionEmoji}>{"\u{1F5FA}"}</Text>
-              <Text style={styles.actionLabel}>Directions</Text>
-            </TouchableOpacity>
-            <TouchableOpacity style={styles.actionCard} onPress={openMenu}>
-              <Text style={styles.actionEmoji}>{"\u{1F4CB}"}</Text>
-              <Text style={styles.actionLabel}>Menu</Text>
-            </TouchableOpacity>
-            <TouchableOpacity style={styles.actionCard} onPress={() => {}}>
-              <Text style={styles.actionEmoji}>{"\u{1F465}"}</Text>
-              <Text style={styles.actionLabel}>Share with group</Text>
-            </TouchableOpacity>
+            <View style={styles.moodBadge}>
+              <Text style={styles.moodBadgeText}>{restaurant.distance}</Text>
+            </View>
           </View>
         </View>
-      </ScrollView>
 
-      {/* Bottom validation strip */}
-      <View style={styles.validateStrip}>
-        {validated ? (
-          <Text style={styles.validateDone}>{"\u2714"} Thanks! +5 pts</Text>
-        ) : (
-          <TouchableOpacity style={styles.validateRow} onPress={() => setValidated(true)}>
-            <Text style={styles.validateQuestion}>
-              Is this place {restaurant.moods[0] || "good"}?
-            </Text>
-            <View style={styles.validateBadge}>
-              <Text style={styles.validateBadgeText}>+5 pts</Text>
-            </View>
+        {/* Opening hours */}
+        <View style={styles.hoursContainer}>
+          {MOCK_HOURS.map((entry, index) => {
+            const isToday = index === todayIndex;
+            return (
+              <View key={entry.day} style={[styles.hoursRow, isToday && styles.hoursRowToday]}>
+                <Text
+                  style={[
+                    styles.hoursDay,
+                    entry.closed && styles.hoursClosed,
+                    isToday && styles.hoursTodayText,
+                  ]}
+                >
+                  {entry.day}
+                </Text>
+                <Text
+                  style={[
+                    styles.hoursTime,
+                    entry.closed && styles.hoursClosed,
+                    isToday && styles.hoursTodayText,
+                  ]}
+                >
+                  {entry.hours}
+                </Text>
+              </View>
+            );
+          })}
+        </View>
+
+        {/* Actions 2x2 grid */}
+        <View style={styles.actionsGrid}>
+          <TouchableOpacity style={styles.actionButton} onPress={openReserve}>
+            <Text style={styles.actionIcon}>{"\u{1F4C5}"}</Text>
+            <Text style={styles.actionLabel}>Reserve</Text>
           </TouchableOpacity>
-        )}
+          <TouchableOpacity style={styles.actionButton} onPress={openDirections}>
+            <Text style={styles.actionIcon}>{"\u{1F5FA}"}</Text>
+            <Text style={styles.actionLabel}>Directions</Text>
+          </TouchableOpacity>
+          <TouchableOpacity style={styles.actionButton} onPress={openMenu}>
+            <Text style={styles.actionIcon}>{"\u{1F4CB}"}</Text>
+            <Text style={styles.actionLabel}>Menu</Text>
+          </TouchableOpacity>
+          <TouchableOpacity style={styles.actionButton} onPress={() => {}}>
+            <Text style={styles.actionIcon}>{"\u{1F465}"}</Text>
+            <Text style={styles.actionLabel}>Share with group</Text>
+          </TouchableOpacity>
+        </View>
+
+        {/* Validate strip */}
+        <View style={styles.validateStrip}>
+          {validated ? (
+            <Text style={styles.validateDone}>{"\u2714"} Thanks! +5 pts</Text>
+          ) : (
+            <TouchableOpacity style={styles.validateRow} onPress={() => setValidated(true)}>
+              <Text style={styles.validateText}>
+                Is this place {restaurant.moods[0] || "good"}?
+              </Text>
+              <View style={styles.validatePoints}>
+                <Text style={styles.validatePointsText}>+5 pts</Text>
+              </View>
+            </TouchableOpacity>
+          )}
+        </View>
       </View>
     </SafeAreaView>
   );
@@ -222,11 +226,13 @@ const styles = StyleSheet.create({
     backgroundColor: BG,
   },
   heroContainer: {
-    height: SCREEN_HEIGHT * 0.4,
+    height: SCREEN_HEIGHT * 0.32,
     position: "relative",
   },
-  hero: {
-    flex: 1,
+  heroImage: {
+    width: "100%",
+    height: "100%",
+    resizeMode: "cover",
     backgroundColor: PHOTO_BG,
   },
   backButtonContainer: {
@@ -250,31 +256,10 @@ const styles = StyleSheet.create({
   heroOverlay: {
     position: "absolute",
     bottom: 12,
-    left: 16,
     right: 16,
     flexDirection: "row",
     alignItems: "center",
-    justifyContent: "space-between",
-  },
-  openBadge: {
-    flexDirection: "row",
-    alignItems: "center",
-    backgroundColor: "rgba(0,0,0,0.6)",
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 16,
-  },
-  openDot: {
-    width: 8,
-    height: 8,
-    borderRadius: 4,
-    backgroundColor: GREEN,
-    marginRight: 6,
-  },
-  openText: {
-    color: GREEN,
-    fontSize: 13,
-    fontWeight: "600",
+    justifyContent: "flex-end",
   },
   saveButton: {
     width: 40,
@@ -288,73 +273,93 @@ const styles = StyleSheet.create({
     fontSize: 20,
   },
   content: {
-    padding: 20,
+    flex: 1,
+    paddingHorizontal: 20,
+    paddingTop: 16,
+    paddingBottom: 12,
+    justifyContent: "space-between",
+  },
+  nameRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+    marginBottom: 2,
   },
   name: {
-    color: TEXT_PRIMARY,
-    fontSize: 24,
+    fontSize: 20,
     fontWeight: "700",
-    marginBottom: 6,
+    color: Colors.textPrimary,
+  },
+  openBadge: {
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: "rgba(46, 204, 113, 0.15)",
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 12,
+  },
+  openDot: {
+    width: 6,
+    height: 6,
+    borderRadius: 3,
+    backgroundColor: GREEN,
+    marginRight: 4,
+  },
+  openText: {
+    color: GREEN,
+    fontSize: 11,
+    fontWeight: "600",
   },
   meta: {
-    color: TEXT_SECONDARY,
-    fontSize: 14,
-    marginBottom: 16,
+    fontSize: 13,
+    color: Colors.textSecondary,
+    marginBottom: 12,
   },
   reasonBox: {
-    backgroundColor: REASON_BG,
-    borderRadius: 14,
-    borderWidth: 1,
-    borderColor: ACCENT,
-    padding: 14,
-    marginBottom: 24,
+    backgroundColor: "rgba(127, 119, 221, 0.08)",
+    borderRadius: 12,
+    padding: 12,
   },
   reasonLabel: {
-    color: ACCENT,
-    fontSize: 12,
+    color: Colors.accent,
+    fontSize: 10,
     fontWeight: "700",
-    textTransform: "uppercase",
     letterSpacing: 0.5,
     marginBottom: 4,
   },
   reasonText: {
-    color: TEXT_PRIMARY,
-    fontSize: 14,
-    lineHeight: 20,
-    marginBottom: 10,
+    color: Colors.textPrimary,
+    fontSize: 13,
+    marginBottom: 8,
   },
-  reasonTags: {
+  badgeRow: {
     flexDirection: "row",
     flexWrap: "wrap",
     gap: 6,
   },
-  reasonTag: {
-    backgroundColor: "rgba(127, 119, 221, 0.2)",
+  moodBadge: {
+    backgroundColor: "rgba(127, 119, 221, 0.15)",
     paddingHorizontal: 10,
-    paddingVertical: 3,
-    borderRadius: 10,
+    paddingVertical: 4,
+    borderRadius: 20,
   },
-  reasonTagText: {
-    color: ACCENT,
-    fontSize: 12,
+  moodBadgeText: {
+    color: Colors.accent,
+    fontSize: 11,
     fontWeight: "600",
-  },
-  sectionTitle: {
-    color: TEXT_PRIMARY,
-    fontSize: 18,
-    fontWeight: "700",
-    marginBottom: 12,
   },
   hoursContainer: {
     backgroundColor: CARD_BG,
     borderRadius: 14,
     padding: 14,
-    marginBottom: 24,
+    marginBottom: 12,
   },
   hoursRow: {
     flexDirection: "row",
     justifyContent: "space-between",
-    paddingVertical: 6,
+    paddingVertical: 8,
+    borderBottomWidth: 0.5,
+    borderBottomColor: "#F0F0F0",
   },
   hoursRowToday: {
     backgroundColor: "rgba(127, 119, 221, 0.1)",
@@ -363,72 +368,74 @@ const styles = StyleSheet.create({
     marginHorizontal: -8,
   },
   hoursDay: {
-    color: TEXT_SECONDARY,
-    fontSize: 14,
-    width: 100,
+    fontSize: 13,
+    color: Colors.textSecondary,
   },
   hoursTime: {
-    color: TEXT_PRIMARY,
-    fontSize: 14,
-    textAlign: "right",
-    flex: 1,
+    fontSize: 13,
+    color: Colors.textSecondary,
   },
   hoursClosed: {
-    color: "#555555",
+    color: Colors.textSecondary,
   },
   hoursTodayText: {
-    color: ACCENT,
+    color: Colors.accent,
     fontWeight: "600",
   },
   actionsGrid: {
     flexDirection: "row",
     flexWrap: "wrap",
-    gap: 12,
-    marginBottom: 24,
+    gap: 8,
   },
-  actionCard: {
-    width: "47%",
-    backgroundColor: CARD_BG,
-    borderRadius: 14,
-    paddingVertical: 18,
+  actionButton: {
+    width: "48%",
+    backgroundColor: Colors.cardBackground,
+    borderRadius: 12,
+    paddingVertical: 10,
     alignItems: "center",
-    justifyContent: "center",
+    gap: 4,
+    borderWidth: 0.5,
+    borderColor: "#E8E8E8",
   },
-  actionEmoji: {
-    fontSize: 24,
-    marginBottom: 6,
+  actionIcon: {
+    fontSize: 20,
   },
   actionLabel: {
-    color: TEXT_PRIMARY,
-    fontSize: 14,
+    color: Colors.textPrimary,
+    fontSize: 11,
     fontWeight: "600",
   },
   validateStrip: {
-    backgroundColor: CARD_BG,
-    paddingHorizontal: 20,
-    paddingVertical: 14,
-    borderTopWidth: 1,
-    borderTopColor: "#222222",
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    backgroundColor: Colors.cardBackground,
+    borderRadius: 12,
+    paddingHorizontal: 14,
+    paddingVertical: 10,
+    borderWidth: 0.5,
+    borderColor: "#E8E8E8",
   },
   validateRow: {
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
-  },
-  validateQuestion: {
-    color: TEXT_PRIMARY,
-    fontSize: 15,
     flex: 1,
+    
   },
-  validateBadge: {
-    backgroundColor: "rgba(127, 119, 221, 0.2)",
-    paddingHorizontal: 10,
-    paddingVertical: 4,
-    borderRadius: 10,
-    marginLeft: 12,
+  validateText: {
+    color: Colors.textPrimary,
+    fontSize: 14,
+    fontWeight: "500",
   },
-  validateBadgeText: {
-    color: ACCENT,
+  validatePoints: {
+    backgroundColor: "rgba(127, 119, 221, 0.15)",
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 20,
+  },
+  validatePointsText: {
+    color: Colors.accent,
     fontSize: 13,
     fontWeight: "700",
   },
