@@ -1,6 +1,9 @@
 import React, { useState, useEffect } from "react";
+import { View, ActivityIndicator } from "react-native";
 import { SafeAreaProvider } from "react-native-safe-area-context";
 import AsyncStorage from "@react-native-async-storage/async-storage";
+import { AuthProvider, useAuth } from "./context/AuthContext";
+import AuthScreen from "./screens/AuthScreen";
 import OnboardingScreen from "./screens/OnboardingScreen";
 import MoodScreen from "./screens/MoodScreen";
 import BudgetDistanceScreen from "./screens/BudgetDistanceScreen";
@@ -14,6 +17,7 @@ import ProfileScreen from "./screens/ProfileScreen";
 import LeaderboardScreen from "./screens/LeaderboardScreen";
 import ValidateScreen from "./screens/ValidateScreen";
 import SettingsScreen from "./screens/SettingsScreen";
+import { Colors } from "./theme/colors";
 
 const ONBOARDED_KEY = "nomi_has_onboarded";
 
@@ -32,7 +36,8 @@ type Screen =
   | "validate"
   | "settings";
 
-export default function App() {
+function AppNavigator() {
+  const { user, loading, isGuest } = useAuth();
   const [screen, setScreen] = useState<Screen | null>(null);
   const [selectedMoods, setSelectedMoods] = useState<string[]>([]);
   const [selectedBudget, setSelectedBudget] = useState<number | null>(null);
@@ -55,17 +60,27 @@ export default function App() {
     setScreen("mood");
   };
 
-  // Loading state while checking AsyncStorage
-  if (screen === null) {
+  // Loading state while checking auth
+  if (loading) {
     return (
-      <SafeAreaProvider>
-        <></>
-      </SafeAreaProvider>
+      <View style={{ flex: 1, alignItems: "center", justifyContent: "center", backgroundColor: Colors.background }}>
+        <ActivityIndicator size="large" color={Colors.accent} />
+      </View>
     );
   }
 
+  // Show auth screen if not authenticated and not guest
+  if (!user && !isGuest) {
+    return <AuthScreen />;
+  }
+
+  // Loading state while checking AsyncStorage
+  if (screen === null) {
+    return <></>;
+  }
+
   return (
-    <SafeAreaProvider>
+    <>
       {screen === "onboarding" && (
         <OnboardingScreen onDone={handleOnboardingDone} />
       )}
@@ -180,6 +195,16 @@ export default function App() {
           onBack={() => setScreen("profile")}
         />
       )}
+    </>
+  );
+}
+
+export default function App() {
+  return (
+    <SafeAreaProvider>
+      <AuthProvider>
+        <AppNavigator />
+      </AuthProvider>
     </SafeAreaProvider>
   );
 }

@@ -6,11 +6,13 @@ import {
   TextInput,
   StyleSheet,
   Share,
+  Alert,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { StatusBar } from "expo-status-bar";
 import { Colors } from "../theme/colors";
 import BottomNavigationBar from "../components/BottomNavigationBar";
+import { useAuth } from "../context/AuthContext";
 
 const ACCENT = Colors.accent;
 const BG = Colors.background;
@@ -35,10 +37,22 @@ type Props = {
 };
 
 export default function GroupScreen({ onBack, onJoinRoom, onNavigate }: Props) {
+  const { isGuest, signOut } = useAuth();
   const [roomCode, setRoomCode] = useState<string | null>(null);
   const [joinInput, setJoinInput] = useState("");
 
   const handleCreate = () => {
+    if (isGuest) {
+      Alert.alert(
+        'Account required',
+        'Create a free account to use group rooms and earn points.',
+        [
+          { text: 'Maybe later', style: 'cancel' },
+          { text: 'Sign up', onPress: () => signOut() },
+        ]
+      );
+      return;
+    }
     const code = generateRoomCode();
     setRoomCode(code);
   };
@@ -51,6 +65,17 @@ export default function GroupScreen({ onBack, onJoinRoom, onNavigate }: Props) {
   };
 
   const handleJoin = () => {
+    if (isGuest) {
+      Alert.alert(
+        'Account required',
+        'Create a free account to use group rooms and earn points.',
+        [
+          { text: 'Maybe later', style: 'cancel' },
+          { text: 'Sign up', onPress: () => signOut() },
+        ]
+      );
+      return;
+    }
     if (joinInput.length === 6) {
       onJoinRoom(joinInput.toUpperCase());
     }
