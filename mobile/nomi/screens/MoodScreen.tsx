@@ -6,6 +6,8 @@ import {
   StyleSheet,
   FlatList,
   Animated,
+  Image,
+  ImageSourcePropType,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { StatusBar } from "expo-status-bar";
@@ -14,27 +16,28 @@ import * as Haptics from "expo-haptics";
 type Mood = {
   id: string;
   label: string;
-  emoji: string;
+  emoji?: string;
+  image?: ImageSourcePropType;
   hint: string;
 };
 
 const MOODS: Mood[] = [
-  { id: "romantic", label: "Romantic", emoji: "\u{1F56F}", hint: "Dim lights, date night" },
-  { id: "energetic", label: "Energetic", emoji: "\u26A1", hint: "Loud, buzzing, fun" },
-  { id: "chill", label: "Chill", emoji: "\u{1F60A}", hint: "Warm, relaxed, no rush" },
-  { id: "explorer", label: "Explore", emoji: "\u{1F9ED}", hint: "New spots, off the beaten path" },
-  { id: "focus", label: "Focus", emoji: "\u{1F3AF}", hint: "Quiet, good wifi, calm" },
-  { id: "retreat", label: "Retreat", emoji: "\u{1F9D8}", hint: "Peaceful, slow, recharge" },
-  { id: "hungry&quick", label: "Hungry & Quick", emoji: "\u{1F354}", hint: "Fast, filling, no wait" },
-  { id: "celebrating", label: "Celebrating", emoji: "\u{1F389}", hint: "Party vibes, special night" },
+  { id: "romantic", label: "Romantic", image: require("../assets/images/romantic.png"), hint: "Dim lights, date night" },
+  { id: "energetic", label: "Energetic", image: require("../assets/images/energetic.png"), hint: "Loud, buzzing, fun" },
+  { id: "chill", label: "Chill", image: require("../assets/images/chill.png"), hint: "Warm, relaxed, no rush" },
+  { id: "explorer", label: "Explore", image: require("../assets/images/explore.png"), hint: "New spots, off the beaten path" },
+  { id: "focus", label: "Focus", image: require("../assets/images/focus.png"), hint: "Quiet, good wifi, calm" },
+  { id: "hungry&quick", label: "Hungry & Quick", image: require("../assets/images/hungry.png"), hint: "Fast, filling, no wait" },
+  { id: "surprising", label: "I don't know, surprise me", emoji: "\u{1F60E}", hint: "Unexpected, exciting, fun" },
+
 ];
 
 const ACCENT = "#7F77DD";
-const BG = "#0D0D0D";
-const CARD_BG = "#1A1A1A";
-const TEXT_PRIMARY = "#FFFFFF";
-const TEXT_SECONDARY = "#888888";
-const STEP_INACTIVE = "#2A2A2A";
+const BG = "#F5F5F0";
+const CARD_BG = "#FFFFFF";
+const TEXT_PRIMARY = "#1A1A1A";
+const TEXT_SECONDARY = "#666666";
+const STEP_INACTIVE = "#E0E0E0";
 
 type Props = {
   onContinue: (selectedMoods: string[]) => void;
@@ -104,7 +107,11 @@ export default function MoodScreen({ onContinue, onSkip, onGroup, onProfile }: P
         style={[styles.card, isSelected && styles.cardSelected]}
         onPress={() => toggleMood(item.id)}
       >
-        <Text style={styles.cardEmoji}>{item.emoji}</Text>
+        {item.image ? (
+          <Image source={item.image} style={styles.cardImage} />
+        ) : (
+          <Text style={styles.cardEmoji}>{item.emoji}</Text>
+        )}
         <Text style={[styles.cardLabel, isSelected && styles.cardLabelSelected]}>
           {item.label}
         </Text>
@@ -117,7 +124,7 @@ export default function MoodScreen({ onContinue, onSkip, onGroup, onProfile }: P
 
   return (
     <SafeAreaView style={styles.container}>
-      <StatusBar style="light" />
+      <StatusBar style="dark" />
 
       <View style={styles.header}>
         <TouchableOpacity style={styles.groupButton} onPress={onGroup}>
@@ -135,28 +142,21 @@ export default function MoodScreen({ onContinue, onSkip, onGroup, onProfile }: P
         )}
       </View>
 
-      <Text style={styles.title}>How are you feeling?</Text>
-
       <FlatList
+        style={{ flex: 1 }}
         data={MOODS}
         renderItem={renderMoodCard}
         keyExtractor={(item) => item.id}
         numColumns={2}
         columnWrapperStyle={styles.gridRow}
         contentContainerStyle={styles.gridContainer}
-        scrollEnabled={false}
+        showsVerticalScrollIndicator={false}
+        ListHeaderComponent={
+          <Text style={styles.title}>How are you feeling?</Text>
+        }
       />
 
       <View style={styles.bottomContainer}>
-        <TouchableOpacity
-          style={styles.surpriseButton}
-          activeOpacity={0.8}
-          onPress={handleSurprise}
-          disabled={isSurprising}
-        >
-          <Text style={styles.surpriseText}>Surprise me {"\u{1F3B2}"}</Text>
-        </TouchableOpacity>
-
         <TouchableOpacity
           style={[styles.continueButton, !hasSelection && styles.continueButtonDisabled]}
           disabled={!hasSelection}
@@ -227,79 +227,89 @@ const styles = StyleSheet.create({
     fontSize: 24,
     fontWeight: "700",
     paddingHorizontal: 20,
-    marginTop: 20,
-    marginBottom: 14,
+    marginTop: 24,
+    marginBottom: 24,
   },
   gridContainer: {
     paddingHorizontal: 20,
+    paddingBottom: 16,
   },
   gridRow: {
-    gap: 10,
-    marginBottom: 10,
+    gap: 12,
+    marginBottom: 12,
   },
   card: {
     flex: 1,
     backgroundColor: CARD_BG,
-    borderRadius: 14,
-    paddingVertical: 14,
+    borderRadius: 16,
+    paddingTop: 20,
+    paddingBottom: 16,
+    paddingHorizontal: 12,
+    minHeight: 130,
     alignItems: "center",
-    justifyContent: "center",
+    justifyContent: "flex-start",
     borderWidth: 2,
     borderColor: "transparent",
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.08,
+    shadowRadius: 8,
+    elevation: 3,
   },
   cardSelected: {
     borderColor: ACCENT,
-    backgroundColor: "rgba(127, 119, 221, 0.12)",
+    backgroundColor: "rgba(127, 119, 221, 0.08)",
   },
   cardEmoji: {
-    fontSize: 26,
-    marginBottom: 4,
+    fontSize: 36,
+    marginBottom: 8,
+  },
+  cardImage: {
+    width: 70,
+    height: 70,
+    marginBottom: 8,
+    resizeMode: "contain",
   },
   cardLabel: {
     color: TEXT_PRIMARY,
-    fontSize: 13,
+    fontSize: 14,
     fontWeight: "600",
+    textAlign: "center",
+    marginBottom: 4,
   },
   cardLabelSelected: {
     color: ACCENT,
   },
   cardHint: {
-    color: "#666666",
+    color: "#888888",
     fontSize: 10,
-    marginTop: 2,
+    lineHeight: 14,
+    textAlign: "center",
+    paddingHorizontal: 4,
   },
   cardHintSelected: {
-    color: "#9988DD",
+    color: "#6B63B5",
   },
   bottomContainer: {
     paddingHorizontal: 20,
+  
+    paddingTop: 16,
     paddingBottom: 20,
-    marginTop: "auto",
   },
-  surpriseButton: {
-    borderWidth: 1.5,
-    borderColor: ACCENT,
-    borderRadius: 12,
-    paddingVertical: 10,
-    alignItems: "center",
-    marginBottom: 10,
-  },
-  surpriseText: {
-    color: ACCENT,
-    fontSize: 14,
-    fontWeight: "600",
-  },
+  
+  
   continueButton: {
     backgroundColor: ACCENT,
     borderRadius: 12,
     paddingVertical: 14,
+    width: "100%",
     alignItems: "center",
   },
   continueButtonDisabled: {
     opacity: 0.4,
   },
   continueText: {
-    color: TEXT_PRIMARY,
+    color: "#FFFFFF",
     fontSize: 17,
     fontWeight: "700",
   },
