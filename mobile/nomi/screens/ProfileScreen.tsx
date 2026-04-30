@@ -48,6 +48,15 @@ type Badge = {
   condition: string;
 };
 
+// FIX 8 - Proper type instead of any
+type SavedRestaurant = {
+  id: string;
+  name: string;
+  distance: string;
+  budget: number;
+  photo?: ImageSourcePropType;
+};
+
 const ALL_BADGES: Badge[] = [
   { id: "romantic_scout", name: "Romantic Scout", emoji: "\u{1F490}", condition: "Pick 5 romantic spots" },
   { id: "hidden_gem_hunter", name: "Hidden Gem Hunter", emoji: "\u{1F48E}", condition: "Find 3 hidden gems" },
@@ -117,7 +126,13 @@ export default function ProfileScreen({ onNavigate }: Props) {
       >
         {/* --- Settings Gear --- */}
         <View style={styles.settingsRow}>
-          <TouchableOpacity onPress={() => onNavigate("settings")}>
+          <TouchableOpacity
+            onPress={() => onNavigate("settings")}
+            style={styles.settingsButton}
+            accessibilityLabel="Open settings"
+            accessibilityRole="button"
+            accessibilityHint="Manage your account settings"
+          >
             <Text style={styles.settingsIcon}>{"\u2699\uFE0F"}</Text>
           </TouchableOpacity>
         </View>
@@ -201,31 +216,39 @@ export default function ProfileScreen({ onNavigate }: Props) {
 
         {/* --- Saved Restaurants --- */}
         <Text style={styles.sectionTitle}>Saved Restaurants</Text>
-        <ScrollView
-          horizontal
-          showsHorizontalScrollIndicator={false}
-          contentContainerStyle={styles.savedRow}
-        >
-          {user.savedRestaurants.map((r: any) => (
-            <View key={r.id} style={styles.savedCard}>
-              {r.photo ? (
-                <Image source={r.photo} style={styles.savedPhoto} resizeMode="cover" />
-              ) : (
-                <View style={[styles.savedPhoto, { backgroundColor: "#1A1A2E" }]}>
-                  <Text style={styles.savedPhotoText}>
-                    {r.name.charAt(0)}
-                  </Text>
-                </View>
-              )}
-              <Text style={styles.savedName} numberOfLines={1}>
-                {r.name}
-              </Text>
-              <Text style={styles.savedMeta}>
-                {r.distance} · {budgetSymbol(r.budget)}
-              </Text>
-            </View>
-          ))}
-        </ScrollView>
+        {user.savedRestaurants.length > 0 ? (
+          <ScrollView
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            contentContainerStyle={styles.savedRow}
+          >
+            {user.savedRestaurants.map((r: SavedRestaurant) => (
+              <View key={r.id} style={styles.savedCard}>
+                {r.photo ? (
+                  <Image source={r.photo} style={styles.savedPhoto} resizeMode="cover" />
+                ) : (
+                  <View style={[styles.savedPhoto, { backgroundColor: "#1A1A2E" }]}>
+                    <Text style={styles.savedPhotoText}>
+                      {r.name.charAt(0)}
+                    </Text>
+                  </View>
+                )}
+                <Text style={styles.savedName} numberOfLines={1}>
+                  {r.name}
+                </Text>
+                <Text style={styles.savedMeta}>
+                  {r.distance} · {budgetSymbol(r.budget)}
+                </Text>
+              </View>
+            ))}
+          </ScrollView>
+        ) : (
+          <View style={styles.emptyState}>
+            <Text style={styles.emptyStateEmoji}>🍽️</Text>
+            <Text style={styles.emptyStateTitle}>No saved restaurants yet</Text>
+            <Text style={styles.emptyStateSubtext}>Start swiping to save your favorites!</Text>
+          </View>
+        )}
 
         {/* spacer for tab bar */}
         <View style={{ height: 80 }} />
@@ -250,6 +273,12 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     justifyContent: "flex-end",
     paddingTop: 8,
+  },
+  settingsButton: {
+    // FIX 6 - Touch target minimum
+    padding: 10,
+    minHeight: 44,
+    minWidth: 44,
   },
   settingsIcon: {
     fontSize: 22,
@@ -420,5 +449,27 @@ const styles = StyleSheet.create({
     paddingHorizontal: 10,
     paddingBottom: 10,
     paddingTop: 2,
+  },
+
+  // FIX 4 - Empty state styles
+  emptyState: {
+    alignItems: 'center',
+    paddingVertical: 24,
+    paddingHorizontal: 20,
+  },
+  emptyStateEmoji: {
+    fontSize: 32,
+    marginBottom: 8,
+  },
+  emptyStateTitle: {
+    color: TEXT_PRIMARY,
+    fontSize: 15,
+    fontWeight: '600',
+    marginBottom: 4,
+  },
+  emptyStateSubtext: {
+    color: TEXT_SECONDARY,
+    fontSize: 13,
+    textAlign: 'center',
   },
 });

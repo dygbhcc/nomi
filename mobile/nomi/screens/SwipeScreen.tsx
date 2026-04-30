@@ -1,4 +1,4 @@
-import React, { useState, useRef } from "react";
+import React, { useState, useRef, useEffect } from "react";
 import {
   View,
   Text,
@@ -8,69 +8,14 @@ import {
   Animated,
   PanResponder,
   Image,
-  ImageSourcePropType,
+  ActivityIndicator,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { StatusBar } from "expo-status-bar";
+import * as Haptics from "expo-haptics"; // FIX 3 - Haptic feedback
 import { Colors } from "../theme/colors";
-
-type Restaurant = {
-  id: string;
-  name: string;
-  distance: string;
-  budget: number;
-  moods: string[];
-  reason: string;
-  photo?: ImageSourcePropType;
-};
-
-const MOCK_RESTAURANTS: Restaurant[] = [
-  {
-    id: "1",
-    name: "Taberna da Rua das Flores",
-    distance: "0.3 km",
-    budget: 2,
-    moods: ["romantic", "cozy"],
-    reason: "Perfect match for your romantic + cozy mood",
-    photo: require("../assets/images/restaurants/taberna-rua-das-flores.jpg")
-  },
-  {
-    id: "2",
-    name: "ZeroZero",
-    distance: "0.8 km",
-    budget: 2,
-    moods: ["fresh", "lively"],
-    reason: "Great fresh vibe with energetic crowd",
-    photo: require("../assets/images/restaurants/zerozero.jpg")
-  },
-  {
-    id: "3",
-    name: "Cantinho do Avillez",
-    distance: "1.2 km",
-    budget: 3,
-    moods: ["hidden_gem", "romantic"],
-    reason: "Hidden gem with intimate atmosphere",
-    photo: require("../assets/images/restaurants/catinho.jpg")
-  },
-  {
-    id: "4",
-    name: "A Cevicheria",
-    distance: "0.5 km",
-    budget: 3,
-    moods: ["fresh", "energetic"],
-    reason: "Fresh seafood, buzzing energy",
-    photo: require("../assets/images/restaurants/cevicheria.jpg")
-  },
-  {
-    id: "5",
-    name: "Solar dos Presuntos",
-    distance: "1.8 km",
-    budget: 2,
-    moods: ["cozy"],
-    reason: "Traditional Portuguese cuisine",
-    photo: require("../assets/images/restaurants/solar.jpg")
-  },
-];
+import { getRestaurantsByMood, buildReason, Restaurant } from '../services/restaurantService';
+import { useAuth } from '../context/AuthContext';
 
 const BATCH_SIZE = 3;
 const SWIPE_THRESHOLD = 100;
@@ -90,6 +35,8 @@ function budgetSymbol(level: number): string {
 }
 
 type Props = {
+  selectedMoods: string[];
+  budgetLevel: number;
   onBack: () => void;
   onChangePreferences: () => void;
   onDetail: (restaurant: Restaurant) => void;
@@ -97,10 +44,34 @@ type Props = {
 
 export { type Restaurant };
 
-export default function SwipeScreen({ onBack, onChangePreferences, onDetail }: Props) {
+export default function SwipeScreen({ selectedMoods, budgetLevel, onBack, onChangePreferences, onDetail }: Props) {
+  const { user } = useAuth();
+  const [restaurants, setRestaurants] = useState<Restaurant[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [currentIndex, setCurrentIndex] = useState(0);
   const [batchStart, setBatchStart] = useState(0);
   const [liked, setLiked] = useState<string[]>([]);
+
+  useEffect(() => {
+    const fetchRestaurants = async () => {
+      setLoading(true);
+      setError(null);
+      try {
+        const data = await getRestaurantsByMood(selectedMoods, budgetLevel, 15);
+        const withReasons = data.map(r => ({
+          ...r,
+          reason: buildReason(r, selectedMoods),
+        }));
+        setRestaurants(withReasons);
+      } catch (e) {
+        setError('Could not load restaurants. Please try again.');
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchRestaurants();
+  }, [selectedMoods, budgetLevel]);
 
   const translateX = useRef(new Animated.Value(0)).current;
   const rotate = translateX.interpolate({
@@ -119,12 +90,19 @@ export default function SwipeScreen({ onBack, onChangePreferences, onDetail }: P
   });
 
   const batchEnd = batchStart + BATCH_SIZE;
-  const currentBatch = MOCK_RESTAURANTS.slice(batchStart, batchEnd);
-  const allDone = batchStart >= MOCK_RESTAURANTS.length;
+  const currentBatch = restaurants.slice(batchStart, batchEnd);
+  const allDone = batchStart >= restaurants.length;
   const batchDone = currentIndex >= currentBatch.length && !allDone;
   const restaurant = currentBatch[currentIndex];
 
   const animateOut = (direction: "left" | "right") => {
+    // FIX 3 - Haptic feedback on swipe
+    if (direction === "right") {
+      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+    } else {
+      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    }
+
     const toValue = direction === "right" ? SCREEN_WIDTH * 1.5 : -SCREEN_WIDTH * 1.5;
     if (direction === "right" && restaurant) {
       setLiked((prev) => [...prev, restaurant.id]);
@@ -165,6 +143,74 @@ export default function SwipeScreen({ onBack, onChangePreferences, onDetail }: P
     setCurrentIndex(0);
   };
 
+  const refetchRestaurants = async () => {
+    setLoading(true);
+    setError(null);
+    try {
+      const data = await getRestaurantsByMood(selectedMoods, budgetLevel, 15);
+      const withReasons = data.map(r => ({
+        ...r,
+        reason: buildReason(r, selectedMoods),
+      }));
+      setRestaurants(withReasons);
+    } catch (e) {
+      setError('Could not load restaurants. Please try again.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  if (loading) {
+    return (
+      <SafeAreaView style={styles.container}>
+        <ActivityIndicator size="large" color={Colors.accent} style={{ flex: 1 }} />
+      </SafeAreaView>
+    );
+  }
+
+  if (error) {
+    return (
+      <SafeAreaView style={styles.container}>
+        <View style={styles.emptyContainer}>
+          <Text style={styles.emptyTitle}>Something went wrong</Text>
+          <Text style={styles.emptySubtitle}>{error}</Text>
+          <TouchableOpacity
+            style={styles.loadMoreButton}
+            onPress={refetchRestaurants}
+            accessibilityLabel="Try again"
+            accessibilityRole="button"
+          >
+            <Text style={styles.loadMoreText}>Try again</Text>
+          </TouchableOpacity>
+        </View>
+      </SafeAreaView>
+    );
+  }
+
+  // FIX 5 - Empty state when no restaurants found
+  if (!loading && restaurants.length === 0) {
+    return (
+      <SafeAreaView style={styles.container}>
+        <StatusBar style="dark" />
+        <View style={styles.emptyContainer}>
+          <Text style={styles.emptyEmoji}>{"\u{1F50D}"}</Text>
+          <Text style={styles.emptyTitle}>No restaurants found</Text>
+          <Text style={styles.emptySubtitle}>
+            Try adjusting your mood or budget preferences
+          </Text>
+          <TouchableOpacity
+            style={styles.preferencesButton}
+            onPress={onChangePreferences}
+            accessibilityLabel="Change preferences"
+            accessibilityRole="button"
+          >
+            <Text style={styles.preferencesButtonText}>Change Preferences</Text>
+          </TouchableOpacity>
+        </View>
+      </SafeAreaView>
+    );
+  }
+
   if (allDone) {
     return (
       <SafeAreaView style={styles.container}>
@@ -192,8 +238,8 @@ export default function SwipeScreen({ onBack, onChangePreferences, onDetail }: P
         <View style={styles.emptyContainer}>
           <Text style={styles.emptyEmoji}>{"\u{1F50D}"}</Text>
           <Text style={styles.emptyTitle}>
-            {MOCK_RESTAURANTS.length - batchEnd > 0
-              ? `${MOCK_RESTAURANTS.length - batchEnd} more to discover`
+            {restaurants.length - batchEnd > 0
+              ? `${restaurants.length - batchEnd} more to discover`
               : "Last batch coming up!"}
           </Text>
           <TouchableOpacity style={styles.loadMoreButton} onPress={handleLoadMore}>
@@ -209,13 +255,22 @@ export default function SwipeScreen({ onBack, onChangePreferences, onDetail }: P
       <StatusBar style="light" />
 
       <View style={styles.header}>
-        <TouchableOpacity onPress={onBack}>
+        <TouchableOpacity
+          onPress={onBack}
+          accessibilityLabel="Go back"
+          accessibilityRole="button"
+        >
           <Text style={styles.backText}>{"\u2190"} Back</Text>
         </TouchableOpacity>
         <Text style={styles.counterText}>
-          {batchStart + currentIndex + 1} / {MOCK_RESTAURANTS.length}
+          {batchStart + currentIndex + 1} / {restaurants.length}
         </Text>
-        <TouchableOpacity style={styles.detailButton} onPress={() => restaurant && onDetail(restaurant)}>
+        <TouchableOpacity
+          style={styles.detailButton}
+          onPress={() => restaurant && onDetail(restaurant)}
+          accessibilityLabel="View restaurant details"
+          accessibilityRole="button"
+        >
           <Text style={styles.detailButtonText}>Details</Text>
         </TouchableOpacity>
       </View>
@@ -234,10 +289,13 @@ export default function SwipeScreen({ onBack, onChangePreferences, onDetail }: P
           </Animated.View>
 
           {/* Photo */}
-          {restaurant.photo ? (
-            <Image source={restaurant.photo} style={styles.photoSection} />
+          {restaurant.photos && restaurant.photos.length > 0 ? (
+            <Image
+              source={{ uri: `https://maps.googleapis.com/maps/api/place/photo?maxwidth=800&photo_reference=${restaurant.photos[0].photo_reference}&key=${process.env.EXPO_PUBLIC_GOOGLE_PLACES_API_KEY}` }}
+              style={styles.photoSection}
+            />
           ) : (
-            <View style={styles.photoSection} />
+            <View style={[styles.photoSection, { backgroundColor: '#E8E8E8' }]} />
           )}
 
           {/* Info section */}
@@ -245,13 +303,13 @@ export default function SwipeScreen({ onBack, onChangePreferences, onDetail }: P
             <Text style={styles.restaurantName}>{restaurant.name}</Text>
 
             <View style={styles.metaRow}>
-              <Text style={styles.metaText}>{restaurant.distance}</Text>
-              <Text style={styles.metaDot}>{"\u00B7"}</Text>
-              <Text style={styles.metaText}>{budgetSymbol(restaurant.budget)}</Text>
+              {restaurant.distance && <Text style={styles.metaText}>{restaurant.distance}</Text>}
+              {restaurant.distance && <Text style={styles.metaDot}>{"\u00B7"}</Text>}
+              <Text style={styles.metaText}>{budgetSymbol(restaurant.budget_level)}</Text>
             </View>
 
             <View style={styles.moodRow}>
-              {restaurant.moods.map((mood) => (
+              {restaurant.mood_tags && restaurant.mood_tags.slice(0, 3).map((mood) => (
                 <View key={mood} style={styles.moodBadge}>
                   <Text style={styles.moodBadgeText}>{mood}</Text>
                 </View>
@@ -268,10 +326,22 @@ export default function SwipeScreen({ onBack, onChangePreferences, onDetail }: P
 
       {/* Action buttons */}
       <View style={styles.actionRow}>
-        <TouchableOpacity style={styles.rejectButton} onPress={() => animateOut("left")}>
+        <TouchableOpacity
+          style={styles.rejectButton}
+          onPress={() => animateOut("left")}
+          accessibilityLabel="Dislike this restaurant"
+          accessibilityRole="button"
+          accessibilityHint="Swipe left or tap to reject"
+        >
           <Text style={styles.rejectIcon}>{"\u2715"}</Text>
         </TouchableOpacity>
-        <TouchableOpacity style={styles.likeButton} onPress={() => animateOut("right")}>
+        <TouchableOpacity
+          style={styles.likeButton}
+          onPress={() => animateOut("right")}
+          accessibilityLabel="Like this restaurant"
+          accessibilityRole="button"
+          accessibilityHint="Swipe right or tap to save"
+        >
           <Text style={styles.likeIcon}>{"\u2665"}</Text>
         </TouchableOpacity>
       </View>
@@ -302,10 +372,11 @@ const styles = StyleSheet.create({
     fontSize: 14,
   },
   detailButton: {
-    backgroundColor: "rgba(127, 119, 221, 0.15)",
+    backgroundColor: "rgba(224, 106, 79, 0.12)",
     paddingHorizontal: 14,
-    paddingVertical: 6,
+    paddingVertical: 10, // FIX 6 - Increased from 6 for 44px touch target
     borderRadius: 12,
+    minHeight: 44,
   },
   detailButtonText: {
     color: ACCENT,
@@ -385,7 +456,7 @@ const styles = StyleSheet.create({
     marginBottom: 10,
   },
   moodBadge: {
-    backgroundColor: "rgba(127, 119, 221, 0.2)",
+    backgroundColor: "rgba(224, 106, 79, 0.15)",
     paddingHorizontal: 12,
     paddingVertical: 4,
     borderRadius: 12,
@@ -396,7 +467,7 @@ const styles = StyleSheet.create({
     fontWeight: "600",
   },
   reasonBox: {
-    backgroundColor: "rgba(127, 119, 221, 0.08)",
+    backgroundColor: "rgba(224, 106, 79, 0.08)",
     borderRadius: 10,
     padding: 12,
   },

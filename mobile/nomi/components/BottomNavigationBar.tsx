@@ -3,7 +3,6 @@ import { View, Text, TouchableOpacity, StyleSheet } from "react-native";
 import { Colors } from "../theme/colors";
 
 const ACCENT = Colors.accent;
-const CARD_BG = Colors.cardBackground;
 const TEXT_SECONDARY = Colors.textSecondary;
 
 type Tab = "home" | "validate" | "group" | "ranking" | "profile";
@@ -86,9 +85,9 @@ const styles = StyleSheet.create({
     left: 0,
     right: 0,
     flexDirection: "row",
-    backgroundColor: CARD_BG,
+    backgroundColor: '#FFFFFF',
     borderTopWidth: 1,
-    borderTopColor: Colors.stepInactive,
+    borderTopColor: '#F0F0F0',
     paddingBottom: 20,
     paddingTop: 8,
   },

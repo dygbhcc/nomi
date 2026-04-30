@@ -252,7 +252,7 @@ const styles = StyleSheet.create({
   },
   cardSelected: {
     borderColor: ACCENT,
-    backgroundColor: "rgba(127, 119, 221, 0.08)",
+    backgroundColor: "rgba(224, 106, 79, 0.06)",
   },
   cardSymbol: {
     color: TEXT_PRIMARY,

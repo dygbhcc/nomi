@@ -81,7 +81,7 @@ const MOCK_VOTES: Record<string, { liked: number; avatars: string[] }> = {
   "5": { liked: 1, avatars: ["S"] },
 };
 
-const AVATAR_COLORS = ["#6B5FCC", "#9B8FEE", "#5A4FBB", "#7F77DD"];
+const AVATAR_COLORS = ["#C25A41", "#E06A4F", "#B54F3A", "#FF8A3D"];
 const SWIPE_THRESHOLD = 100;
 const { width: SCREEN_WIDTH } = Dimensions.get("window");
 
@@ -350,7 +350,7 @@ const styles = StyleSheet.create({
     width: 64,
     height: 64,
     borderRadius: 32,
-    backgroundColor: "rgba(127, 119, 221, 0.15)",
+    backgroundColor: "rgba(224, 106, 79, 0.12)",
     borderWidth: 2,
     borderColor: ACCENT,
     alignItems: "center",

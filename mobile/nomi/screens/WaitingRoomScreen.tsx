@@ -19,7 +19,7 @@ type Participant = {
   color: string;
 };
 
-const AVATAR_COLORS = ["#7F77DD", "#6B5FCC", "#9B8FEE", "#5A4FBB"];
+const AVATAR_COLORS = ["#E06A4F", "#C25A41", "#FF8A3D", "#B54F3A"];
 
 const INITIAL_PARTICIPANTS: Participant[] = [
   { id: "1", name: "You (host)", initials: "Y", ready: true, color: AVATAR_COLORS[0] },

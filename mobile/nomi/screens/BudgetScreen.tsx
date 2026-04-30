@@ -7,6 +7,7 @@ import {
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { StatusBar } from "expo-status-bar";
+import { Colors } from "../theme/colors";
 
 type BudgetOption = {
   value: number;
@@ -20,13 +21,12 @@ const BUDGET_OPTIONS: BudgetOption[] = [
   { value: 3, symbol: "\u20AC\u20AC\u20AC", description: "\u20AC35+ per person" },
 ];
 
-const ACCENT = "#7F77DD";
-const BG = "#0D0D0D";
-const CARD_BG = "#1A1A1A";
-const CARD_SELECTED_BG = "#1A1830";
-const TEXT_PRIMARY = "#FFFFFF";
-const TEXT_SECONDARY = "#888888";
-const STEP_INACTIVE = "#2A2A2A";
+const ACCENT = Colors.accent;
+const BG = Colors.background;
+const CARD_BG = Colors.cardBackground;
+const TEXT_PRIMARY = Colors.textPrimary;
+const TEXT_SECONDARY = Colors.textSecondary;
+const STEP_INACTIVE = Colors.stepInactive;
 
 type Props = {
   selectedMoods: string[];
@@ -147,18 +147,24 @@ const styles = StyleSheet.create({
     gap: 12,
   },
   card: {
-    backgroundColor: CARD_BG,
+    backgroundColor: '#FFFFFF',
     borderRadius: 16,
     paddingVertical: 20,
     paddingHorizontal: 20,
     flexDirection: "row",
     alignItems: "center",
-    borderWidth: 2,
-    borderColor: "transparent",
+    borderWidth: 1,
+    borderColor: '#F0F0F0',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.06,
+    shadowRadius: 8,
+    elevation: 2,
   },
   cardSelected: {
+    borderWidth: 2,
     borderColor: ACCENT,
-    backgroundColor: CARD_SELECTED_BG,
+    backgroundColor: 'rgba(224, 106, 79, 0.04)',
   },
   cardSymbol: {
     color: TEXT_PRIMARY,
@@ -192,7 +198,7 @@ const styles = StyleSheet.create({
     opacity: 0.4,
   },
   continueText: {
-    color: TEXT_PRIMARY,
+    color: '#FFFFFF',
     fontSize: 17,
     fontWeight: "700",
   },

@@ -11,19 +11,7 @@ import {
 import { SafeAreaView } from "react-native-safe-area-context";
 import { StatusBar } from "expo-status-bar";
 import { Colors } from "../theme/colors";
-
-export type Restaurant = {
-  id: string;
-  name: string;
-  distance: string;
-  budget: number;
-  moods: string[];
-  reason: string;
-  cuisine?: string;
-  noiseLevel?: "quiet" | "moderate" | "loud";
-  isOpenNow?: boolean;
-  photo?: any;
-};
+import { Restaurant } from "../services/restaurantService";
 
 type DayHours = {
   day: string;
@@ -89,10 +77,13 @@ export default function RestaurantDetailScreen({ restaurant, onBack }: Props) {
 
       {/* Hero image */}
       <View style={styles.heroContainer}>
-        {restaurant.photo ? (
-          <Image source={restaurant.photo} style={styles.heroImage} />
+        {restaurant.photos && restaurant.photos.length > 0 ? (
+          <Image
+            source={{ uri: `https://maps.googleapis.com/maps/api/place/photo?maxwidth=800&photo_reference=${restaurant.photos[0].photo_reference}&key=${process.env.EXPO_PUBLIC_GOOGLE_PLACES_API_KEY}` }}
+            style={styles.heroImage}
+          />
         ) : (
-          <View style={styles.heroImage} />
+          <View style={[styles.heroImage, { backgroundColor: '#E8E8E8' }]} />
         )}
 
         {/* Back button */}
@@ -116,7 +107,7 @@ export default function RestaurantDetailScreen({ restaurant, onBack }: Props) {
         <View>
           <View style={styles.nameRow}>
             <Text style={styles.name}>{restaurant.name}</Text>
-            {restaurant.isOpenNow !== false && (
+            {restaurant.opening_hours?.is_open_monday !== false && (
               <View style={styles.openBadge}>
                 <View style={styles.openDot} />
                 <Text style={styles.openText}>Open</Text>
@@ -125,8 +116,7 @@ export default function RestaurantDetailScreen({ restaurant, onBack }: Props) {
           </View>
           <Text style={styles.meta}>
             {[
-              restaurant.cuisine || "Portuguese",
-              restaurant.noiseLevel || "moderate",
+              restaurant.noise_level || "moderate",
               "~20 min wait",
             ].join(" \u00B7 ")}
           </Text>
@@ -137,17 +127,19 @@ export default function RestaurantDetailScreen({ restaurant, onBack }: Props) {
           <Text style={styles.reasonLabel}>WHY FOR YOU?</Text>
           <Text style={styles.reasonText}>{restaurant.reason}</Text>
           <View style={styles.badgeRow}>
-            {restaurant.moods.map((mood) => (
+            {restaurant.mood_tags && restaurant.mood_tags.slice(0, 3).map((mood: string) => (
               <View key={mood} style={styles.moodBadge}>
                 <Text style={styles.moodBadgeText}>{mood}</Text>
               </View>
             ))}
             <View style={styles.moodBadge}>
-              <Text style={styles.moodBadgeText}>{budgetSymbol(restaurant.budget)}</Text>
+              <Text style={styles.moodBadgeText}>{budgetSymbol(restaurant.budget_level)}</Text>
             </View>
-            <View style={styles.moodBadge}>
-              <Text style={styles.moodBadgeText}>{restaurant.distance}</Text>
-            </View>
+            {restaurant.distance && (
+              <View style={styles.moodBadge}>
+                <Text style={styles.moodBadgeText}>{restaurant.distance}</Text>
+              </View>
+            )}
           </View>
         </View>
 
@@ -207,7 +199,7 @@ export default function RestaurantDetailScreen({ restaurant, onBack }: Props) {
           ) : (
             <TouchableOpacity style={styles.validateRow} onPress={() => setValidated(true)}>
               <Text style={styles.validateText}>
-                Is this place {restaurant.moods[0] || "good"}?
+                Is this place {restaurant.mood_tags?.[0] || "good"}?
               </Text>
               <View style={styles.validatePoints}>
                 <Text style={styles.validatePointsText}>+5 pts</Text>
@@ -316,7 +308,7 @@ const styles = StyleSheet.create({
     marginBottom: 12,
   },
   reasonBox: {
-    backgroundColor: "rgba(127, 119, 221, 0.08)",
+    backgroundColor: "rgba(224, 106, 79, 0.08)",
     borderRadius: 12,
     padding: 12,
   },
@@ -338,7 +330,7 @@ const styles = StyleSheet.create({
     gap: 6,
   },
   moodBadge: {
-    backgroundColor: "rgba(127, 119, 221, 0.15)",
+    backgroundColor: "rgba(224, 106, 79, 0.12)",
     paddingHorizontal: 10,
     paddingVertical: 4,
     borderRadius: 20,
@@ -362,7 +354,7 @@ const styles = StyleSheet.create({
     borderBottomColor: "#F0F0F0",
   },
   hoursRowToday: {
-    backgroundColor: "rgba(127, 119, 221, 0.1)",
+    backgroundColor: "rgba(224, 106, 79, 0.08)",
     borderRadius: 8,
     paddingHorizontal: 8,
     marginHorizontal: -8,
@@ -429,7 +421,7 @@ const styles = StyleSheet.create({
     fontWeight: "500",
   },
   validatePoints: {
-    backgroundColor: "rgba(127, 119, 221, 0.15)",
+    backgroundColor: "rgba(224, 106, 79, 0.12)",
     paddingHorizontal: 12,
     paddingVertical: 6,
     borderRadius: 20,

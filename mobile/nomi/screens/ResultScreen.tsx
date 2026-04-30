@@ -48,7 +48,7 @@ function budgetSymbol(level: number): string {
 }
 
 // --- Confetti Particle ---
-const CONFETTI_COLORS = ["#7F77DD", "#FFD700", "#E74C3C", "#2ECC71", "#3498DB", "#F39C12", "#9B59B6"];
+const CONFETTI_COLORS = ["#E06A4F", "#FFD700", "#E74C3C", "#2ECC71", "#3498DB", "#F39C12", "#FF8A3D"];
 const PARTICLE_COUNT = 40;
 
 function ConfettiAnimation() {
@@ -194,7 +194,7 @@ export default function ResultScreen({
 
   // Voter avatar dots
   const voterDots = Array.from({ length: totalVoters }, (_, i) => i);
-  const AVATAR_COLORS = ["#6B5FCC", "#9B8FEE", "#5A4FBB", "#7F77DD"];
+  const AVATAR_COLORS = ["#C25A41", "#E06A4F", "#B54F3A", "#FF8A3D"];
 
   return (
     <SafeAreaView style={styles.container}>
@@ -406,7 +406,7 @@ const styles = StyleSheet.create({
     marginBottom: 10,
   },
   moodBadge: {
-    backgroundColor: "rgba(127, 119, 221, 0.2)",
+    backgroundColor: "rgba(224, 106, 79, 0.15)",
     paddingHorizontal: 12,
     paddingVertical: 4,
     borderRadius: 12,

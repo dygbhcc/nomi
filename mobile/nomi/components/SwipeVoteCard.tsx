@@ -6,6 +6,7 @@ import {
   Animated,
   Image,
   ImageSourcePropType,
+  PanResponderInstance,
 } from "react-native";
 import { Colors } from "../theme/colors";
 
@@ -15,7 +16,7 @@ const TEXT_PRIMARY = Colors.textPrimary;
 const TEXT_SECONDARY = Colors.textSecondary;
 const GREEN = "#2ECC71";
 const RED = "#E74C3C";
-const AVATAR_COLORS = ["#6B5FCC", "#9B8FEE", "#5A4FBB", "#7F77DD"];
+const AVATAR_COLORS = ["#C25A41", "#E06A4F", "#B54F3A", "#FF8A3D"];
 
 function budgetSymbol(level: number): string {
   return "\u20AC".repeat(level);
@@ -44,13 +45,13 @@ type SwipeVoteCardProps = {
 
   // Animation
   translateX: Animated.Value;
-  rotate: Animated.AnimatedInterpolation;
-  scale?: Animated.AnimatedInterpolation;
-  likeOpacity: Animated.AnimatedInterpolation;
-  nopeOpacity: Animated.AnimatedInterpolation;
+  rotate: Animated.AnimatedInterpolation<string | number>;
+  scale?: Animated.AnimatedInterpolation<number>;
+  likeOpacity: Animated.AnimatedInterpolation<number>;
+  nopeOpacity: Animated.AnimatedInterpolation<number>;
 
   // Handlers
-  panHandlers: any;
+  panHandlers: PanResponderInstance['panHandlers']; // FIX 8 - Proper type
 
   // Labels
   likeLabel?: string; // "LIKE" or "YES"
@@ -248,7 +249,7 @@ const styles = StyleSheet.create({
     marginBottom: 8,
   },
   moodBadge: {
-    backgroundColor: "rgba(127, 119, 221, 0.15)",
+    backgroundColor: "rgba(224, 106, 79, 0.12)",
     paddingHorizontal: 10,
     paddingVertical: 4,
     borderRadius: 20,

@@ -1,34 +1,48 @@
-// Light Theme Colors
+// Terracotta & Orange Theme
 export const Colors = {
   // Primary
-  accent: "#7F77DD",
+  accent: '#E06A4F',           // Terracotta — primary buttons, CTA
+  accentSecondary: '#FF8A3D',  // Orange — secondary accent
+  accentLight: '#FFC98A',      // Light orange — vurgu
 
   // Backgrounds
-  background: "#F5F5F0",
-  cardBackground: "#FFFFFF",
+  background: '#FFFFFF',       // Pure white — main background
+  cardBackground: '#FFFFFF',   // Pure white — cards, surfaces
 
   // Text
-  textPrimary: "#1A1A1A",
-  textSecondary: "#666666",
-  textTertiary: "#888888",
-  textOnAccent: "#FFFFFF",
+  textPrimary: '#2B2B2B',      // Near black — main text
+  textSecondary: '#888888',    // Gray — secondary text
+  textTertiary: '#888888',
+  textOnAccent: '#FFFFFF',
 
   // States
-  border: "transparent",
-  borderActive: "#7F77DD",
-  shadow: "#000000",
+  border: '#F0F0F0',           // Neutral border
+  borderActive: '#E06A4F',
+  shadow: '#000000',
 
   // Progress & Indicators
-  stepActive: "#7F77DD",
-  stepInactive: "#E0E0E0",
+  stepActive: '#E06A4F',
+  stepInactive: '#E8E8E8',     // Neutral inactive
 
   // Selected States
-  selectedBackground: "rgba(127, 119, 221, 0.08)",
-  selectedText: "#7F77DD",
-  selectedHint: "#6B63B5",
+  selectedBackground: 'rgba(224, 106, 79, 0.06)',
+  selectedText: '#E06A4F',
+  selectedHint: '#C25A41',
 
   // Overlays
-  overlay: "rgba(0, 0, 0, 0.5)",
+  overlay: 'rgba(0, 0, 0, 0.5)',
+
+  // Semantic
+  success: '#4CAF50',
+  error: '#E74C3C',
+
+  // Mood badge
+  badgeBackground: 'rgba(224, 106, 79, 0.10)',
+  badgeText: '#E06A4F',
+
+  // Why for you box
+  reasonBackground: 'rgba(224, 106, 79, 0.08)',
+  reasonBorder: 'rgba(224, 106, 79, 0.2)',
 };
 
 export const Shadows = {

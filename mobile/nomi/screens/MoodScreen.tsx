@@ -41,8 +41,6 @@ const MOODS: Mood[] = [
 
 // Using central theme
 const ACCENT = Colors.accent;
-const BG = Colors.background;
-const CARD_BG = Colors.cardBackground;
 const TEXT_PRIMARY = Colors.textPrimary;
 const TEXT_SECONDARY = Colors.textSecondary;
 const STEP_INACTIVE = Colors.stepInactive;
@@ -121,6 +119,9 @@ export default function MoodScreen({ onContinue, onSkip, onGroup, onProfile, onN
           isLast && styles.cardFullWidth,
         ]}
         onPress={() => item.id === 'surprise' ? handleSurprise() : toggleMood(item.id)}
+        accessibilityLabel={`${item.label} mood. ${item.hint}`}
+        accessibilityRole="checkbox"
+        accessibilityState={{ checked: isSelected }}
       >
         {isLast ? (
           <>
@@ -161,54 +162,74 @@ export default function MoodScreen({ onContinue, onSkip, onGroup, onProfile, onN
       <StatusBar style="dark" />
 
       <View style={styles.header}>
-        <TouchableOpacity style={styles.groupButton} onPress={onGroup}>
+        <TouchableOpacity
+          style={styles.groupButton}
+          onPress={onGroup}
+          accessibilityLabel="Create or join group session"
+          accessibilityRole="button"
+        >
           <Text style={styles.groupIcon}>{"\u{1F465}"}</Text>
           <Text style={styles.groupText}>Group</Text>
         </TouchableOpacity>
         <ProgressBar />
-        <TouchableOpacity style={styles.skipButton} onPress={onSkip}>
+        <TouchableOpacity
+          style={styles.skipButton}
+          onPress={onSkip}
+          accessibilityLabel="Skip mood selection"
+          accessibilityRole="button"
+        >
           <Text style={styles.skipText}>Skip</Text>
         </TouchableOpacity>
         {onProfile && (
-          <TouchableOpacity style={styles.profileButton} onPress={onProfile}>
+          <TouchableOpacity
+            style={styles.profileButton}
+            onPress={onProfile}
+            accessibilityLabel="View profile"
+            accessibilityRole="button"
+          >
             <Text style={styles.profileIcon}>{"\u{1F464}"}</Text>
           </TouchableOpacity>
         )}
       </View>
 
-      <ScrollView
-        style={{ flex: 1 }}
-        contentContainerStyle={[styles.gridContainer, { paddingBottom: 160 }]}
-        showsVerticalScrollIndicator={false}
-      >
-        <Text style={styles.title}>How are you feeling?</Text>
-
-        {(() => {
-          // Create rows: pair items except last one
-          const rows = [];
-          const items = MOODS.slice(0, -1); // all except last
-          for (let i = 0; i < items.length; i += 2) {
-            rows.push([items[i], items[i + 1]].filter(Boolean));
-          }
-          rows.push([MOODS[MOODS.length - 1]]); // surprise as own row
-
-          return rows.map((row, rowIndex) => (
-            <View key={rowIndex} style={styles.gridRow}>
-              {row.map((item) => renderMoodCard({ item, index: MOODS.indexOf(item) }))}
-            </View>
-          ));
-        })()}
-      </ScrollView>
-
-      <View style={styles.bottomContainer}>
-        <TouchableOpacity
-          style={[styles.continueButton, !hasSelection && styles.continueButtonDisabled]}
-          disabled={!hasSelection}
-          activeOpacity={0.8}
-          onPress={() => onContinue(selectedMoods)}
+      <View style={{ flex: 1 }}>
+        <ScrollView
+          style={{ flex: 1 }}
+          contentContainerStyle={styles.gridContainer}
+          showsVerticalScrollIndicator={false}
         >
-          <Text style={styles.continueText}>Continue</Text>
-        </TouchableOpacity>
+          <Text style={styles.title}>How are you feeling?</Text>
+
+          {(() => {
+            // Create rows: pair items except last one
+            const rows = [];
+            const items = MOODS.slice(0, -1); // all except last
+            for (let i = 0; i < items.length; i += 2) {
+              rows.push([items[i], items[i + 1]].filter(Boolean));
+            }
+            rows.push([MOODS[MOODS.length - 1]]); // surprise as own row
+
+            return rows.map((row, rowIndex) => (
+              <View key={rowIndex} style={styles.gridRow}>
+                {row.map((item) => renderMoodCard({ item, index: MOODS.indexOf(item) }))}
+              </View>
+            ));
+          })()}
+        </ScrollView>
+
+        <View style={styles.bottomContainer}>
+          <TouchableOpacity
+            style={[styles.continueButton, !hasSelection && styles.continueButtonDisabled]}
+            disabled={!hasSelection}
+            activeOpacity={0.8}
+            onPress={() => onContinue(selectedMoods)}
+            accessibilityLabel="Continue with selected moods"
+            accessibilityRole="button"
+            accessibilityState={{ disabled: !hasSelection }}
+          >
+            <Text style={styles.continueText}>Continue</Text>
+          </TouchableOpacity>
+        </View>
       </View>
 
       <BottomNavigationBar activeTab="home" onNavigate={onNavigate} />
@@ -219,7 +240,7 @@ export default function MoodScreen({ onContinue, onSkip, onGroup, onProfile, onN
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: BG,
+    backgroundColor: '#F7F7F7',
   },
   header: {
     flexDirection: "row",
@@ -232,7 +253,8 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     paddingRight: 12,
-    paddingVertical: 4,
+    paddingVertical: 10, // FIX 6 - Increased from 4 for 44px touch target
+    minHeight: 44,
   },
   groupIcon: {
     fontSize: 16,
@@ -255,8 +277,9 @@ const styles = StyleSheet.create({
   },
   skipButton: {
     marginLeft: 16,
-    paddingVertical: 4,
+    paddingVertical: 10, // FIX 6 - Increased from 4 for 44px touch target
     paddingLeft: 12,
+    minHeight: 44,
   },
   skipText: {
     color: TEXT_SECONDARY,
@@ -264,7 +287,9 @@ const styles = StyleSheet.create({
   },
   profileButton: {
     marginLeft: 12,
-    paddingVertical: 4,
+    padding: 10, // FIX 6 - Increased for 44px touch target
+    minHeight: 44,
+    minWidth: 44,
   },
   profileIcon: {
     fontSize: 18,
@@ -273,14 +298,13 @@ const styles = StyleSheet.create({
     color: TEXT_PRIMARY,
     fontSize: 24,
     fontWeight: "700",
-    paddingHorizontal: 20,
+    paddingHorizontal: 16,
     marginTop: 16,
     marginBottom: 16,
-    
   },
   gridContainer: {
-    paddingHorizontal: 20,
-    paddingBottom: 16,
+    paddingHorizontal: 16,
+    paddingBottom: 8,
   },
   gridRow: {
     flexDirection: "row",
@@ -289,20 +313,20 @@ const styles = StyleSheet.create({
   },
   card: {
     width: CARD_WIDTH,
-    backgroundColor: CARD_BG,
+    backgroundColor: '#FFFFFF',
     borderRadius: 16,
     overflow: "hidden",
-    borderWidth: 2,
-    borderColor: "transparent",
-    shadowColor: "#000",
+    borderWidth: 0,
+    shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.08,
-    shadowRadius: 8,
+    shadowRadius: 12,
     elevation: 3,
   },
   cardSelected: {
+    borderWidth: 2,
     borderColor: ACCENT,
-    backgroundColor: "rgba(127, 119, 221, 0.08)",
+    backgroundColor: 'rgba(224, 106, 79, 0.04)',
   },
   cardFullWidth: {
     width: "100%",
@@ -311,6 +335,13 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     paddingVertical: 20,
     gap: 12,
+    backgroundColor: '#FFFFFF',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.08,
+    shadowRadius: 12,
+    elevation: 3,
+    marginBottom: 0,
   },
   cardImage: {
     width: "100%",
@@ -344,7 +375,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 6,
   },
   cardHintSelected: {
-    color: "#6B63B5",
+    color: "#C25A41",
   },
   checkmark: {
     position: "absolute",
@@ -363,14 +394,11 @@ const styles = StyleSheet.create({
     fontWeight: "bold",
   },
   bottomContainer: {
-    position: "absolute",
-    bottom: 70,
-    left: 0,
-    right: 0,
-    paddingHorizontal: 20,
-    paddingTop: 16,
-    paddingBottom: 16,
-    backgroundColor: BG,
+    paddingHorizontal: 16,
+    paddingTop: 8,
+    paddingBottom: 8,
+    backgroundColor: '#F7F7F7',
+    marginBottom: 70,
   },
   
   

@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useRef } from "react";
 import {
   View,
   Text,
@@ -9,6 +9,7 @@ import {
   KeyboardAvoidingView,
   Platform,
   ScrollView,
+  AccessibilityInfo,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { StatusBar } from "expo-status-bar";
@@ -25,6 +26,11 @@ export default function AuthScreen() {
   const [displayName, setDisplayName] = useState("");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
+
+  // Refs for keyboard navigation (FIX 2)
+  const displayNameRef = useRef<TextInput>(null);
+  const emailRef = useRef<TextInput>(null);
+  const passwordRef = useRef<TextInput>(null);
 
   const cleanErrorMessage = (errorCode: string): string => {
     switch (errorCode) {
@@ -45,9 +51,15 @@ export default function AuthScreen() {
     }
   };
 
+  // FIX 7 - Announce errors to screen readers
+  const showError = (message: string) => {
+    setError(message);
+    AccessibilityInfo.announceForAccessibility(`Error: ${message}`);
+  };
+
   const handleSignIn = async () => {
     if (!email || !password) {
-      setError("Please fill in all fields");
+      showError("Please fill in all fields");
       return;
     }
 
@@ -56,8 +68,10 @@ export default function AuthScreen() {
 
     try {
       await signIn(email, password);
-    } catch (err: any) {
-      setError(cleanErrorMessage(err.code));
+    } catch (err: unknown) {
+      // FIX 8 - Proper TypeScript error handling
+      const firebaseError = err as { code: string };
+      showError(cleanErrorMessage(firebaseError.code));
     } finally {
       setLoading(false);
     }
@@ -65,7 +79,7 @@ export default function AuthScreen() {
 
   const handleSignUp = async () => {
     if (!email || !password || !displayName) {
-      setError("Please fill in all fields");
+      showError("Please fill in all fields");
       return;
     }
 
@@ -74,8 +88,10 @@ export default function AuthScreen() {
 
     try {
       await signUp(email, password, displayName);
-    } catch (err: any) {
-      setError(cleanErrorMessage(err.code));
+    } catch (err: unknown) {
+      // FIX 8 - Proper TypeScript error handling
+      const firebaseError = err as { code: string };
+      showError(cleanErrorMessage(firebaseError.code));
     } finally {
       setLoading(false);
     }
@@ -107,6 +123,9 @@ export default function AuthScreen() {
                 setActiveTab("signin");
                 setError("");
               }}
+              accessibilityLabel="Sign in tab"
+              accessibilityRole="tab"
+              accessibilityState={{ selected: activeTab === "signin" }}
             >
               <Text
                 style={[
@@ -123,6 +142,9 @@ export default function AuthScreen() {
                 setActiveTab("signup");
                 setError("");
               }}
+              accessibilityLabel="Sign up tab"
+              accessibilityRole="tab"
+              accessibilityState={{ selected: activeTab === "signup" }}
             >
               <Text
                 style={[
@@ -139,6 +161,7 @@ export default function AuthScreen() {
           <View style={styles.formContainer}>
             {activeTab === "signup" && (
               <TextInput
+                ref={displayNameRef}
                 style={styles.input}
                 placeholder="Display name"
                 placeholderTextColor={Colors.textTertiary}
@@ -146,9 +169,15 @@ export default function AuthScreen() {
                 onChangeText={setDisplayName}
                 autoCapitalize="words"
                 editable={!loading}
+                returnKeyType="next"
+                onSubmitEditing={() => emailRef.current?.focus()}
+                blurOnSubmit={false}
+                accessibilityLabel="Display name"
+                accessibilityHint="Enter your full name"
               />
             )}
             <TextInput
+              ref={emailRef}
               style={styles.input}
               placeholder="Email"
               placeholderTextColor={Colors.textTertiary}
@@ -158,8 +187,14 @@ export default function AuthScreen() {
               autoCapitalize="none"
               autoCorrect={false}
               editable={!loading}
+              returnKeyType="next"
+              onSubmitEditing={() => passwordRef.current?.focus()}
+              blurOnSubmit={false}
+              accessibilityLabel="Email address"
+              accessibilityHint="Enter your email"
             />
             <TextInput
+              ref={passwordRef}
               style={styles.input}
               placeholder="Password"
               placeholderTextColor={Colors.textTertiary}
@@ -168,16 +203,31 @@ export default function AuthScreen() {
               secureTextEntry
               autoCapitalize="none"
               editable={!loading}
+              returnKeyType="go"
+              onSubmitEditing={activeTab === "signin" ? handleSignIn : handleSignUp}
+              accessibilityLabel="Password"
+              accessibilityHint="Enter your password"
             />
 
             {/* Error Message */}
-            {error ? <Text style={styles.errorText}>{error}</Text> : null}
+            {error ? (
+              <Text
+                style={styles.errorText}
+                accessibilityRole="alert"
+                accessibilityLiveRegion="polite"
+              >
+                {error}
+              </Text>
+            ) : null}
 
             {/* Main Action Button */}
             <TouchableOpacity
               style={[styles.mainButton, loading && styles.disabledButton]}
               onPress={activeTab === "signin" ? handleSignIn : handleSignUp}
               disabled={loading}
+              accessibilityLabel={activeTab === "signin" ? "Sign in" : "Create account"}
+              accessibilityRole="button"
+              accessibilityState={{ disabled: loading }}
             >
               {loading ? (
                 <ActivityIndicator color={Colors.textOnAccent} />
@@ -193,6 +243,9 @@ export default function AuthScreen() {
               style={styles.guestButton}
               onPress={handleContinueAsGuest}
               disabled={loading}
+              accessibilityLabel="Continue as guest"
+              accessibilityRole="button"
+              accessibilityHint="Use the app without creating an account"
             >
               <Text style={styles.guestButtonText}>Continue as Guest</Text>
             </TouchableOpacity>
@@ -237,11 +290,12 @@ const styles = StyleSheet.create({
   },
   tab: {
     flex: 1,
-    paddingVertical: 16,
+    paddingVertical: 14,
     alignItems: "center",
     backgroundColor: "transparent",
     borderBottomWidth: 2,
     borderBottomColor: "transparent",
+    minHeight: 44, // FIX 6 - Touch target minimum
   },
   activeTab: {
     borderBottomColor: Colors.accent,
@@ -268,7 +322,7 @@ const styles = StyleSheet.create({
     borderColor: Colors.border,
   },
   errorText: {
-    color: "#E53E3E",
+    color: Colors.error, // FIX - Use theme color instead of hardcoded
     fontSize: Typography.caption,
     marginTop: -4,
   },
@@ -288,8 +342,9 @@ const styles = StyleSheet.create({
     fontWeight: Typography.semibold,
   },
   guestButton: {
-    paddingVertical: 12,
+    paddingVertical: 14,
     alignItems: "center",
+    minHeight: 44, // FIX 6 - Touch target minimum
   },
   guestButtonText: {
     color: Colors.textSecondary,

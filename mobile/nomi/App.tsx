@@ -3,6 +3,7 @@ import { View, ActivityIndicator } from "react-native";
 import { SafeAreaProvider } from "react-native-safe-area-context";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { AuthProvider, useAuth } from "./context/AuthContext";
+import ErrorBoundary from "./components/ErrorBoundary";
 import AuthScreen from "./screens/AuthScreen";
 import OnboardingScreen from "./screens/OnboardingScreen";
 import MoodScreen from "./screens/MoodScreen";
@@ -108,8 +109,10 @@ function AppNavigator() {
           onNavigate={(s) => setScreen(s as Screen)}
         />
       )}
-      {screen === "swipe" && (
+      {screen === "swipe" && selectedBudget !== null && (
         <SwipeScreen
+          selectedMoods={selectedMoods}
+          budgetLevel={selectedBudget}
           onBack={() => setScreen("budget")}
           onChangePreferences={() => setScreen("mood")}
           onDetail={(restaurant) => {
@@ -201,10 +204,12 @@ function AppNavigator() {
 
 export default function App() {
   return (
-    <SafeAreaProvider>
-      <AuthProvider>
-        <AppNavigator />
-      </AuthProvider>
-    </SafeAreaProvider>
+    <ErrorBoundary>
+      <SafeAreaProvider>
+        <AuthProvider>
+          <AppNavigator />
+        </AuthProvider>
+      </SafeAreaProvider>
+    </ErrorBoundary>
   );
 }
