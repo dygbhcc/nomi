@@ -1,7 +1,10 @@
+require("dotenv").config();
+
 const admin = require("firebase-admin");
 const logger = require("firebase-functions/logger");
 const {onCall, HttpsError} = require("firebase-functions/v2/https");
 const {nearbySearch, placeDetails} = require("./services/googlePlacesService");
+const {getOrUploadPhoto} = require("./services/cloudinaryService");
 const lisbonNeighborhoods = require("./config/lisbonNeighborhoods");
 
 admin.initializeApp();
@@ -32,7 +35,34 @@ function isOpenMonday(openingHours) {
   return !mondayEntry.toLowerCase().includes("closed");
 }
 
-function buildRestaurantDocument(place) {
+async function buildRestaurantDocument(place) {
+  let cloudinaryPhotos = [];
+
+  if (place.photos && place.photos.length > 0) {
+    const firstPhoto = place.photos[0];
+    const cloudinaryUrl = await getOrUploadPhoto(
+        firstPhoto.photo_reference,
+        place.place_id,
+        0,
+    );
+
+    if (cloudinaryUrl) {
+      cloudinaryPhotos = [{
+        url: cloudinaryUrl,
+        source: "cloudinary",
+        width: firstPhoto.width,
+        height: firstPhoto.height,
+      }];
+    } else {
+      cloudinaryPhotos = [{
+        photo_reference: firstPhoto.photo_reference,
+        source: "google",
+        width: firstPhoto.width,
+        height: firstPhoto.height,
+      }];
+    }
+  }
+
   return {
     place_id: place.place_id || "",
     name: place.name || "",
@@ -52,11 +82,7 @@ function buildRestaurantDocument(place) {
     phone: place.formatted_phone_number || "",
     website: place.website || "",
     google_rating: place.rating || 0,
-    photos: (place.photos || []).map((photo) => ({
-      photo_reference: photo.photo_reference || "",
-      width: photo.width || 0,
-      height: photo.height || 0,
-    })),
+    photos: cloudinaryPhotos,
     cache_date: admin.firestore.FieldValue.serverTimestamp(),
     is_local_concept: false,
   };
@@ -155,10 +181,21 @@ async function fetchAndCacheByCoordinates({lat, lng, radius = 800, maxResults = 
       }),
   );
 
-  const restaurants = detailedPlaces
-      .filter(Boolean)
-      .map((place) => buildRestaurantDocument(place))
-      .filter((restaurant) => restaurant.place_id);
+  const restaurants = (await Promise.all(
+      detailedPlaces
+          .filter(Boolean)
+          .map(async (place) => {
+            try {
+              return await buildRestaurantDocument(place);
+            } catch (error) {
+              logger.warn("buildRestaurantDocument failed", {
+                placeId: place.place_id,
+                error: error.message,
+              });
+              return null;
+            }
+          }),
+  )).filter(Boolean).filter((restaurant) => restaurant.place_id);
 
   await writeRegionCache(regionKey, restaurants);
 
@@ -169,34 +206,44 @@ async function fetchAndCacheByCoordinates({lat, lng, radius = 800, maxResults = 
   };
 }
 
-exports.fetchAndCacheRestaurants = onCall({region: "europe-west1"}, async (request) => {
-  const data = request.data || {};
-  return fetchAndCacheByCoordinates({
-    lat: data.lat,
-    lng: data.lng,
-    radius: data.radius || 800,
-    maxResults: data.maxResults || MAX_RESULTS_DEFAULT,
-  });
-});
+exports.fetchAndCacheRestaurants = onCall(
+    {
+      region: "europe-west1",
+    },
+    async (request) => {
+      const data = request.data || {};
+      return fetchAndCacheByCoordinates({
+        lat: data.lat,
+        lng: data.lng,
+        radius: data.radius || 800,
+        maxResults: data.maxResults || MAX_RESULTS_DEFAULT,
+      });
+    },
+);
 
-exports.warmupLisbonRestaurants = onCall({region: "europe-west1"}, async () => {
-  const results = [];
-  for (const neighborhood of lisbonNeighborhoods) {
-    const response = await fetchAndCacheByCoordinates({
-      lat: neighborhood.lat,
-      lng: neighborhood.lng,
-      radius: neighborhood.radius,
-      maxResults: 40,
-    });
-    results.push({
-      neighborhood: neighborhood.name,
-      source: response.source,
-      count: response.count,
-    });
-  }
+exports.warmupLisbonRestaurants = onCall(
+    {
+      region: "europe-west1",
+    },
+    async () => {
+      const results = [];
+      for (const neighborhood of lisbonNeighborhoods) {
+        const response = await fetchAndCacheByCoordinates({
+          lat: neighborhood.lat,
+          lng: neighborhood.lng,
+          radius: neighborhood.radius,
+          maxResults: 40,
+        });
+        results.push({
+          neighborhood: neighborhood.name,
+          source: response.source,
+          count: response.count,
+        });
+      }
 
-  return {
-    totalNeighborhoods: lisbonNeighborhoods.length,
-    results,
-  };
-});
+      return {
+        totalNeighborhoods: lisbonNeighborhoods.length,
+        results,
+      };
+    },
+);
