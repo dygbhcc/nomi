@@ -10,8 +10,11 @@ import {
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { StatusBar } from "expo-status-bar";
+import * as Haptics from "expo-haptics";
 import { Colors } from "../theme/colors";
 import { Restaurant } from "../services/restaurantService";
+import { saveRestaurant, unsaveRestaurant } from "../services/swipeService";
+import { useAuth } from "../context/AuthContext";
 
 type DayHours = {
   day: string;
@@ -55,9 +58,23 @@ type Props = {
 };
 
 export default function RestaurantDetailScreen({ restaurant, onBack }: Props) {
+  const { user } = useAuth();
   const [saved, setSaved] = useState(false);
   const [validated, setValidated] = useState(false);
   const todayIndex = getTodayIndex();
+
+  const handleBookmark = async () => {
+    if (!user) return;
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+
+    if (saved) {
+      await unsaveRestaurant(user.uid, restaurant.id);
+      setSaved(false);
+    } else {
+      await saveRestaurant(user.uid, restaurant.id);
+      setSaved(true);
+    }
+  };
 
   const openReserve = () => {
     Linking.openURL(`https://www.thefork.com/search?q=${encodeURIComponent(restaurant.name)}`);
@@ -95,8 +112,15 @@ export default function RestaurantDetailScreen({ restaurant, onBack }: Props) {
 
         {/* Bottom overlay: save button */}
         <View style={styles.heroOverlay}>
-          <TouchableOpacity style={styles.saveButton} onPress={() => setSaved(!saved)}>
-            <Text style={styles.saveIcon}>{saved ? "\u{1F516}" : "\u{1F517}"}</Text>
+          <TouchableOpacity
+            style={styles.saveButton}
+            onPress={handleBookmark}
+            accessibilityLabel={saved ? "Remove from saved" : "Save restaurant"}
+            accessibilityRole="button"
+          >
+            <Text style={[styles.saveIcon, saved && { color: Colors.accent }]}>
+              {saved ? "🔖" : "🔗"}
+            </Text>
           </TouchableOpacity>
         </View>
       </View>

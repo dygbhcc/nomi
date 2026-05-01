@@ -15,6 +15,7 @@ import { StatusBar } from "expo-status-bar";
 import * as Haptics from "expo-haptics"; // FIX 3 - Haptic feedback
 import { Colors } from "../theme/colors";
 import { getRestaurantsByMood, buildReason, Restaurant } from '../services/restaurantService';
+import { recordSwipe } from '../services/swipeService';
 import { useAuth } from '../context/AuthContext';
 
 const BATCH_SIZE = 3;
@@ -101,6 +102,16 @@ export default function SwipeScreen({ selectedMoods, budgetLevel, onBack, onChan
       Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
     } else {
       Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    }
+
+    // Record swipe to Firestore
+    if (user && restaurant) {
+      recordSwipe(
+        user.uid,
+        restaurant.id,
+        direction === "right" ? "like" : "pass",
+        selectedMoods
+      );
     }
 
     const toValue = direction === "right" ? SCREEN_WIDTH * 1.5 : -SCREEN_WIDTH * 1.5;

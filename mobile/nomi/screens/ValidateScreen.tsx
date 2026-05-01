@@ -11,9 +11,12 @@ import {
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { StatusBar } from "expo-status-bar";
+import * as Haptics from "expo-haptics";
 import { Colors } from "../theme/colors";
 import SwipeVoteCard from "../components/SwipeVoteCard";
 import BottomNavigationBar from "../components/BottomNavigationBar";
+import { recordValidation } from "../services/swipeService";
+import { useAuth } from "../context/AuthContext";
 
 const ACCENT = Colors.accent;
 const BG = Colors.background;
@@ -97,6 +100,7 @@ type Props = {
 };
 
 export default function ValidateScreen({ onDone, onSkip, onNavigate }: Props) {
+  const { user } = useAuth();
   const [currentIndex, setCurrentIndex] = useState(0);
   const [validated, setValidated] = useState(0);
   const [totalPoints, setTotalPoints] = useState(0);
@@ -152,7 +156,21 @@ export default function ValidateScreen({ onDone, onSkip, onNavigate }: Props) {
     ]).start();
   };
 
-  const handleAnswer = (direction: "left" | "right") => {
+  const handleAnswer = async (direction: "left" | "right") => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+
+    const currentItem = MOCK_VALIDATE_QUEUE[currentIndex % MOCK_VALIDATE_QUEUE.length];
+
+    // Record validation to Firestore
+    if (user && currentItem) {
+      await recordValidation(
+        user.uid,
+        currentItem.id,
+        currentItem.mood,
+        direction === "right"
+      );
+    }
+
     const toValue = direction === "right" ? SCREEN_WIDTH * 1.5 : -SCREEN_WIDTH * 1.5;
     Animated.timing(translateX, {
       toValue,
