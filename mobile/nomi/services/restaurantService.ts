@@ -42,7 +42,7 @@ export type Restaurant = {
 export const getRestaurantsByMood = async (
   moods: string[],
   budgetLevel: number,
-  maxResults: number = 10
+  maxResults: number = 6
 ): Promise<Restaurant[]> => {
   try {
     let q;

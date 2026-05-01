@@ -18,7 +18,7 @@ import { getRestaurantsByMood, buildReason, Restaurant } from '../services/resta
 import { recordSwipe } from '../services/swipeService';
 import { useAuth } from '../context/AuthContext';
 
-const BATCH_SIZE = 3;
+const BATCH_SIZE = 2;
 const SWIPE_THRESHOLD = 100;
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get("window");
 
@@ -59,7 +59,7 @@ export default function SwipeScreen({ selectedMoods, budgetLevel, onBack, onChan
       setLoading(true);
       setError(null);
       try {
-        const data = await getRestaurantsByMood(selectedMoods, budgetLevel, 15);
+        const data = await getRestaurantsByMood(selectedMoods, budgetLevel, 6);
         const withReasons = data.map(r => ({
           ...r,
           reason: buildReason(r, selectedMoods),
@@ -158,7 +158,7 @@ export default function SwipeScreen({ selectedMoods, budgetLevel, onBack, onChan
     setLoading(true);
     setError(null);
     try {
-      const data = await getRestaurantsByMood(selectedMoods, budgetLevel, 15);
+      const data = await getRestaurantsByMood(selectedMoods, budgetLevel, 6);
       const withReasons = data.map(r => ({
         ...r,
         reason: buildReason(r, selectedMoods),
