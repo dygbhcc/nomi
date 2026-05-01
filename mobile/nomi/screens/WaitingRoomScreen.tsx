@@ -9,6 +9,7 @@ import {
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { StatusBar } from "expo-status-bar";
+import { useTranslation } from "react-i18next";
 import { Colors } from "../theme/colors";
 
 type Participant = {
@@ -58,6 +59,7 @@ function PulsingDot() {
 }
 
 export default function WaitingRoomScreen({ roomCode, onBack, onStartVoting }: Props) {
+  const { t } = useTranslation();
   const [participants, setParticipants] = useState<Participant[]>(INITIAL_PARTICIPANTS);
 
   // Simulate participant becoming ready after 3 seconds
@@ -75,7 +77,7 @@ export default function WaitingRoomScreen({ roomCode, onBack, onStartVoting }: P
 
   const handleShare = async () => {
     await Share.share({
-      message: `Join my Nomi room! Code: ${roomCode}\nhttps://nomi.app/room/${roomCode}`,
+      message: t('waitingRoom.shareMessage', { code: roomCode }),
     });
   };
 
@@ -94,17 +96,17 @@ export default function WaitingRoomScreen({ roomCode, onBack, onStartVoting }: P
           <Text style={styles.codeText} selectable>{roomCode}</Text>
         </View>
         <TouchableOpacity style={styles.shareButton} onPress={handleShare}>
-          <Text style={styles.shareButtonText}>Share</Text>
+          <Text style={styles.shareButtonText}>{t('common.share')}</Text>
         </TouchableOpacity>
       </View>
 
       {/* Title with pulsing dot */}
       <View style={styles.titleRow}>
         <PulsingDot />
-        <Text style={styles.title}>Waiting for friends...</Text>
+        <Text style={styles.title}>{t('waitingRoom.waitingForMembers')}</Text>
       </View>
       <Text style={styles.subtitle}>
-        {readyCount}/{participants.length} ready
+        {t('waitingRoom.membersReady', { count: readyCount, total: participants.length })}
       </Text>
 
       {/* Participant list */}
@@ -118,7 +120,7 @@ export default function WaitingRoomScreen({ roomCode, onBack, onStartVoting }: P
             <View style={styles.statusContainer}>
               <View style={[styles.statusDot, { backgroundColor: p.ready ? GREEN : TEXT_SECONDARY }]} />
               <Text style={[styles.statusText, { color: p.ready ? GREEN : TEXT_SECONDARY }]}>
-                {p.ready ? "Ready" : "Waiting..."}
+                {p.ready ? t('common.ok') : t('common.loading')}
               </Text>
             </View>
           </View>
@@ -134,11 +136,11 @@ export default function WaitingRoomScreen({ roomCode, onBack, onStartVoting }: P
           onPress={handleStartVoting}
         >
           <Text style={styles.startButtonText}>
-            {canStart ? 'Start Voting' : `Waiting for others... (${participants.length}/2)`}
+            {canStart ? t('waitingRoom.startVoting') : t('waitingRoom.waitingForMembers')}
           </Text>
         </TouchableOpacity>
         <TouchableOpacity style={styles.leaveButton} onPress={onBack}>
-          <Text style={styles.leaveText}>Leave room</Text>
+          <Text style={styles.leaveText}>{t('waitingRoom.leaveRoom')}</Text>
         </TouchableOpacity>
       </View>
     </SafeAreaView>

@@ -1,0 +1,393 @@
+{
+  "common": {
+    "loading": "A carregar...",
+    "loadingPreferences": "A carregar preferências...",
+    "error": "Erro",
+    "errorOccurred": "Ocorreu um erro. Por favor tente novamente",
+    "ok": "OK",
+    "cancel": "Cancelar",
+    "continue": "Continuar",
+    "skip": "Saltar",
+    "back": "Voltar",
+    "next": "Seguinte",
+    "done": "Concluído",
+    "save": "Guardar",
+    "delete": "Eliminar",
+    "confirm": "Confirmar",
+    "yes": "Sim",
+    "no": "Não",
+    "share": "Partilhar",
+    "loadMore": "Carregar Mais",
+    "details": "Detalhes",
+    "open": "Aberto",
+    "something": "Algo",
+    "likedThis": "gostaram disto",
+    "nearby": "Perto",
+    "tapToViewDetails": "Toca para ver detalhes"
+  },
+  "tabs": {
+    "home": "Início",
+    "validate": "Validar",
+    "group": "Grupo",
+    "ranking": "Ranking",
+    "profile": "Perfil"
+  },
+  "auth": {
+    "signIn": "Entrar",
+    "signUp": "Registar",
+    "createAccount": "Criar Conta",
+    "continueAsGuest": "Continuar como Convidado",
+    "guestNote": "Salas de grupo e pontos requerem uma conta",
+    "displayNamePlaceholder": "Nome de exibição",
+    "emailPlaceholder": "Email",
+    "passwordPlaceholder": "Palavra-passe",
+    "fillAllFields": "Por favor preencha todos os campos",
+    "errors": {
+      "userNotFound": "Não foi encontrada nenhuma conta com este email",
+      "wrongPassword": "Palavra-passe incorreta",
+      "emailInUse": "Já existe uma conta com este email",
+      "weakPassword": "A palavra-passe deve ter pelo menos 6 caracteres",
+      "invalidEmail": "Por favor insira um endereço de email válido",
+      "tooManyRequests": "Demasiadas tentativas. Por favor tente mais tarde",
+      "default": "Ocorreu um erro. Por favor tente novamente"
+    }
+  },
+  "onboarding": {
+    "skip": "Saltar",
+    "getStarted": "Começar",
+    "next": "Seguinte",
+    "slides": {
+      "1": {
+        "title": "Cansado de 'onde vamos comer?'",
+        "subtitle": "Deixa de discutir. Deixa o Nomi decidir."
+      },
+      "2": {
+        "title": "Desliza. Combina. Come.",
+        "subtitle": "Diz-nos o teu humor e orçamento. Encontramos o sítio perfeito em segundos."
+      },
+      "3": {
+        "title": "Chega de caos no chat de grupo",
+        "subtitle": "Todos votam, o Nomi decide. Justo, rápido, divertido."
+      }
+    }
+  },
+  "mood": {
+    "title": "Como te sentes?",
+    "selectMoods": "Seleciona 1-3 humores",
+    "continueButton": "Continuar",
+    "skipButton": "Saltar por agora",
+    "moods": {
+      "romantic": {
+        "label": "Romântico",
+        "hint": "Luzes baixas, noite a dois"
+      },
+      "energetic": {
+        "label": "Energético",
+        "hint": "Alto, animado, divertido"
+      },
+      "chill": {
+        "label": "Descontraído",
+        "hint": "Acolhedor, relaxado, sem pressa"
+      },
+      "explorer": {
+        "label": "Explorar",
+        "hint": "Novos sítios, joias escondidas"
+      },
+      "focus": {
+        "label": "Foco",
+        "hint": "Silencioso, bom wifi, calmo"
+      },
+      "hungryQuick": {
+        "label": "Com Fome e Rápido",
+        "hint": "Rápido, satisfatório, sem espera"
+      },
+      "surprise": {
+        "label": "Não sei, surpreende-me",
+        "hint": "Inesperado, excitante, divertido"
+      }
+    }
+  },
+  "budget": {
+    "budgetTitle": "Orçamento",
+    "distanceTitle": "Distância",
+    "continueButton": "Vamos Comer",
+    "budgetOptions": {
+      "1": "€ Económico",
+      "2": "€€ Médio",
+      "3": "€€€ Requintado"
+    },
+    "distanceOptions": {
+      "5": "5 min a pé",
+      "15": "15 min a pé",
+      "30": "30 min de viagem"
+    }
+  },
+  "swipe": {
+    "loading": "A encontrar o teu sítio perfeito...",
+    "errorLoading": "Falha ao carregar restaurantes",
+    "noResults": "Nenhum restaurante encontrado. Tenta ajustar as tuas preferências.",
+    "noMore": "É tudo por agora! Volta mais tarde para mais.",
+    "loadMore": "Carregar Mais",
+    "openNow": "Aberto agora",
+    "distance": "{{distance}} min",
+    "details": "Detalhes",
+    "moreToDiscover": "Mais {{count}} para descobrir",
+    "like": "GOSTO",
+    "nope": "NADA",
+    "whyForYou": "Porquê para ti?"
+  },
+  "liked": {
+    "title": "Gostei",
+    "subtitle": "{{count}} sítio",
+    "subtitle_plural": "{{count}} sítios",
+    "emptyState": "Ainda não gostas de nenhum restaurante. Começa a deslizar!",
+    "removeTitle": "Remover dos Gostei?",
+    "removeMessage": "Este restaurante será removido da tua lista de gostei.",
+    "remove": "Remover",
+    "cancel": "Cancelar"
+  },
+  "restaurantDetail": {
+    "openNow": "Aberto",
+    "closed": "Fechado",
+    "hours": "Horário",
+    "distance": "{{distance}} min a pé",
+    "actions": {
+      "directions": "Direções",
+      "call": "Ligar",
+      "share": "Partilhar"
+    },
+    "days": {
+      "monday": "Segunda-feira",
+      "tuesday": "Terça-feira",
+      "wednesday": "Quarta-feira",
+      "thursday": "Quinta-feira",
+      "friday": "Sexta-feira",
+      "saturday": "Sábado",
+      "sunday": "Domingo"
+    },
+    "validatePrompt": "Já estiveste aqui? Valida e ganha pontos!",
+    "validateButton": "Validar Visita"
+  },
+  "group": {
+    "title": "Salas de Grupo",
+    "createRoom": "Criar Sala",
+    "joinRoom": "Entrar na Sala",
+    "activeRooms": "Salas Ativas",
+    "noActiveRooms": "Sem salas de grupo ativas",
+    "createFirst": "Cria uma sala para começar a votar com amigos!",
+    "createRoomTitle": "Criar Sala de Grupo",
+    "roomName": "Nome da Sala",
+    "roomNamePlaceholder": "Jantar com amigos",
+    "selectMoods": "Seleciona Humores (1-3)",
+    "selectBudget": "Orçamento",
+    "selectDistance": "Distância",
+    "create": "Criar",
+    "cancel": "Cancelar",
+    "joinRoomTitle": "Entrar na Sala",
+    "enterCode": "Insere o código da sala",
+    "codePlaceholder": "Código de 6 dígitos",
+    "join": "Entrar",
+    "members": "{{count}} membro",
+    "members_plural": "{{count}} membros",
+    "inProgress": "Em Progresso",
+    "deleteTitle": "Eliminar Sala?",
+    "deleteMessage": "Isto irá remover a sala para todos os membros.",
+    "delete": "Eliminar",
+    "leaveTitle": "Sair da Sala?",
+    "leaveMessage": "Serás removido deste grupo.",
+    "leave": "Sair",
+    "errors": {
+      "fillAllFields": "Por favor preenche todos os campos",
+      "createFailed": "Falha ao criar sala",
+      "invalidCode": "Código de sala inválido",
+      "joinFailed": "Falha ao entrar na sala"
+    }
+  },
+  "waitingRoom": {
+    "waitingForMembers": "À espera de membros...",
+    "membersReady": "{{count}}/{{total}} membros prontos",
+    "shareCode": "Partilha este código com amigos:",
+    "startVoting": "Começar a Votar",
+    "leaveRoom": "Sair da Sala",
+    "shareMessage": "Entra no meu grupo Nomi! Código: {{code}}"
+  },
+  "voting": {
+    "loading": "A carregar restaurantes...",
+    "voting": "Vota em restaurantes",
+    "openNow": "Aberto agora",
+    "distance": "{{distance}} min",
+    "details": "Detalhes"
+  },
+  "groupLiked": {
+    "title": "Combinações do Grupo",
+    "subtitle": "{{count}} combinação",
+    "subtitle_plural": "{{count}} combinações",
+    "emptyState": "Ainda sem combinações. Continua a votar!",
+    "removeTitle": "Remover Combinação?",
+    "removeMessage": "Este restaurante será removido das combinações do grupo.",
+    "remove": "Remover",
+    "cancel": "Cancelar"
+  },
+  "groupVote": {
+    "title": "Resultados da Votação",
+    "waitingForVotes": "À espera que todos votem...",
+    "votes": "{{count}} voto",
+    "votes_plural": "{{count}} votos",
+    "emptyState": "Ainda sem votos"
+  },
+  "eventPlan": {
+    "timeLabel": "A que horas?",
+    "attendanceLabel": "Vens?",
+    "attendanceOptions": {
+      "going": "Vou ✅",
+      "maybe": "Talvez 🤔",
+      "notGoing": "Não posso ❌"
+    },
+    "noteLabel": "Adiciona uma nota (opcional)",
+    "notePlaceholder": "ex: Encontramo-nos à entrada!",
+    "saving": "A guardar...",
+    "confirmButton": "Confirmar plano 🎉"
+  },
+  "result": {
+    "title": "É uma Combinação!",
+    "viewDetails": "Ver Detalhes",
+    "planVisit": "Planear Visita",
+    "shareWithGroup": "Partilhar com o Grupo",
+    "winnerBadge": "Vencedor",
+    "shareTitle": "Partilhar Combinação?",
+    "shareMessage": "Partilhar este restaurante com o teu grupo?"
+  },
+  "profile": {
+    "level": "Nível {{level}}",
+    "points": "{{points}} pts",
+    "nextLevel": "{{points}} pts para Nível {{level}}",
+    "memberSince": "Membro desde {{date}}",
+    "sections": {
+      "stats": "Estatísticas",
+      "badges": "Distintivos",
+      "activity": "Atividade Recente"
+    },
+    "stats": {
+      "restaurantsVisited": "Restaurantes Visitados",
+      "restaurantsValidated": "Validados",
+      "groupSessions": "Sessões de Grupo",
+      "matchesFound": "Combinações Encontradas"
+    },
+    "badges": {
+      "firstVisit": {
+        "name": "Primeira Visita",
+        "description": "Validaste o teu primeiro restaurante"
+      },
+      "socialButterfly": {
+        "name": "Borboleta Social",
+        "description": "Participaste em 5 sessões de grupo"
+      },
+      "explorer": {
+        "name": "Explorador",
+        "description": "Visitaste 10 restaurantes diferentes"
+      },
+      "localGuide": {
+        "name": "Guia Local",
+        "description": "Validaste 25 restaurantes"
+      },
+      "weekendWarrior": {
+        "name": "Guerreiro do Fim de Semana",
+        "description": "Visitaste restaurantes 3 fins de semana seguidos"
+      },
+      "earlyBird": {
+        "name": "Madrugador",
+        "description": "Validaste 5 sítios de pequeno-almoço"
+      }
+    },
+    "noBadges": "Ainda sem distintivos. Começa a explorar!",
+    "levels": {
+      "1": "Principiante",
+      "2": "Explorador",
+      "3": "Habitual",
+      "4": "Apreciador",
+      "5": "Conhecedor"
+    }
+  },
+  "leaderboard": {
+    "title": "Tabela de Classificação",
+    "tabs": {
+      "weekly": "Semanal",
+      "allTime": "Desde Sempre"
+    },
+    "resetsIn": "Reinicia em {{time}}",
+    "you": "Tu",
+    "points": "{{points}} pts",
+    "podium": {
+      "1st": "1º",
+      "2nd": "2º",
+      "3rd": "3º"
+    }
+  },
+  "validate": {
+    "title": "Validar Visitas",
+    "progressLabel": "Progresso",
+    "progressValue": "{{current}}/{{total}} validados",
+    "doneTitle": "Tudo em dia!",
+    "doneMessage": "Sem validações pendentes",
+    "earnedPoints": "+{{points}} pts",
+    "visitedLabel": "Visitaste este sítio?",
+    "visitedOn": "Visitado em {{date}}",
+    "confirmButton": "Sim, visitei",
+    "skipButton": "Saltar",
+    "moods": {
+      "romantic": "Romântico",
+      "energetic": "Energético",
+      "chill": "Descontraído",
+      "explorer": "Explorar",
+      "focus": "Foco",
+      "hungryQuick": "Com Fome e Rápido"
+    }
+  },
+  "settings": {
+    "title": "Definições",
+    "sections": {
+      "account": "Conta",
+      "notifications": "Notificações",
+      "preferences": "Preferências",
+      "about": "Sobre"
+    },
+    "account": {
+      "changeDisplayName": "Alterar nome de exibição",
+      "enterNewName": "Insere novo nome",
+      "save": "Guardar",
+      "signOut": "Sair"
+    },
+    "notifications": {
+      "groupInvites": "Convites de grupo",
+      "leaderboardUpdates": "Atualizações da classificação",
+      "newRestaurants": "Novos restaurantes por perto",
+      "validateReminders": "Lembretes de validação"
+    },
+    "preferences": {
+      "darkMode": "Modo escuro",
+      "language": "Idioma",
+      "defaultCity": "Cidade padrão",
+      "defaultBudget": "Orçamento padrão",
+      "cities": {
+        "lisbon": "Lisboa 🇵🇹",
+        "porto": "Porto 🇵🇹",
+        "algarve": "Algarve 🇵🇹"
+      }
+    },
+    "about": {
+      "website": "Website",
+      "privacy": "Política de Privacidade",
+      "terms": "Termos de Serviço",
+      "version": "Versão {{version}}"
+    },
+    "languages": {
+      "en": "English",
+      "pt": "Português"
+    }
+  },
+  "errorBoundary": {
+    "title": "Algo correu mal",
+    "message": "Pedimos desculpa pelo inconveniente. Por favor tenta reiniciar a aplicação.",
+    "restart": "Reiniciar App"
+  }
+}

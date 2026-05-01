@@ -10,6 +10,7 @@ import {
   Alert,
 } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
+import { useTranslation } from 'react-i18next';
 import * as Haptics from 'expo-haptics';
 import { Colors } from '../theme/colors';
 import { Restaurant } from '../services/restaurantService';
@@ -21,15 +22,17 @@ type Props = {
 };
 
 export default function LikedScreen({ likedRestaurants, onSelect, onStartOver }: Props) {
+  const { t } = useTranslation();
+
   const handleStartOver = () => {
     __DEV__ && console.log('handleStartOver called in LikedScreen');
     Alert.alert(
-      'Start New Search?',
-      "You'll lose your current picks.",
+      t('liked.removeTitle'),
+      t('liked.removeMessage'),
       [
-        { text: 'Cancel', style: 'cancel', onPress: () => __DEV__ && console.log('User cancelled') },
+        { text: t('liked.cancel'), style: 'cancel', onPress: () => __DEV__ && console.log('User cancelled') },
         {
-          text: 'Start Over',
+          text: t('liked.remove'),
           style: 'destructive',
           onPress: () => {
             __DEV__ && console.log('User confirmed Start Over');
@@ -43,7 +46,6 @@ export default function LikedScreen({ likedRestaurants, onSelect, onStartOver }:
   const getPhotoUrl = (restaurant: Restaurant): string | null => {
     if (!restaurant.photos || restaurant.photos.length === 0) return null;
     const photo = restaurant.photos[0];
-    if (photo.url) return photo.url;
     if (photo.photo_reference) {
       return `https://maps.googleapis.com/maps/api/place/photo?maxwidth=800&photo_reference=${photo.photo_reference}&key=${process.env.EXPO_PUBLIC_GOOGLE_PLACES_API_KEY}`;
     }
@@ -70,7 +72,7 @@ export default function LikedScreen({ likedRestaurants, onSelect, onStartOver }:
         )}
         <View style={styles.cardInfo}>
           <Text style={styles.cardName} numberOfLines={1}>{item.name}</Text>
-          <Text style={styles.cardMeta}>{item.distance || 'Nearby'} · {'€'.repeat(item.budget_level)}</Text>
+          <Text style={styles.cardMeta}>{item.distance || t('common.nearby')} · {'€'.repeat(item.budget_level)}</Text>
           <View style={styles.badgeRow}>
             {item.mood_tags?.slice(0, 2).map(mood => (
               <View key={mood} style={styles.badge}>
@@ -78,7 +80,7 @@ export default function LikedScreen({ likedRestaurants, onSelect, onStartOver }:
               </View>
             ))}
           </View>
-          <Text style={styles.cardHint}>Tap to view details</Text>
+          <Text style={styles.cardHint}>{t('common.tapToViewDetails')}</Text>
         </View>
       </TouchableOpacity>
     );
@@ -90,15 +92,15 @@ export default function LikedScreen({ likedRestaurants, onSelect, onStartOver }:
         <StatusBar style="dark" />
         <View style={styles.emptyContainer}>
           <Text style={styles.emptyEmoji}>🤔</Text>
-          <Text style={styles.emptyTitle}>Nothing caught your eye?</Text>
-          <Text style={styles.emptySubtitle}>Try different preferences or explore more spots.</Text>
+          <Text style={styles.emptyTitle}>{t('liked.emptyState')}</Text>
+          <Text style={styles.emptySubtitle}>{t('swipe.noMore')}</Text>
           <TouchableOpacity
             style={styles.startOverButton}
             onPress={handleStartOver}
             accessibilityLabel="Start over"
             accessibilityRole="button"
           >
-            <Text style={styles.startOverText}>Start over</Text>
+            <Text style={styles.startOverText}>{t('common.back')}</Text>
           </TouchableOpacity>
         </View>
       </SafeAreaView>
@@ -109,9 +111,9 @@ export default function LikedScreen({ likedRestaurants, onSelect, onStartOver }:
     <SafeAreaView style={styles.container}>
       <StatusBar style="dark" />
       <View style={styles.header}>
-        <Text style={styles.title}>Your picks</Text>
+        <Text style={styles.title}>{t('liked.title')}</Text>
         <Text style={styles.subtitle}>
-          {likedRestaurants.length} place{likedRestaurants.length > 1 ? 's' : ''} you liked
+          {t('liked.subtitle', { count: likedRestaurants.length })}
         </Text>
       </View>
       <FlatList
@@ -128,7 +130,7 @@ export default function LikedScreen({ likedRestaurants, onSelect, onStartOver }:
           accessibilityLabel="Start over with new preferences"
           accessibilityRole="button"
         >
-          <Text style={styles.startOverText}>Start over</Text>
+          <Text style={styles.startOverText}>{t('common.back')}</Text>
         </TouchableOpacity>
       </View>
     </SafeAreaView>

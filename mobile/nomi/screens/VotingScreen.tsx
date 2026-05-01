@@ -11,6 +11,7 @@ import {
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { StatusBar } from "expo-status-bar";
+import { useTranslation } from "react-i18next";
 import * as Haptics from "expo-haptics";
 import { Colors } from "../theme/colors";
 import SwipeVoteCard from "../components/SwipeVoteCard";
@@ -46,6 +47,7 @@ type Props = {
 };
 
 export default function VotingScreen({ roomCode, selectedMoods, budgetLevel, onVotingComplete, onBack }: Props) {
+  const { t } = useTranslation();
   const { user } = useAuth();
   const [restaurants, setRestaurants] = useState<Restaurant[]>([]);
   const [currentIndex, setCurrentIndex] = useState(0);
@@ -224,7 +226,7 @@ export default function VotingScreen({ roomCode, selectedMoods, budgetLevel, onV
         <StatusBar style="dark" />
         <View style={styles.doneContainer}>
           <ActivityIndicator size="large" color={ACCENT} />
-          <Text style={styles.doneTitle}>Loading restaurants...</Text>
+          <Text style={styles.doneTitle}>{t('voting.loading')}</Text>
         </View>
       </SafeAreaView>
     );
@@ -237,8 +239,8 @@ export default function VotingScreen({ roomCode, selectedMoods, budgetLevel, onV
         <StatusBar style="dark" />
         <View style={styles.doneContainer}>
           <Text style={styles.doneEmoji}>{"\u{1F4CA}"}</Text>
-          <Text style={styles.doneTitle}>Counting votes...</Text>
-          <Text style={styles.doneSubtitle}>Waiting for everyone to finish</Text>
+          <Text style={styles.doneTitle}>{t('voting.loading')}</Text>
+          <Text style={styles.doneSubtitle}>{t('groupVote.waitingForVotes')}</Text>
         </View>
       </SafeAreaView>
     );

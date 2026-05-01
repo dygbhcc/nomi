@@ -11,6 +11,7 @@ import {
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { StatusBar } from "expo-status-bar";
+import { useTranslation } from "react-i18next";
 import * as Haptics from "expo-haptics";
 import { Colors } from "../theme/colors";
 import { Restaurant } from "../services/restaurantService";
@@ -24,13 +25,13 @@ type DayHours = {
 };
 
 const MOCK_HOURS: DayHours[] = [
-  { day: "Monday", hours: "Closed", closed: true },
-  { day: "Tuesday", hours: "12:00 – 15:00, 19:00 – 23:00", closed: false },
-  { day: "Wednesday", hours: "12:00 – 15:00, 19:00 – 23:00", closed: false },
-  { day: "Thursday", hours: "12:00 – 15:00, 19:00 – 23:00", closed: false },
-  { day: "Friday", hours: "12:00 – 15:00, 19:00 – 00:00", closed: false },
-  { day: "Saturday", hours: "12:00 – 00:00", closed: false },
-  { day: "Sunday", hours: "12:00 – 16:00", closed: false },
+  { day: "monday", hours: "Closed", closed: true },
+  { day: "tuesday", hours: "12:00 – 15:00, 19:00 – 23:00", closed: false },
+  { day: "wednesday", hours: "12:00 – 15:00, 19:00 – 23:00", closed: false },
+  { day: "thursday", hours: "12:00 – 15:00, 19:00 – 23:00", closed: false },
+  { day: "friday", hours: "12:00 – 15:00, 19:00 – 00:00", closed: false },
+  { day: "saturday", hours: "12:00 – 00:00", closed: false },
+  { day: "sunday", hours: "12:00 – 16:00", closed: false },
 ];
 
 const ACCENT = Colors.accent;
@@ -60,6 +61,7 @@ type Props = {
 };
 
 export default function RestaurantDetailScreen({ restaurant, onBack }: Props) {
+  const { t } = useTranslation();
   const { user } = useAuth();
   const [saved, setSaved] = useState(false);
   const [validated, setValidated] = useState(false);
@@ -139,7 +141,7 @@ export default function RestaurantDetailScreen({ restaurant, onBack }: Props) {
             {restaurant.opening_hours?.is_open_monday !== false && (
               <View style={styles.openBadge}>
                 <View style={styles.openDot} />
-                <Text style={styles.openText}>Open</Text>
+                <Text style={styles.openText}>{t('common.open')}</Text>
               </View>
             )}
           </View>
@@ -185,7 +187,7 @@ export default function RestaurantDetailScreen({ restaurant, onBack }: Props) {
                     isToday && styles.hoursTodayText,
                   ]}
                 >
-                  {entry.day}
+                  {t(`restaurantDetail.days.${entry.day}`)}
                 </Text>
                 <Text
                   style={[
@@ -205,19 +207,19 @@ export default function RestaurantDetailScreen({ restaurant, onBack }: Props) {
         <View style={styles.actionsGrid}>
           <TouchableOpacity style={styles.actionButton} onPress={openReserve}>
             <Text style={styles.actionIcon}>{"\u{1F4C5}"}</Text>
-            <Text style={styles.actionLabel}>Reserve</Text>
+            <Text style={styles.actionLabel}>{t('result.planVisit')}</Text>
           </TouchableOpacity>
           <TouchableOpacity style={styles.actionButton} onPress={openDirections}>
             <Text style={styles.actionIcon}>{"\u{1F5FA}"}</Text>
-            <Text style={styles.actionLabel}>Directions</Text>
+            <Text style={styles.actionLabel}>{t('restaurantDetail.actions.directions')}</Text>
           </TouchableOpacity>
           <TouchableOpacity style={styles.actionButton} onPress={openMenu}>
             <Text style={styles.actionIcon}>{"\u{1F4CB}"}</Text>
-            <Text style={styles.actionLabel}>Menu</Text>
+            <Text style={styles.actionLabel}>{t('common.details')}</Text>
           </TouchableOpacity>
           <TouchableOpacity style={styles.actionButton} onPress={() => {}}>
             <Text style={styles.actionIcon}>{"\u{1F465}"}</Text>
-            <Text style={styles.actionLabel}>Share with group</Text>
+            <Text style={styles.actionLabel}>{t('common.share')}</Text>
           </TouchableOpacity>
         </View>
 
@@ -228,7 +230,7 @@ export default function RestaurantDetailScreen({ restaurant, onBack }: Props) {
           ) : (
             <TouchableOpacity style={styles.validateRow} onPress={() => setValidated(true)}>
               <Text style={styles.validateText}>
-                Is this place {restaurant.mood_tags?.[0] || "good"}?
+                {t('restaurantDetail.validatePrompt')}
               </Text>
               <View style={styles.validatePoints}>
                 <Text style={styles.validatePointsText}>+5 pts</Text>

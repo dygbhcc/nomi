@@ -13,6 +13,7 @@ import {
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { StatusBar } from "expo-status-bar";
+import { useTranslation } from "react-i18next";
 import { Colors, Typography, Spacing, BorderRadius } from "../theme/colors";
 import { useAuth } from "../context/AuthContext";
 
@@ -20,6 +21,7 @@ type TabType = "signin" | "signup";
 
 export default function AuthScreen() {
   const { signIn, signUp, continueAsGuest } = useAuth();
+  const { t } = useTranslation();
   const [activeTab, setActiveTab] = useState<TabType>("signin");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -35,19 +37,19 @@ export default function AuthScreen() {
   const cleanErrorMessage = (errorCode: string): string => {
     switch (errorCode) {
       case "auth/user-not-found":
-        return "No account found with this email";
+        return t('auth.errors.userNotFound');
       case "auth/wrong-password":
-        return "Incorrect password";
+        return t('auth.errors.wrongPassword');
       case "auth/email-already-in-use":
-        return "An account already exists with this email";
+        return t('auth.errors.emailInUse');
       case "auth/weak-password":
-        return "Password must be at least 6 characters";
+        return t('auth.errors.weakPassword');
       case "auth/invalid-email":
-        return "Please enter a valid email address";
+        return t('auth.errors.invalidEmail');
       case "auth/too-many-requests":
-        return "Too many attempts. Please try again later";
+        return t('auth.errors.tooManyRequests');
       default:
-        return "An error occurred. Please try again";
+        return t('auth.errors.default');
     }
   };
 
@@ -59,7 +61,7 @@ export default function AuthScreen() {
 
   const handleSignIn = async () => {
     if (!email || !password) {
-      showError("Please fill in all fields");
+      showError(t('auth.fillAllFields'));
       return;
     }
 
@@ -79,7 +81,7 @@ export default function AuthScreen() {
 
   const handleSignUp = async () => {
     if (!email || !password || !displayName) {
-      showError("Please fill in all fields");
+      showError(t('auth.fillAllFields'));
       return;
     }
 
@@ -133,7 +135,7 @@ export default function AuthScreen() {
                   activeTab === "signin" && styles.activeTabText,
                 ]}
               >
-                Sign In
+                {t('auth.signIn')}
               </Text>
             </TouchableOpacity>
             <TouchableOpacity
@@ -152,7 +154,7 @@ export default function AuthScreen() {
                   activeTab === "signup" && styles.activeTabText,
                 ]}
               >
-                Sign Up
+                {t('auth.signUp')}
               </Text>
             </TouchableOpacity>
           </View>
@@ -163,7 +165,7 @@ export default function AuthScreen() {
               <TextInput
                 ref={displayNameRef}
                 style={styles.input}
-                placeholder="Display name"
+                placeholder={t('auth.displayNamePlaceholder')}
                 placeholderTextColor={Colors.textTertiary}
                 value={displayName}
                 onChangeText={setDisplayName}
@@ -179,7 +181,7 @@ export default function AuthScreen() {
             <TextInput
               ref={emailRef}
               style={styles.input}
-              placeholder="Email"
+              placeholder={t('auth.emailPlaceholder')}
               placeholderTextColor={Colors.textTertiary}
               value={email}
               onChangeText={setEmail}
@@ -196,7 +198,7 @@ export default function AuthScreen() {
             <TextInput
               ref={passwordRef}
               style={styles.input}
-              placeholder="Password"
+              placeholder={t('auth.passwordPlaceholder')}
               placeholderTextColor={Colors.textTertiary}
               value={password}
               onChangeText={setPassword}
@@ -233,7 +235,7 @@ export default function AuthScreen() {
                 <ActivityIndicator color={Colors.textOnAccent} />
               ) : (
                 <Text style={styles.mainButtonText}>
-                  {activeTab === "signin" ? "Sign In" : "Create Account"}
+                  {activeTab === "signin" ? t('auth.signIn') : t('auth.createAccount')}
                 </Text>
               )}
             </TouchableOpacity>
@@ -247,12 +249,12 @@ export default function AuthScreen() {
               accessibilityRole="button"
               accessibilityHint="Use the app without creating an account"
             >
-              <Text style={styles.guestButtonText}>Continue as Guest</Text>
+              <Text style={styles.guestButtonText}>{t('auth.continueAsGuest')}</Text>
             </TouchableOpacity>
 
             {/* Guest Note */}
             <Text style={styles.guestNote}>
-              Group rooms and points require an account
+              {t('auth.guestNote')}
             </Text>
           </View>
         </ScrollView>

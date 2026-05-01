@@ -12,6 +12,7 @@ import {
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { StatusBar } from "expo-status-bar";
+import { useTranslation } from "react-i18next";
 import * as Haptics from "expo-haptics";
 import { Colors, Shadows, Spacing, BorderRadius } from "../theme/colors";
 import BottomNavigationBar from "../components/BottomNavigationBar";
@@ -22,20 +23,20 @@ const CARD_IMAGE_HEIGHT = CARD_WIDTH * 0.65; // image takes 65% of card width
 
 type Mood = {
   id: string;
-  label: string;
+  labelKey: string;
   emoji?: string;
   image?: ImageSourcePropType;
-  hint: string;
+  hintKey: string;
 };
 
 const MOODS: Mood[] = [
-  { id: "romantic", label: "Romantic", image: require("../assets/images/romantic_old.png"), hint: "Dim lights, date night" },
-  { id: "energetic", label: "Energetic", image: require("../assets/images/energetic.png"), hint: "Loud, buzzing, fun" },
-  { id: "chill", label: "Chill", image: require("../assets/images/chill.png"), hint: "Warm, relaxed, no rush" },
-  { id: "explorer", label: "Explore", image: require("../assets/images/explore.png"), hint: "New spots, hidden gems" },
-  { id: "focus", label: "Focus", image: require("../assets/images/focus.png"), hint: "Quiet, good wifi, calm" },
-  { id: "hungry&quick", label: "Hungry & Quick", image: require("../assets/images/hungry.png"), hint: "Fast, filling, no wait" },
-  { id: "surprise", label: "I don't know, surprise me", image: require("../assets/images/surprise.png"), hint: "Unexpected, exciting, fun" },
+  { id: "romantic", labelKey: "mood.moods.romantic.label", image: require("../assets/images/romantic_old.png"), hintKey: "mood.moods.romantic.hint" },
+  { id: "energetic", labelKey: "mood.moods.energetic.label", image: require("../assets/images/energetic.png"), hintKey: "mood.moods.energetic.hint" },
+  { id: "chill", labelKey: "mood.moods.chill.label", image: require("../assets/images/chill.png"), hintKey: "mood.moods.chill.hint" },
+  { id: "explorer", labelKey: "mood.moods.explorer.label", image: require("../assets/images/explore.png"), hintKey: "mood.moods.explorer.hint" },
+  { id: "focus", labelKey: "mood.moods.focus.label", image: require("../assets/images/focus.png"), hintKey: "mood.moods.focus.hint" },
+  { id: "hungry&quick", labelKey: "mood.moods.hungryQuick.label", image: require("../assets/images/hungry.png"), hintKey: "mood.moods.hungryQuick.hint" },
+  { id: "surprise", labelKey: "mood.moods.surprise.label", image: require("../assets/images/surprise.png"), hintKey: "mood.moods.surprise.hint" },
 
 ];
 
@@ -70,6 +71,7 @@ function ProgressBar() {
 }
 
 export default function MoodScreen({ onContinue, onSkip, onGroup, onProfile, onNavigate }: Props) {
+  const { t } = useTranslation();
   const [selectedMoods, setSelectedMoods] = useState<string[]>([]);
   const [isSurprising, setIsSurprising] = useState(false);
 
@@ -119,7 +121,7 @@ export default function MoodScreen({ onContinue, onSkip, onGroup, onProfile, onN
           isLast && styles.cardFullWidth,
         ]}
         onPress={() => item.id === 'surprise' ? handleSurprise() : toggleMood(item.id)}
-        accessibilityLabel={`${item.label} mood. ${item.hint}`}
+        accessibilityLabel={`${t(item.labelKey)} mood. ${t(item.hintKey)}`}
         accessibilityRole="checkbox"
         accessibilityState={{ checked: isSelected }}
       >
@@ -128,10 +130,10 @@ export default function MoodScreen({ onContinue, onSkip, onGroup, onProfile, onN
             {item.image && <Image source={item.image} style={styles.cardImageSmall} />}
             <View style={{ flex: 1 }}>
               <Text style={[styles.cardLabel, isSelected && styles.cardLabelSelected]}>
-                {item.label}
+                {t(item.labelKey)}
               </Text>
               <Text style={[styles.cardHint, isSelected && styles.cardHintSelected]}>
-                {item.hint}
+                {t(item.hintKey)}
               </Text>
             </View>
           </>
@@ -141,10 +143,10 @@ export default function MoodScreen({ onContinue, onSkip, onGroup, onProfile, onN
             <Image source={item.image} style={styles.cardImage} />
     
             <Text style={[styles.cardLabel, isSelected && styles.cardLabelSelected]}>
-              {item.label}
+              {t(item.labelKey)}
             </Text>
             <Text style={[styles.cardHint, isSelected && styles.cardHintSelected]}>
-              {item.hint}
+              {t(item.hintKey)}
             </Text>
             {isSelected && (
               <View style={styles.checkmark}>
@@ -178,7 +180,7 @@ export default function MoodScreen({ onContinue, onSkip, onGroup, onProfile, onN
           accessibilityLabel="Skip mood selection"
           accessibilityRole="button"
         >
-          <Text style={styles.skipText}>Skip</Text>
+          <Text style={styles.skipText}>{t('common.skip')}</Text>
         </TouchableOpacity>
         {onProfile && (
           <TouchableOpacity
@@ -198,7 +200,7 @@ export default function MoodScreen({ onContinue, onSkip, onGroup, onProfile, onN
           contentContainerStyle={styles.gridContainer}
           showsVerticalScrollIndicator={false}
         >
-          <Text style={styles.title}>How are you feeling?</Text>
+          <Text style={styles.title}>{t('mood.title')}</Text>
 
           {(() => {
             // Create rows: pair items except last one
@@ -227,7 +229,7 @@ export default function MoodScreen({ onContinue, onSkip, onGroup, onProfile, onN
             accessibilityRole="button"
             accessibilityState={{ disabled: !hasSelection }}
           >
-            <Text style={styles.continueText}>Continue</Text>
+            <Text style={styles.continueText}>{t('common.continue')}</Text>
           </TouchableOpacity>
         </View>
       </View>

@@ -10,6 +10,7 @@ import {
   Alert,
 } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
+import { useTranslation } from 'react-i18next';
 import { Colors } from '../theme/colors';
 import { Restaurant, getPhotoUrl } from '../services/restaurantService';
 
@@ -25,6 +26,7 @@ type Props = {
 export default function GroupLikedScreen({
   restaurants, votes, totalVoters, onSelect, onFinalVote, onStartOver
 }: Props) {
+  const { t } = useTranslation();
   // Calculate like count per restaurant
   const getLikeCount = (restaurantId: string): number => {
     return Object.values(votes).filter(
@@ -40,11 +42,11 @@ export default function GroupLikedScreen({
 
   const handleStartOver = () => {
     Alert.alert(
-      'Start New Search?',
-      "You'll lose your current picks.",
+      t('groupLiked.removeTitle'),
+      t('groupLiked.removeMessage'),
       [
-        { text: 'Cancel', style: 'cancel' },
-        { text: 'Start Over', style: 'destructive', onPress: onStartOver },
+        { text: t('groupLiked.cancel'), style: 'cancel' },
+        { text: t('groupLiked.remove'), style: 'destructive', onPress: onStartOver },
       ]
     );
   };
@@ -74,7 +76,7 @@ export default function GroupLikedScreen({
             </View>
           </View>
           <Text style={styles.cardMeta}>
-            {item.distance || 'Nearby'} · {'€'.repeat(item.budget_level)}
+            {item.distance || t('common.nearby')} · {'€'.repeat(item.budget_level)}
           </Text>
           <View style={styles.voteBar}>
             <View
@@ -95,12 +97,12 @@ export default function GroupLikedScreen({
         <StatusBar style="dark" />
         <View style={styles.emptyContainer}>
           <Text style={styles.emptyEmoji}>😅</Text>
-          <Text style={styles.emptyTitle}>No common picks!</Text>
+          <Text style={styles.emptyTitle}>{t('groupLiked.emptyState')}</Text>
           <Text style={styles.emptySubtitle}>
-            Nobody agreed on a place. Try again with different preferences.
+            {t('groupLiked.emptyState')}
           </Text>
           <TouchableOpacity style={styles.startOverButton} onPress={handleStartOver}>
-            <Text style={styles.startOverText}>Try again</Text>
+            <Text style={styles.startOverText}>{t('common.back')}</Text>
           </TouchableOpacity>
         </View>
       </SafeAreaView>
@@ -111,9 +113,9 @@ export default function GroupLikedScreen({
     <SafeAreaView style={styles.container}>
       <StatusBar style="dark" />
       <View style={styles.header}>
-        <Text style={styles.title}>Group picks</Text>
+        <Text style={styles.title}>{t('groupLiked.title')}</Text>
         <Text style={styles.subtitle}>
-          {sortedRestaurants.length} place{sortedRestaurants.length > 1 ? 's' : ''} the group liked
+          {t('groupLiked.subtitle', { count: sortedRestaurants.length })}
         </Text>
       </View>
       <FlatList

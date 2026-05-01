@@ -11,8 +11,10 @@ import {
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { StatusBar } from "expo-status-bar";
+import { useTranslation } from "react-i18next";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { Colors } from "../theme/colors";
+import i18n, { changeLanguage } from "../i18n";
 
 const ACCENT = Colors.accent;
 const BG = Colors.background;
@@ -42,6 +44,9 @@ type Props = {
 };
 
 export default function SettingsScreen({ onBack }: Props) {
+  const { t } = useTranslation();
+  const [currentLanguage, setCurrentLanguage] = useState(i18n.language);
+
   // Account
   const [displayName, setDisplayName] = useState("Duygu B.");
   const [editingName, setEditingName] = useState(false);
@@ -115,7 +120,7 @@ export default function SettingsScreen({ onBack }: Props) {
         <TouchableOpacity onPress={onBack}>
           <Text style={styles.backText}>{"\u2190"} Back</Text>
         </TouchableOpacity>
-        <Text style={styles.headerTitle}>Settings</Text>
+        <Text style={styles.headerTitle}>{t('settings.title')}</Text>
         <View style={{ width: 60 }} />
       </View>
 
@@ -124,7 +129,7 @@ export default function SettingsScreen({ onBack }: Props) {
         showsVerticalScrollIndicator={false}
       >
         {/* ====== Account ====== */}
-        <Text style={styles.sectionLabel}>Account</Text>
+        <Text style={styles.sectionLabel}>{t('settings.sections.account')}</Text>
         <View style={styles.section}>
           {/* Avatar + name + email */}
           <View style={styles.accountRow}>
@@ -168,7 +173,7 @@ export default function SettingsScreen({ onBack }: Props) {
         </View>
 
         {/* ====== Notifications ====== */}
-        <Text style={styles.sectionLabel}>Notifications</Text>
+        <Text style={styles.sectionLabel}>{t('settings.sections.notifications')}</Text>
         <View style={styles.section}>
           <ToggleRow
             label="Group room invites"
@@ -196,9 +201,41 @@ export default function SettingsScreen({ onBack }: Props) {
         </View>
 
         {/* ====== Preferences ====== */}
-        <Text style={styles.sectionLabel}>Preferences</Text>
+        <Text style={styles.sectionLabel}>{t('settings.sections.preferences')}</Text>
         <View style={styles.section}>
-          <ToggleRow label="Dark mode" value={true} onToggle={() => {}} disabled />
+          <ToggleRow label={t('settings.preferences.darkMode')} value={true} onToggle={() => {}} disabled />
+          <View style={styles.divider} />
+
+          {/* Language */}
+          <View style={styles.languageSection}>
+            <Text style={styles.rowLabel}>{t('settings.preferences.language')}</Text>
+            <View style={styles.languageRow}>
+              <TouchableOpacity
+                style={[styles.languageButton, currentLanguage === 'en' && styles.languageButtonSelected]}
+                onPress={async () => {
+                  await changeLanguage('en');
+                  setCurrentLanguage('en');
+                }}
+              >
+                <Text style={styles.languageFlag}>🇬🇧</Text>
+                <Text style={[styles.languageText, currentLanguage === 'en' && styles.languageTextSelected]}>
+                  {t('settings.languages.en')}
+                </Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={[styles.languageButton, currentLanguage === 'pt' && styles.languageButtonSelected]}
+                onPress={async () => {
+                  await changeLanguage('pt');
+                  setCurrentLanguage('pt');
+                }}
+              >
+                <Text style={styles.languageFlag}>🇵🇹</Text>
+                <Text style={[styles.languageText, currentLanguage === 'pt' && styles.languageTextSelected]}>
+                  {t('settings.languages.pt')}
+                </Text>
+              </TouchableOpacity>
+            </View>
+          </View>
           <View style={styles.divider} />
 
           {/* Default city */}
@@ -494,5 +531,44 @@ const styles = StyleSheet.create({
   },
   budgetOptionTextActive: {
     color: TEXT_PRIMARY,
+  },
+
+  // --- Language Switcher ---
+  languageSection: {
+    paddingVertical: 12,
+  },
+  languageRow: {
+    flexDirection: "row",
+    gap: 12,
+    marginTop: 10,
+  },
+  languageButton: {
+    flex: 1,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 8,
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+    borderRadius: 12,
+    borderWidth: 2,
+    borderColor: Colors.border,
+    backgroundColor: Colors.cardBackground,
+  },
+  languageButtonSelected: {
+    borderColor: ACCENT,
+    backgroundColor: Colors.badgeBackground,
+  },
+  languageFlag: {
+    fontSize: 20,
+  },
+  languageText: {
+    fontSize: 14,
+    color: TEXT_SECONDARY,
+    fontWeight: "600",
+  },
+  languageTextSelected: {
+    color: ACCENT,
+    fontWeight: "700",
   },
 });

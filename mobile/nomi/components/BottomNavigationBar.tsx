@@ -1,5 +1,6 @@
 import React from "react";
 import { View, Text, TouchableOpacity, StyleSheet } from "react-native";
+import { useTranslation } from "react-i18next";
 import { Colors } from "../theme/colors";
 
 const ACCENT = Colors.accent;
@@ -13,6 +14,8 @@ type Props = {
 };
 
 export default function BottomNavigationBar({ activeTab, onNavigate }: Props) {
+  const { t } = useTranslation();
+
   return (
     <View style={styles.tabBar}>
       <TouchableOpacity
@@ -23,7 +26,7 @@ export default function BottomNavigationBar({ activeTab, onNavigate }: Props) {
           {"\u{1F3E0}"}
         </Text>
         <Text style={[styles.tabLabel, activeTab === "home" && styles.tabActive]}>
-          Home
+          {t('tabs.home')}
         </Text>
       </TouchableOpacity>
 
@@ -35,7 +38,7 @@ export default function BottomNavigationBar({ activeTab, onNavigate }: Props) {
           {"\u{1F50D}"}
         </Text>
         <Text style={[styles.tabLabel, activeTab === "validate" && styles.tabActive]}>
-          Validate
+          {t('tabs.validate')}
         </Text>
       </TouchableOpacity>
 
@@ -47,7 +50,7 @@ export default function BottomNavigationBar({ activeTab, onNavigate }: Props) {
           {"\u{1F465}"}
         </Text>
         <Text style={[styles.tabLabel, activeTab === "group" && styles.tabActive]}>
-          Group
+          {t('tabs.group')}
         </Text>
       </TouchableOpacity>
 
@@ -59,7 +62,7 @@ export default function BottomNavigationBar({ activeTab, onNavigate }: Props) {
           {"\u{1F3C6}"}
         </Text>
         <Text style={[styles.tabLabel, activeTab === "ranking" && styles.tabActive]}>
-          Ranking
+          {t('tabs.ranking')}
         </Text>
       </TouchableOpacity>
 
@@ -71,7 +74,7 @@ export default function BottomNavigationBar({ activeTab, onNavigate }: Props) {
           {"\u{1F464}"}
         </Text>
         <Text style={[styles.tabLabel, activeTab === "profile" && styles.tabActive]}>
-          Profile
+          {t('tabs.profile')}
         </Text>
       </TouchableOpacity>
     </View>

@@ -9,6 +9,7 @@ import {
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { StatusBar } from "expo-status-bar";
+import { useTranslation } from "react-i18next";
 import { Colors } from "../theme/colors";
 
 // Using central theme
@@ -22,29 +23,28 @@ const { width: SCREEN_WIDTH } = Dimensions.get("window");
 
 type Slide = {
   id: string;
-  title: string;
-  subtitle: string;
+  titleKey: string;
+  subtitleKey: string;
   illustration: "problem" | "solo" | "group";
 };
 
 const SLIDES: Slide[] = [
   {
     id: "1",
-    title: "Tired of \u2018where should we eat?\u2019",
-    subtitle: "Stop arguing. Let Nomi decide.",
+    titleKey: "onboarding.slides.1.title",
+    subtitleKey: "onboarding.slides.1.subtitle",
     illustration: "problem",
   },
   {
     id: "2",
-    title: "Swipe. Match. Eat.",
-    subtitle:
-      "Tell us your mood and budget. We\u2019ll find the perfect spot in seconds.",
+    titleKey: "onboarding.slides.2.title",
+    subtitleKey: "onboarding.slides.2.subtitle",
     illustration: "solo",
   },
   {
     id: "3",
-    title: "No more group chat chaos",
-    subtitle: "Everyone votes, Nomi decides. Fair, fast, fun.",
+    titleKey: "onboarding.slides.3.title",
+    subtitleKey: "onboarding.slides.3.subtitle",
     illustration: "group",
   },
 ];
@@ -224,6 +224,7 @@ type Props = {
 };
 
 export default function OnboardingScreen({ onDone }: Props) {
+  const { t } = useTranslation();
   const [activeIndex, setActiveIndex] = useState(0);
   const flatListRef = useRef<FlatList>(null);
 
@@ -255,8 +256,8 @@ export default function OnboardingScreen({ onDone }: Props) {
       <View style={styles.illustrationWrapper}>
         {renderIllustration(item.illustration)}
       </View>
-      <Text style={styles.title}>{item.title}</Text>
-      <Text style={styles.subtitle}>{item.subtitle}</Text>
+      <Text style={styles.title}>{t(item.titleKey)}</Text>
+      <Text style={styles.subtitle}>{t(item.subtitleKey)}</Text>
     </View>
   );
 
@@ -267,7 +268,7 @@ export default function OnboardingScreen({ onDone }: Props) {
       {/* Skip */}
       <View style={styles.skipRow}>
         <TouchableOpacity onPress={onDone} style={styles.skipButton}>
-          <Text style={styles.skipText}>Skip</Text>
+          <Text style={styles.skipText}>{t('onboarding.skip')}</Text>
         </TouchableOpacity>
       </View>
 
@@ -307,7 +308,7 @@ export default function OnboardingScreen({ onDone }: Props) {
           onPress={goNext}
         >
           <Text style={styles.nextText}>
-            {isLast ? "Get Started" : "Next"}
+            {isLast ? t('onboarding.getStarted') : t('onboarding.next')}
           </Text>
         </TouchableOpacity>
       </View>

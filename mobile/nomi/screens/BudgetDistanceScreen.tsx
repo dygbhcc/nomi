@@ -8,6 +8,7 @@ import {
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { StatusBar } from "expo-status-bar";
+import { useTranslation } from "react-i18next";
 import { Colors, Shadows, Spacing, BorderRadius } from "../theme/colors";
 import BottomNavigationBar from "../components/BottomNavigationBar";
 import { useAuth } from "../context/AuthContext";
@@ -16,26 +17,25 @@ import { createRoom } from "../services/roomService";
 type BudgetOption = {
   value: number;
   symbol: string;
-  description: string;
+  labelKey: string;
 };
 
 type DistanceOption = {
   value: number;
   emoji: string;
-  label: string;
-  description: string;
+  labelKey: string;
 };
 
 const BUDGET_OPTIONS: BudgetOption[] = [
-  { value: 1, symbol: "\u20AC", description: "Up to \u20AC15 per person" },
-  { value: 2, symbol: "\u20AC\u20AC", description: "\u20AC15\u201335 per person" },
-  { value: 3, symbol: "\u20AC\u20AC\u20AC", description: "\u20AC35+ per person" },
+  { value: 1, symbol: "\u20AC", labelKey: "budget.budgetOptions.1" },
+  { value: 2, symbol: "\u20AC\u20AC", labelKey: "budget.budgetOptions.2" },
+  { value: 3, symbol: "\u20AC\u20AC\u20AC", labelKey: "budget.budgetOptions.3" },
 ];
 
 const DISTANCE_OPTIONS: DistanceOption[] = [
-  { value: 500, emoji: "\u{1F6B6}", label: "Nearby", description: "Walking distance (500m)" },
-  { value: 3000, emoji: "\u{1F697}", label: "A bit further", description: "2\u20135 km away" },
-  { value: 10000, emoji: "\u{1F5FA}", label: "Explore", description: "Anywhere in the city" },
+  { value: 5, emoji: "\u{1F6B6}", labelKey: "budget.distanceOptions.5" },
+  { value: 15, emoji: "\u{1F697}", labelKey: "budget.distanceOptions.15" },
+  { value: 30, emoji: "\u{1F5FA}", labelKey: "budget.distanceOptions.30" },
 ];
 
 // Using central theme
@@ -83,6 +83,7 @@ export default function BudgetDistanceScreen({
   onSkip,
   onNavigate
 }: Props) {
+  const { t } = useTranslation();
   const { user } = useAuth();
   const [selectedBudget, setSelectedBudget] = useState<number | null>(null);
   const [selectedDistance, setSelectedDistance] = useState<number | null>(null);
@@ -130,13 +131,13 @@ export default function BudgetDistanceScreen({
 
       <View style={styles.header}>
         <TouchableOpacity style={styles.backButton} onPress={onBack}>
-          <Text style={styles.backText}>{"\u2190"} Back</Text>
+          <Text style={styles.backText}>{"\u2190"} {t('common.back')}</Text>
         </TouchableOpacity>
         <View style={styles.progressBarWrapper}>
           <ProgressBar />
         </View>
         <TouchableOpacity style={styles.skipButton} onPress={handleSkip}>
-          <Text style={styles.skipText}>Skip</Text>
+          <Text style={styles.skipText}>{t('common.skip')}</Text>
         </TouchableOpacity>
       </View>
 
@@ -147,7 +148,7 @@ export default function BudgetDistanceScreen({
       >
         {/* Budget Section */}
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Budget</Text>
+          <Text style={styles.sectionTitle}>{t('budget.budgetTitle')}</Text>
           <View style={styles.listContainer}>
             {BUDGET_OPTIONS.map((option) => {
               const isSelected = selectedBudget === option.value;
@@ -162,7 +163,7 @@ export default function BudgetDistanceScreen({
                     {option.symbol}
                   </Text>
                   <Text style={[styles.cardDescription, isSelected && styles.cardDescriptionSelected]}>
-                    {option.description}
+                    {t(option.labelKey)}
                   </Text>
                 </TouchableOpacity>
               );
@@ -172,7 +173,7 @@ export default function BudgetDistanceScreen({
 
         {/* Distance Section */}
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Distance</Text>
+          <Text style={styles.sectionTitle}>{t('budget.distanceTitle')}</Text>
           <View style={styles.listContainer}>
             {DISTANCE_OPTIONS.map((option) => {
               const isSelected = selectedDistance === option.value;
@@ -185,11 +186,8 @@ export default function BudgetDistanceScreen({
                 >
                   <Text style={styles.cardEmoji}>{option.emoji}</Text>
                   <View style={styles.cardTextContainer}>
-                    <Text style={[styles.cardLabel, isSelected && styles.cardLabelSelected]}>
-                      {option.label}
-                    </Text>
                     <Text style={[styles.cardDescription, isSelected && styles.cardDescriptionSelected]}>
-                      {option.description}
+                      {t(option.labelKey)}
                     </Text>
                   </View>
                 </TouchableOpacity>
@@ -205,7 +203,7 @@ export default function BudgetDistanceScreen({
           activeOpacity={0.8}
           onPress={handleContinue}
         >
-          <Text style={styles.continueText}>Find Restaurants</Text>
+          <Text style={styles.continueText}>{t('budget.continueButton')}</Text>
         </TouchableOpacity>
       </View>
 

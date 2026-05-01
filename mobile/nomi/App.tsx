@@ -2,8 +2,10 @@ import React, { useState, useEffect, useRef } from "react";
 import { View, ActivityIndicator, Text } from "react-native";
 import { SafeAreaProvider } from "react-native-safe-area-context";
 import AsyncStorage from "@react-native-async-storage/async-storage";
+import { I18nextProvider, useTranslation } from "react-i18next";
 import { AuthProvider, useAuth } from "./context/AuthContext";
 import ErrorBoundary from "./components/ErrorBoundary";
+import i18n, { initI18n } from "./i18n";
 import AuthScreen from "./screens/AuthScreen";
 import OnboardingScreen from "./screens/OnboardingScreen";
 import MoodScreen from "./screens/MoodScreen";
@@ -55,6 +57,7 @@ type Screen =
 
 function AppNavigator() {
   const { user, loading, isGuest } = useAuth();
+  const { t } = useTranslation();
   const [screen, setScreen] = useState<Screen | null>(null);
   const [previousScreen, setPreviousScreen] = useState<Screen>("mood");
   const [selectedMoods, setSelectedMoods] = useState<string[]>([]);
@@ -258,7 +261,7 @@ function AppNavigator() {
       )}
       {screen === "voting" && selectedBudget === null && (
         <View style={{ flex: 1, alignItems: "center", justifyContent: "center", backgroundColor: Colors.background }}>
-          <Text style={{ color: Colors.textPrimary, fontSize: 18 }}>Loading preferences...</Text>
+          <Text style={{ color: Colors.textPrimary, fontSize: 18 }}>{t('common.loadingPreferences')}</Text>
         </View>
       )}
       {screen === "groupLiked" && (
@@ -392,12 +395,30 @@ function AppNavigator() {
 }
 
 export default function App() {
+  const [i18nReady, setI18nReady] = useState(false);
+
+  useEffect(() => {
+    initI18n().then(() => {
+      setI18nReady(true);
+    });
+  }, []);
+
+  if (!i18nReady) {
+    return (
+      <View style={{ flex: 1, alignItems: "center", justifyContent: "center", backgroundColor: Colors.background }}>
+        <ActivityIndicator size="large" color={Colors.accent} />
+      </View>
+    );
+  }
+
   return (
     <ErrorBoundary>
       <SafeAreaProvider>
-        <AuthProvider>
-          <AppNavigator />
-        </AuthProvider>
+        <I18nextProvider i18n={i18n}>
+          <AuthProvider>
+            <AppNavigator />
+          </AuthProvider>
+        </I18nextProvider>
       </SafeAreaProvider>
     </ErrorBoundary>
   );

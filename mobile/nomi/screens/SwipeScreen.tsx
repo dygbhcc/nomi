@@ -12,6 +12,7 @@ import {
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { StatusBar } from "expo-status-bar";
+import { useTranslation } from "react-i18next";
 import * as Haptics from "expo-haptics"; // FIX 3 - Haptic feedback
 import { Colors } from "../theme/colors";
 import { getRestaurantsByMood, buildReason, Restaurant } from '../services/restaurantService';
@@ -47,6 +48,7 @@ type Props = {
 export { type Restaurant };
 
 export default function SwipeScreen({ selectedMoods, budgetLevel, onBack, onChangePreferences, onDetail, onShowLiked }: Props) {
+  const { t } = useTranslation();
   const { user } = useAuth();
   const [restaurants, setRestaurants] = useState<Restaurant[]>([]);
   const [loading, setLoading] = useState(true);
@@ -67,7 +69,7 @@ export default function SwipeScreen({ selectedMoods, budgetLevel, onBack, onChan
         }));
         setRestaurants(withReasons);
       } catch (e) {
-        setError('Could not load restaurants. Please try again.');
+        setError(t('swipe.errorLoading'));
       } finally {
         setLoading(false);
       }
@@ -175,7 +177,7 @@ export default function SwipeScreen({ selectedMoods, budgetLevel, onBack, onChan
       }));
       setRestaurants(withReasons);
     } catch (e) {
-      setError('Could not load restaurants. Please try again.');
+      setError(t('swipe.errorLoading'));
     } finally {
       setLoading(false);
     }
@@ -193,7 +195,7 @@ export default function SwipeScreen({ selectedMoods, budgetLevel, onBack, onChan
     return (
       <SafeAreaView style={styles.container}>
         <View style={styles.emptyContainer}>
-          <Text style={styles.emptyTitle}>Something went wrong</Text>
+          <Text style={styles.emptyTitle}>{t('common.error')}</Text>
           <Text style={styles.emptySubtitle}>{error}</Text>
           <TouchableOpacity
             style={styles.loadMoreButton}
@@ -201,7 +203,7 @@ export default function SwipeScreen({ selectedMoods, budgetLevel, onBack, onChan
             accessibilityLabel="Try again"
             accessibilityRole="button"
           >
-            <Text style={styles.loadMoreText}>Try again</Text>
+            <Text style={styles.loadMoreText}>{t('common.ok')}</Text>
           </TouchableOpacity>
         </View>
       </SafeAreaView>
@@ -215,9 +217,9 @@ export default function SwipeScreen({ selectedMoods, budgetLevel, onBack, onChan
         <StatusBar style="dark" />
         <View style={styles.emptyContainer}>
           <Text style={styles.emptyEmoji}>{"\u{1F50D}"}</Text>
-          <Text style={styles.emptyTitle}>No restaurants found</Text>
+          <Text style={styles.emptyTitle}>{t('swipe.noResults')}</Text>
           <Text style={styles.emptySubtitle}>
-            Try adjusting your mood or budget preferences
+            {t('swipe.noMore')}
           </Text>
           <TouchableOpacity
             style={styles.preferencesButton}
@@ -225,7 +227,7 @@ export default function SwipeScreen({ selectedMoods, budgetLevel, onBack, onChan
             accessibilityLabel="Change preferences"
             accessibilityRole="button"
           >
-            <Text style={styles.preferencesButtonText}>Change Preferences</Text>
+            <Text style={styles.preferencesButtonText}>{t('common.back')}</Text>
           </TouchableOpacity>
         </View>
       </SafeAreaView>
@@ -251,10 +253,10 @@ export default function SwipeScreen({ selectedMoods, budgetLevel, onBack, onChan
         <View style={styles.emptyContainer}>
           <Text style={styles.emptyEmoji}>{"\u{1F50D}"}</Text>
           <Text style={styles.emptyTitle}>
-            {`${restaurants.length - batchEnd} more to discover`}
+            {t('swipe.moreToDiscover', { count: restaurants.length - batchEnd })}
           </Text>
           <TouchableOpacity style={styles.loadMoreButton} onPress={handleLoadMore}>
-            <Text style={styles.loadMoreText}>Load More</Text>
+            <Text style={styles.loadMoreText}>{t('common.loadMore')}</Text>
           </TouchableOpacity>
         </View>
       </SafeAreaView>
@@ -271,7 +273,7 @@ export default function SwipeScreen({ selectedMoods, budgetLevel, onBack, onChan
           accessibilityLabel="Go back"
           accessibilityRole="button"
         >
-          <Text style={styles.backText}>{"\u2190"} Back</Text>
+          <Text style={styles.backText}>{"\u2190"} {t('common.back')}</Text>
         </TouchableOpacity>
         <Text style={styles.counterText}>
           {batchStart + currentIndex + 1} / {restaurants.length}
@@ -282,7 +284,7 @@ export default function SwipeScreen({ selectedMoods, budgetLevel, onBack, onChan
           accessibilityLabel="View restaurant details"
           accessibilityRole="button"
         >
-          <Text style={styles.detailButtonText}>Details</Text>
+          <Text style={styles.detailButtonText}>{t('common.details')}</Text>
         </TouchableOpacity>
       </View>
 
@@ -293,10 +295,10 @@ export default function SwipeScreen({ selectedMoods, budgetLevel, onBack, onChan
         >
           {/* Swipe indicators */}
           <Animated.View style={[styles.swipeLabel, styles.likeLabel, { opacity: likeOpacity }]}>
-            <Text style={styles.swipeLabelText}>LIKE</Text>
+            <Text style={styles.swipeLabelText}>{t('swipe.like')}</Text>
           </Animated.View>
           <Animated.View style={[styles.swipeLabel, styles.nopeLabel, { opacity: nopeOpacity }]}>
-            <Text style={[styles.swipeLabelText, { color: REJECT_COLOR }]}>NOPE</Text>
+            <Text style={[styles.swipeLabelText, { color: REJECT_COLOR }]}>{t('swipe.nope')}</Text>
           </Animated.View>
 
           {/* Photo */}
@@ -328,7 +330,7 @@ export default function SwipeScreen({ selectedMoods, budgetLevel, onBack, onChan
             </View>
 
             <View style={styles.reasonBox}>
-              <Text style={styles.reasonLabel}>Why for you?</Text>
+              <Text style={styles.reasonLabel}>{t('swipe.whyForYou')}</Text>
               <Text style={styles.reasonText}>{restaurant.reason}</Text>
             </View>
           </View>

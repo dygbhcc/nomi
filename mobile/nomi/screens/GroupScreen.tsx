@@ -4,30 +4,31 @@ import {
   SafeAreaView, ScrollView, Share, Alert, TextInput, Image,
 } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
+import { useTranslation } from 'react-i18next';
 import * as Haptics from 'expo-haptics';
 import { Colors } from '../theme/colors';
 import { createRoom, joinRoom } from '../services/roomService';
 import { useAuth } from '../context/AuthContext';
 
 const MOODS = [
-  { id: 'romantic', label: 'Romantic', image: require('../assets/images/romantic_old.png') },
-  { id: 'energetic', label: 'Energetic', image: require('../assets/images/energetic.png') },
-  { id: 'chill', label: 'Chill', image: require('../assets/images/chill.png') },
-  { id: 'explorer', label: 'Explore', image: require('../assets/images/explore.png') },
-  { id: 'focus', label: 'Focus', image: require('../assets/images/focus.png') },
-  { id: 'hungry_quick', label: 'Quick', image: require('../assets/images/hungry.png') },
+  { id: 'romantic', labelKey: 'mood.moods.romantic.label', image: require('../assets/images/romantic_old.png') },
+  { id: 'energetic', labelKey: 'mood.moods.energetic.label', image: require('../assets/images/energetic.png') },
+  { id: 'chill', labelKey: 'mood.moods.chill.label', image: require('../assets/images/chill.png') },
+  { id: 'explorer', labelKey: 'mood.moods.explorer.label', image: require('../assets/images/explore.png') },
+  { id: 'focus', labelKey: 'mood.moods.focus.label', image: require('../assets/images/focus.png') },
+  { id: 'hungry_quick', labelKey: 'mood.moods.hungryQuick.label', image: require('../assets/images/hungry.png') },
 ];
 
 const BUDGETS = [
-  { value: 1, label: '€', desc: 'Up to €15' },
-  { value: 2, label: '€€', desc: '€15–35' },
-  { value: 3, label: '€€€', desc: '€35+' },
+  { value: 1, label: '€', labelKey: 'budget.budgetOptions.1' },
+  { value: 2, label: '€€', labelKey: 'budget.budgetOptions.2' },
+  { value: 3, label: '€€€', labelKey: 'budget.budgetOptions.3' },
 ];
 
 const DISTANCES = [
-  { value: 500, label: 'Nearby', desc: '< 500m' },
-  { value: 3000, label: 'A bit further', desc: '2–5 km' },
-  { value: 10000, label: 'Explore', desc: 'Anywhere' },
+  { value: 500, labelKey: 'budget.distanceOptions.5' },
+  { value: 3000, labelKey: 'budget.distanceOptions.15' },
+  { value: 10000, labelKey: 'budget.distanceOptions.30' },
 ];
 
 function generateRoomCode(): string {
@@ -47,6 +48,7 @@ type Props = {
 };
 
 export default function GroupScreen({ onStartVoting, onJoinRoom, onBack, onNavigate }: Props) {
+  const { t } = useTranslation();
   const { user, isGuest, signOut } = useAuth();
   const [roomCode, setRoomCode] = useState<string | null>(null);
   const [selectedMoods, setSelectedMoods] = useState<string[]>([]);
@@ -59,11 +61,11 @@ export default function GroupScreen({ onStartVoting, onJoinRoom, onBack, onNavig
   const handleCreateRoom = async () => {
     if (isGuest) {
       Alert.alert(
-        'Account required',
-        'Create a free account to use group rooms.',
+        t('auth.guestNote'),
+        t('auth.createAccount'),
         [
-          { text: 'Maybe later', style: 'cancel' },
-          { text: 'Sign up', onPress: () => signOut() },
+          { text: t('common.cancel'), style: 'cancel' },
+          { text: t('auth.signUp'), onPress: () => signOut() },
         ]
       );
       return;
@@ -83,7 +85,7 @@ export default function GroupScreen({ onStartVoting, onJoinRoom, onBack, onNavig
       __DEV__ && console.log('Room created:', code);
     } catch (error) {
       __DEV__ && console.error('Error creating room:', error);
-      Alert.alert('Error', 'Could not create room. Please try again.');
+      Alert.alert(t('common.error'), t('group.errors.createFailed'));
     } finally {
       setLoading(false);
     }
@@ -100,7 +102,7 @@ export default function GroupScreen({ onStartVoting, onJoinRoom, onBack, onNavig
     if (!roomCode) return;
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     await Share.share({
-      message: `Join my Nomi group! Code: ${roomCode}\nnomi.app/room/${roomCode}`,
+      message: t('waitingRoom.shareMessage', { code: roomCode }),
     });
   };
 
@@ -115,11 +117,11 @@ export default function GroupScreen({ onStartVoting, onJoinRoom, onBack, onNavig
 
     if (isGuest) {
       Alert.alert(
-        'Account required',
-        'Create a free account to use group rooms.',
+        t('auth.guestNote'),
+        t('auth.createAccount'),
         [
-          { text: 'Maybe later', style: 'cancel' },
-          { text: 'Sign up', onPress: () => signOut() },
+          { text: t('common.cancel'), style: 'cancel' },
+          { text: t('auth.signUp'), onPress: () => signOut() },
         ]
       );
       return;
@@ -133,11 +135,11 @@ export default function GroupScreen({ onStartVoting, onJoinRoom, onBack, onNavig
       if (success) {
         onJoinRoom(joinCode.toUpperCase());
       } else {
-        Alert.alert('Room not found', 'Check the code and try again.');
+        Alert.alert(t('group.errors.invalidCode'), t('group.errors.joinFailed'));
       }
     } catch (error) {
       __DEV__ && console.error('Error joining room:', error);
-      Alert.alert('Error', 'Could not join room.');
+      Alert.alert(t('common.error'), t('group.errors.joinFailed'));
     } finally {
       setJoining(false);
     }
@@ -150,9 +152,9 @@ export default function GroupScreen({ onStartVoting, onJoinRoom, onBack, onNavig
       {/* Header */}
       <View style={styles.header}>
         <TouchableOpacity onPress={onBack} accessibilityLabel="Go back" accessibilityRole="button">
-          <Text style={styles.backText}>← Back</Text>
+          <Text style={styles.backText}>← {t('common.back')}</Text>
         </TouchableOpacity>
-        <Text style={styles.headerTitle}>Decide together</Text>
+        <Text style={styles.headerTitle}>{t('group.title')}</Text>
         <View style={{ width: 60 }} />
       </View>
 
@@ -162,23 +164,23 @@ export default function GroupScreen({ onStartVoting, onJoinRoom, onBack, onNavig
         <View style={styles.stepIndicator}>
           <View style={[styles.step, styles.stepActive]}>
             <Text style={styles.stepNumber}>1</Text>
-            <Text style={styles.stepLabel}>Set preferences</Text>
+            <Text style={styles.stepLabel}>{t('group.selectMoods')}</Text>
           </View>
           <View style={styles.stepLine} />
           <View style={[styles.step, roomCode && styles.stepActive]}>
             <Text style={[styles.stepNumber, !roomCode && styles.stepNumberInactive]}>2</Text>
-            <Text style={[styles.stepLabel, !roomCode && styles.stepLabelInactive]}>Create room</Text>
+            <Text style={[styles.stepLabel, !roomCode && styles.stepLabelInactive]}>{t('group.createRoom')}</Text>
           </View>
           <View style={styles.stepLine} />
           <View style={[styles.step, roomCode && styles.stepActive]}>
             <Text style={[styles.stepNumber, !roomCode && styles.stepNumberInactive]}>3</Text>
-            <Text style={[styles.stepLabel, !roomCode && styles.stepLabelInactive]}>Start voting</Text>
+            <Text style={[styles.stepLabel, !roomCode && styles.stepLabelInactive]}>{t('waitingRoom.startVoting')}</Text>
           </View>
         </View>
 
         {/* Mood selection */}
-        <Text style={styles.sectionTitle}>What's the vibe?</Text>
-        <Text style={styles.sectionSubtitle}>Pick all that apply</Text>
+        <Text style={styles.sectionTitle}>{t('mood.title')}</Text>
+        <Text style={styles.sectionSubtitle}>{t('mood.selectMoods')}</Text>
         <View style={styles.moodGrid}>
           {MOODS.map(mood => {
             const isSelected = selectedMoods.includes(mood.id);
@@ -187,13 +189,13 @@ export default function GroupScreen({ onStartVoting, onJoinRoom, onBack, onNavig
                 key={mood.id}
                 style={[styles.moodCard, isSelected && styles.moodCardSelected]}
                 onPress={() => toggleMood(mood.id)}
-                accessibilityLabel={`${mood.label} mood`}
+                accessibilityLabel={`${t(mood.labelKey)} mood`}
                 accessibilityRole="checkbox"
                 accessibilityState={{ checked: isSelected }}
               >
                 <Image source={mood.image} style={styles.moodImage} resizeMode="contain" />
                 <Text style={[styles.moodLabel, isSelected && styles.moodLabelSelected]}>
-                  {mood.label}
+                  {t(mood.labelKey)}
                 </Text>
               </TouchableOpacity>
             );
@@ -201,7 +203,7 @@ export default function GroupScreen({ onStartVoting, onJoinRoom, onBack, onNavig
         </View>
 
         {/* Budget */}
-        <Text style={styles.sectionTitle}>Budget</Text>
+        <Text style={styles.sectionTitle}>{t('budget.budgetTitle')}</Text>
         <View style={styles.optionRow}>
           {BUDGETS.map(b => (
             <TouchableOpacity
@@ -211,21 +213,21 @@ export default function GroupScreen({ onStartVoting, onJoinRoom, onBack, onNavig
                 Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
                 setBudget(b.value);
               }}
-              accessibilityLabel={`${b.label} budget, ${b.desc}`}
+              accessibilityLabel={t(b.labelKey)}
               accessibilityRole="button"
             >
               <Text style={[styles.optionLabel, budget === b.value && styles.optionLabelSelected]}>
                 {b.label}
               </Text>
               <Text style={[styles.optionDesc, budget === b.value && styles.optionDescSelected]}>
-                {b.desc}
+                {t(b.labelKey)}
               </Text>
             </TouchableOpacity>
           ))}
         </View>
 
         {/* Distance */}
-        <Text style={styles.sectionTitle}>Distance</Text>
+        <Text style={styles.sectionTitle}>{t('budget.distanceTitle')}</Text>
         <View style={styles.optionRow}>
           {DISTANCES.map(d => (
             <TouchableOpacity
@@ -235,14 +237,11 @@ export default function GroupScreen({ onStartVoting, onJoinRoom, onBack, onNavig
                 Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
                 setDistance(d.value);
               }}
-              accessibilityLabel={`${d.label}, ${d.desc}`}
+              accessibilityLabel={t(d.labelKey)}
               accessibilityRole="button"
             >
-              <Text style={[styles.optionLabel, distance === d.value && styles.optionLabelSelected]}>
-                {d.label}
-              </Text>
               <Text style={[styles.optionDesc, distance === d.value && styles.optionDescSelected]}>
-                {d.desc}
+                {t(d.labelKey)}
               </Text>
             </TouchableOpacity>
           ))}
@@ -253,7 +252,7 @@ export default function GroupScreen({ onStartVoting, onJoinRoom, onBack, onNavig
           <View style={styles.roomCodeCard}>
             <View style={styles.roomCodeRow}>
               <View>
-                <Text style={styles.roomCodeLabel}>Room code</Text>
+                <Text style={styles.roomCodeLabel}>{t('waitingRoom.shareCode')}</Text>
                 <Text style={styles.roomCode} selectable>{roomCode}</Text>
               </View>
               <TouchableOpacity
@@ -262,18 +261,18 @@ export default function GroupScreen({ onStartVoting, onJoinRoom, onBack, onNavig
                 accessibilityLabel="Share room link"
                 accessibilityRole="button"
               >
-                <Text style={styles.shareButtonText}>📤 Share</Text>
+                <Text style={styles.shareButtonText}>📤 {t('common.share')}</Text>
               </TouchableOpacity>
             </View>
             <Text style={styles.waitingHint}>
-              Share the code with friends, then tap Start Voting when everyone is ready.
+              {t('waitingRoom.shareCode')}
             </Text>
           </View>
         )}
 
         {/* Hint text if no mood selected */}
         {selectedMoods.length === 0 && !roomCode && (
-          <Text style={styles.hintText}>← Select at least one mood to continue</Text>
+          <Text style={styles.hintText}>← {t('mood.selectMoods')}</Text>
         )}
 
         {/* Primary CTA - changes based on state */}
@@ -286,7 +285,7 @@ export default function GroupScreen({ onStartVoting, onJoinRoom, onBack, onNavig
             accessibilityRole="button"
           >
             <Text style={styles.primaryButtonText}>
-              {loading ? 'Creating room...' : 'Create Room →'}
+              {loading ? t('common.loading') : t('group.createRoom')}
             </Text>
           </TouchableOpacity>
         ) : (
@@ -296,14 +295,14 @@ export default function GroupScreen({ onStartVoting, onJoinRoom, onBack, onNavig
             accessibilityLabel="Start voting"
             accessibilityRole="button"
           >
-            <Text style={styles.primaryButtonText}>Start Voting →</Text>
+            <Text style={styles.primaryButtonText}>{t('waitingRoom.startVoting')}</Text>
           </TouchableOpacity>
         )}
 
         {/* Divider */}
         <View style={styles.divider}>
           <View style={styles.dividerLine} />
-          <Text style={styles.dividerText}>or join a room</Text>
+          <Text style={styles.dividerText}>{t('group.joinRoom')}</Text>
           <View style={styles.dividerLine} />
         </View>
 
@@ -311,7 +310,7 @@ export default function GroupScreen({ onStartVoting, onJoinRoom, onBack, onNavig
         <View style={styles.joinRow}>
           <TextInput
             style={styles.joinInput}
-            placeholder="Enter room code"
+            placeholder={t('group.enterCode')}
             placeholderTextColor={Colors.textSecondary}
             value={joinCode}
             onChangeText={(t) => setJoinCode(t.toUpperCase())}
@@ -326,7 +325,7 @@ export default function GroupScreen({ onStartVoting, onJoinRoom, onBack, onNavig
             accessibilityLabel="Join room"
             accessibilityRole="button"
           >
-            <Text style={styles.joinButtonText}>{joining ? '...' : 'Join'}</Text>
+            <Text style={styles.joinButtonText}>{joining ? '...' : t('group.join')}</Text>
           </TouchableOpacity>
         </View>
 

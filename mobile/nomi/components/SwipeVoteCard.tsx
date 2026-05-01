@@ -8,6 +8,7 @@ import {
   ImageSourcePropType,
   PanResponderInstance,
 } from "react-native";
+import { useTranslation } from "react-i18next";
 import { Colors } from "../theme/colors";
 
 const ACCENT = Colors.accent;
@@ -78,6 +79,8 @@ export default function SwipeVoteCard({
   rejectLabel = "NOPE",
   rejectColor = RED,
 }: SwipeVoteCardProps) {
+  const { t } = useTranslation();
+
   const transformStyle = scale
     ? { transform: [{ translateX }, { rotate }, { scale }] }
     : { transform: [{ translateX }, { rotate }] };
@@ -161,7 +164,7 @@ export default function SwipeVoteCard({
               ))}
             </View>
             <Text style={styles.voteText}>
-              {voteData.liked}/{voteData.total} liked this
+              {voteData.liked}/{voteData.total} {t('common.likedThis')}
             </Text>
           </View>
         )}

@@ -10,6 +10,7 @@ import {
   Image,
 } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
+import { useTranslation } from 'react-i18next';
 import * as Haptics from 'expo-haptics';
 import { Colors } from '../theme/colors';
 import { Restaurant, getPhotoUrl } from '../services/restaurantService';
@@ -33,6 +34,7 @@ const TIME_SLOTS = [
 export default function EventPlanScreen({
   roomCode, restaurant, isOrganizer, currentUserId, onDone
 }: Props) {
+  const { t } = useTranslation();
   const [selectedTime, setSelectedTime] = useState<string | null>(null);
   const [attendance, setAttendance] = useState<AttendanceStatus>('going');
   const [note, setNote] = useState('');
@@ -73,7 +75,7 @@ export default function EventPlanScreen({
         </View>
 
         {/* Time picker */}
-        <Text style={styles.sectionTitle}>What time?</Text>
+        <Text style={styles.sectionTitle}>{t('eventPlan.timeLabel')}</Text>
         <View style={styles.timeGrid}>
           {TIME_SLOTS.map(time => (
             <TouchableOpacity
@@ -97,13 +99,13 @@ export default function EventPlanScreen({
         </View>
 
         {/* Attendance */}
-        <Text style={styles.sectionTitle}>Are you coming?</Text>
+        <Text style={styles.sectionTitle}>{t('eventPlan.attendanceLabel')}</Text>
         <View style={styles.attendanceRow}>
           {([
-            { status: 'going', label: "I'm in ✅" },
-            { status: 'maybe', label: 'Maybe 🤔' },
-            { status: 'not_going', label: "Can't go ❌" },
-          ] as { status: AttendanceStatus; label: string }[]).map(({ status, label }) => (
+            { status: 'going', labelKey: "eventPlan.attendanceOptions.going" },
+            { status: 'maybe', labelKey: "eventPlan.attendanceOptions.maybe" },
+            { status: 'not_going', labelKey: "eventPlan.attendanceOptions.notGoing" },
+          ] as { status: AttendanceStatus; labelKey: string }[]).map(({ status, labelKey }) => (
             <TouchableOpacity
               key={status}
               style={[
@@ -114,24 +116,24 @@ export default function EventPlanScreen({
                 Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
                 setAttendance(status);
               }}
-              accessibilityLabel={label}
+              accessibilityLabel={t(labelKey)}
               accessibilityRole="button"
             >
               <Text style={[
                 styles.attendanceText,
                 attendance === status && styles.attendanceTextSelected,
               ]}>
-                {label}
+                {t(labelKey)}
               </Text>
             </TouchableOpacity>
           ))}
         </View>
 
         {/* Note */}
-        <Text style={styles.sectionTitle}>Add a note (optional)</Text>
+        <Text style={styles.sectionTitle}>{t('eventPlan.noteLabel')}</Text>
         <TextInput
           style={styles.noteInput}
-          placeholder="e.g. Let's meet at the entrance!"
+          placeholder={t('eventPlan.notePlaceholder')}
           placeholderTextColor={Colors.textSecondary}
           value={note}
           onChangeText={setNote}
@@ -149,7 +151,7 @@ export default function EventPlanScreen({
           accessibilityRole="button"
         >
           <Text style={styles.confirmButtonText}>
-            {saving ? 'Saving...' : 'Confirm plan 🎉'}
+            {saving ? t('eventPlan.saving') : t('eventPlan.confirmButton')}
           </Text>
         </TouchableOpacity>
 

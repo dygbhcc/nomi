@@ -1,0 +1,393 @@
+{
+  "common": {
+    "loading": "Loading...",
+    "loadingPreferences": "Loading preferences...",
+    "error": "Error",
+    "errorOccurred": "An error occurred. Please try again",
+    "ok": "OK",
+    "cancel": "Cancel",
+    "continue": "Continue",
+    "skip": "Skip",
+    "back": "Back",
+    "next": "Next",
+    "done": "Done",
+    "save": "Save",
+    "delete": "Delete",
+    "confirm": "Confirm",
+    "yes": "Yes",
+    "no": "No",
+    "share": "Share",
+    "loadMore": "Load More",
+    "details": "Details",
+    "open": "Open",
+    "something": "Something",
+    "likedThis": "liked this",
+    "nearby": "Nearby",
+    "tapToViewDetails": "Tap to view details"
+  },
+  "tabs": {
+    "home": "Home",
+    "validate": "Validate",
+    "group": "Group",
+    "ranking": "Ranking",
+    "profile": "Profile"
+  },
+  "auth": {
+    "signIn": "Sign In",
+    "signUp": "Sign Up",
+    "createAccount": "Create Account",
+    "continueAsGuest": "Continue as Guest",
+    "guestNote": "Group rooms and points require an account",
+    "displayNamePlaceholder": "Display name",
+    "emailPlaceholder": "Email",
+    "passwordPlaceholder": "Password",
+    "fillAllFields": "Please fill in all fields",
+    "errors": {
+      "userNotFound": "No account found with this email",
+      "wrongPassword": "Incorrect password",
+      "emailInUse": "An account already exists with this email",
+      "weakPassword": "Password must be at least 6 characters",
+      "invalidEmail": "Please enter a valid email address",
+      "tooManyRequests": "Too many attempts. Please try again later",
+      "default": "An error occurred. Please try again"
+    }
+  },
+  "onboarding": {
+    "skip": "Skip",
+    "getStarted": "Get Started",
+    "next": "Next",
+    "slides": {
+      "1": {
+        "title": "Tired of 'where should we eat?'",
+        "subtitle": "Stop arguing. Let Nomi decide."
+      },
+      "2": {
+        "title": "Swipe. Match. Eat.",
+        "subtitle": "Tell us your mood and budget. We'll find the perfect spot in seconds."
+      },
+      "3": {
+        "title": "No more group chat chaos",
+        "subtitle": "Everyone votes, Nomi decides. Fair, fast, fun."
+      }
+    }
+  },
+  "mood": {
+    "title": "How are you feeling?",
+    "selectMoods": "Select 1-3 moods",
+    "continueButton": "Continue",
+    "skipButton": "Skip for now",
+    "moods": {
+      "romantic": {
+        "label": "Romantic",
+        "hint": "Dim lights, date night"
+      },
+      "energetic": {
+        "label": "Energetic",
+        "hint": "Loud, buzzing, fun"
+      },
+      "chill": {
+        "label": "Chill",
+        "hint": "Warm, relaxed, no rush"
+      },
+      "explorer": {
+        "label": "Explore",
+        "hint": "New spots, hidden gems"
+      },
+      "focus": {
+        "label": "Focus",
+        "hint": "Quiet, good wifi, calm"
+      },
+      "hungryQuick": {
+        "label": "Hungry & Quick",
+        "hint": "Fast, filling, no wait"
+      },
+      "surprise": {
+        "label": "I don't know, surprise me",
+        "hint": "Unexpected, exciting, fun"
+      }
+    }
+  },
+  "budget": {
+    "budgetTitle": "Budget",
+    "distanceTitle": "Distance",
+    "continueButton": "Let's Eat",
+    "budgetOptions": {
+      "1": "€ Cheap eats",
+      "2": "€€ Mid-range",
+      "3": "€€€ Fine dining"
+    },
+    "distanceOptions": {
+      "5": "5 min walk",
+      "15": "15 min walk",
+      "30": "30 min commute"
+    }
+  },
+  "swipe": {
+    "loading": "Finding your perfect spot...",
+    "errorLoading": "Failed to load restaurants",
+    "noResults": "No restaurants found. Try adjusting your preferences.",
+    "noMore": "That's all for now! Check back later for more.",
+    "loadMore": "Load More",
+    "openNow": "Open now",
+    "distance": "{{distance}} min",
+    "details": "Details",
+    "moreToDiscover": "{{count}} more to discover",
+    "like": "LIKE",
+    "nope": "NOPE",
+    "whyForYou": "Why for you?"
+  },
+  "liked": {
+    "title": "Liked",
+    "subtitle": "{{count}} place",
+    "subtitle_plural": "{{count}} places",
+    "emptyState": "No liked restaurants yet. Start swiping!",
+    "removeTitle": "Remove from Liked?",
+    "removeMessage": "This restaurant will be removed from your liked list.",
+    "remove": "Remove",
+    "cancel": "Cancel"
+  },
+  "restaurantDetail": {
+    "openNow": "Open",
+    "closed": "Closed",
+    "hours": "Hours",
+    "distance": "{{distance}} min walk",
+    "actions": {
+      "directions": "Directions",
+      "call": "Call",
+      "share": "Share"
+    },
+    "days": {
+      "monday": "Monday",
+      "tuesday": "Tuesday",
+      "wednesday": "Wednesday",
+      "thursday": "Thursday",
+      "friday": "Friday",
+      "saturday": "Saturday",
+      "sunday": "Sunday"
+    },
+    "validatePrompt": "Been here? Validate & earn points!",
+    "validateButton": "Validate Visit"
+  },
+  "group": {
+    "title": "Group Rooms",
+    "createRoom": "Create Room",
+    "joinRoom": "Join Room",
+    "activeRooms": "Active Rooms",
+    "noActiveRooms": "No active group rooms",
+    "createFirst": "Create a room to start voting with friends!",
+    "createRoomTitle": "Create Group Room",
+    "roomName": "Room Name",
+    "roomNamePlaceholder": "Dinner with friends",
+    "selectMoods": "Select Moods (1-3)",
+    "selectBudget": "Budget",
+    "selectDistance": "Distance",
+    "create": "Create",
+    "cancel": "Cancel",
+    "joinRoomTitle": "Join Room",
+    "enterCode": "Enter room code",
+    "codePlaceholder": "6-digit code",
+    "join": "Join",
+    "members": "{{count}} member",
+    "members_plural": "{{count}} members",
+    "inProgress": "In Progress",
+    "deleteTitle": "Delete Room?",
+    "deleteMessage": "This will remove the room for all members.",
+    "delete": "Delete",
+    "leaveTitle": "Leave Room?",
+    "leaveMessage": "You will be removed from this group.",
+    "leave": "Leave",
+    "errors": {
+      "fillAllFields": "Please fill in all fields",
+      "createFailed": "Failed to create room",
+      "invalidCode": "Invalid room code",
+      "joinFailed": "Failed to join room"
+    }
+  },
+  "waitingRoom": {
+    "waitingForMembers": "Waiting for members...",
+    "membersReady": "{{count}}/{{total}} members ready",
+    "shareCode": "Share this code with friends:",
+    "startVoting": "Start Voting",
+    "leaveRoom": "Leave Room",
+    "shareMessage": "Join my Nomi group! Code: {{code}}"
+  },
+  "voting": {
+    "loading": "Loading restaurants...",
+    "voting": "Vote on restaurants",
+    "openNow": "Open now",
+    "distance": "{{distance}} min",
+    "details": "Details"
+  },
+  "groupLiked": {
+    "title": "Group Matches",
+    "subtitle": "{{count}} match",
+    "subtitle_plural": "{{count}} matches",
+    "emptyState": "No matches yet. Keep voting!",
+    "removeTitle": "Remove Match?",
+    "removeMessage": "This restaurant will be removed from group matches.",
+    "remove": "Remove",
+    "cancel": "Cancel"
+  },
+  "groupVote": {
+    "title": "Voting Results",
+    "waitingForVotes": "Waiting for everyone to vote...",
+    "votes": "{{count}} vote",
+    "votes_plural": "{{count}} votes",
+    "emptyState": "No votes yet"
+  },
+  "eventPlan": {
+    "timeLabel": "What time?",
+    "attendanceLabel": "Are you coming?",
+    "attendanceOptions": {
+      "going": "I'm in ✅",
+      "maybe": "Maybe 🤔",
+      "notGoing": "Can't go ❌"
+    },
+    "noteLabel": "Add a note (optional)",
+    "notePlaceholder": "e.g. Let's meet at the entrance!",
+    "saving": "Saving...",
+    "confirmButton": "Confirm plan 🎉"
+  },
+  "result": {
+    "title": "It's a Match!",
+    "viewDetails": "View Details",
+    "planVisit": "Plan Visit",
+    "shareWithGroup": "Share with Group",
+    "winnerBadge": "Winner",
+    "shareTitle": "Share Match?",
+    "shareMessage": "Share this restaurant with your group?"
+  },
+  "profile": {
+    "level": "Level {{level}}",
+    "points": "{{points}} pts",
+    "nextLevel": "{{points}} pts to Level {{level}}",
+    "memberSince": "Member since {{date}}",
+    "sections": {
+      "stats": "Stats",
+      "badges": "Badges",
+      "activity": "Recent Activity"
+    },
+    "stats": {
+      "restaurantsVisited": "Restaurants Visited",
+      "restaurantsValidated": "Validated",
+      "groupSessions": "Group Sessions",
+      "matchesFound": "Matches Found"
+    },
+    "badges": {
+      "firstVisit": {
+        "name": "First Visit",
+        "description": "Validated your first restaurant"
+      },
+      "socialButterfly": {
+        "name": "Social Butterfly",
+        "description": "Joined 5 group sessions"
+      },
+      "explorer": {
+        "name": "Explorer",
+        "description": "Visited 10 different restaurants"
+      },
+      "localGuide": {
+        "name": "Local Guide",
+        "description": "Validated 25 restaurants"
+      },
+      "weekendWarrior": {
+        "name": "Weekend Warrior",
+        "description": "Visited restaurants 3 weekends in a row"
+      },
+      "earlyBird": {
+        "name": "Early Bird",
+        "description": "Validated 5 breakfast spots"
+      }
+    },
+    "noBadges": "No badges earned yet. Start exploring!",
+    "levels": {
+      "1": "Newbie",
+      "2": "Explorer",
+      "3": "Regular",
+      "4": "Foodie",
+      "5": "Connoisseur"
+    }
+  },
+  "leaderboard": {
+    "title": "Leaderboard",
+    "tabs": {
+      "weekly": "Weekly",
+      "allTime": "All-Time"
+    },
+    "resetsIn": "Resets in {{time}}",
+    "you": "You",
+    "points": "{{points}} pts",
+    "podium": {
+      "1st": "1st",
+      "2nd": "2nd",
+      "3rd": "3rd"
+    }
+  },
+  "validate": {
+    "title": "Validate Visits",
+    "progressLabel": "Progress",
+    "progressValue": "{{current}}/{{total}} validated",
+    "doneTitle": "All caught up!",
+    "doneMessage": "No pending validations",
+    "earnedPoints": "+{{points}} pts",
+    "visitedLabel": "Did you visit this place?",
+    "visitedOn": "Visited on {{date}}",
+    "confirmButton": "Yes, I visited",
+    "skipButton": "Skip",
+    "moods": {
+      "romantic": "Romantic",
+      "energetic": "Energetic",
+      "chill": "Chill",
+      "explorer": "Explore",
+      "focus": "Focus",
+      "hungryQuick": "Hungry & Quick"
+    }
+  },
+  "settings": {
+    "title": "Settings",
+    "sections": {
+      "account": "Account",
+      "notifications": "Notifications",
+      "preferences": "Preferences",
+      "about": "About"
+    },
+    "account": {
+      "changeDisplayName": "Change display name",
+      "enterNewName": "Enter new name",
+      "save": "Save",
+      "signOut": "Sign Out"
+    },
+    "notifications": {
+      "groupInvites": "Group invites",
+      "leaderboardUpdates": "Leaderboard updates",
+      "newRestaurants": "New restaurants nearby",
+      "validateReminders": "Validate reminders"
+    },
+    "preferences": {
+      "darkMode": "Dark mode",
+      "language": "Language",
+      "defaultCity": "Default city",
+      "defaultBudget": "Default budget",
+      "cities": {
+        "lisbon": "Lisbon 🇵🇹",
+        "porto": "Porto 🇵🇹",
+        "algarve": "Algarve 🇵🇹"
+      }
+    },
+    "about": {
+      "website": "Website",
+      "privacy": "Privacy Policy",
+      "terms": "Terms of Service",
+      "version": "Version {{version}}"
+    },
+    "languages": {
+      "en": "English",
+      "pt": "Português"
+    }
+  },
+  "errorBoundary": {
+    "title": "Something went wrong",
+    "message": "We're sorry for the inconvenience. Please try restarting the app.",
+    "restart": "Restart App"
+  }
+}
