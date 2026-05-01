@@ -53,6 +53,16 @@ export default function VotingScreen({ roomCode, selectedMoods, budgetLevel, onV
   const [loading, setLoading] = useState(true);
   const [myVotes, setMyVotes] = useState<Record<string, 'like' | 'pass'>>({});
 
+  // Debug log
+  useEffect(() => {
+    __DEV__ && console.log('VotingScreen mounted', {
+      roomCode,
+      selectedMoods,
+      budgetLevel,
+      hasUser: !!user,
+    });
+  }, []);
+
   // Fetch restaurants on mount
   useEffect(() => {
     const fetchRestaurants = async () => {
@@ -75,9 +85,24 @@ export default function VotingScreen({ roomCode, selectedMoods, budgetLevel, onV
 
   // Listen to room for realtime votes
   useEffect(() => {
+    if (!roomCode) {
+      __DEV__ && console.log('No room code for listener');
+      return;
+    }
+
+    __DEV__ && console.log('Setting up room listener for:', roomCode);
+
     const unsubscribe = listenToRoom(roomCode, (roomData) => {
+      __DEV__ && console.log('Room data update:', {
+        status: roomData?.status,
+        voteCount: Object.keys(roomData?.votes || {}).length,
+        participantCount: Object.keys(roomData?.participants || {}).length,
+      });
+
       setRoom(roomData);
+
       if (roomData?.status === 'decided' && roomData.votes) {
+        __DEV__ && console.log('Room decided, navigating to group liked screen');
         // All votes are in, navigate to group liked screen
         onVotingComplete(restaurants, roomData.votes);
       }
@@ -105,7 +130,12 @@ export default function VotingScreen({ roomCode, selectedMoods, budgetLevel, onV
   const allDone = currentIndex >= restaurants.length;
 
   const handleVote = async (direction: 'like' | 'pass') => {
-    if (!user || !restaurant) return;
+    if (!user || !restaurant) {
+      __DEV__ && console.log('Cannot vote: no user or restaurant');
+      return;
+    }
+
+    __DEV__ && console.log('Voting:', { restaurant: restaurant.name, direction, currentIndex });
 
     Haptics.impactAsync(
       direction === 'like'
@@ -116,17 +146,30 @@ export default function VotingScreen({ roomCode, selectedMoods, budgetLevel, onV
     const newVotes = { ...myVotes, [restaurant.id]: direction };
     setMyVotes(newVotes);
 
-    await recordVote(roomCode, user.uid, restaurant.id, direction);
+    // Record vote to Firestore
+    try {
+      await recordVote(roomCode, user.uid, restaurant.id, direction);
+      __DEV__ && console.log('Vote recorded successfully');
+    } catch (error) {
+      __DEV__ && console.error('Error recording vote:', error);
+    }
 
     const nextIndex = currentIndex + 1;
+    __DEV__ && console.log('Next index:', nextIndex, '/', restaurants.length);
+
+    // Always increment index first
+    setCurrentIndex(nextIndex);
 
     if (nextIndex >= restaurants.length) {
+      __DEV__ && console.log('All cards done, checking if all participants voted');
       // All cards voted — check if all participants done
       const participants = Object.keys(room?.participants || {});
       const allVoted = participants.every(uid => {
         const votes = room?.votes?.[uid] || {};
         return restaurants.every(r => votes[r.id] !== undefined);
       });
+
+      __DEV__ && console.log('All voted?', allVoted, 'Participants:', participants.length);
 
       if (allVoted && room?.organizer_uid === user.uid) {
         const winner = calculateWinner(
@@ -137,8 +180,6 @@ export default function VotingScreen({ roomCode, selectedMoods, budgetLevel, onV
           await declareWinner(roomCode, winner, user.uid);
         }
       }
-    } else {
-      setCurrentIndex(nextIndex);
     }
   };
 
@@ -204,13 +245,25 @@ export default function VotingScreen({ roomCode, selectedMoods, budgetLevel, onV
   }
 
   const participants = Object.values(room?.participants || {}).map(p => p.name);
+  const participantCount = participants.length;
+
+  __DEV__ && console.log('Current state:', {
+    currentIndex,
+    totalRestaurants: restaurants.length,
+    participantCount,
+    hasRoom: !!room,
+  });
 
   // Calculate vote data for current restaurant
   const getLikeCount = (restaurantId: string): number => {
-    if (!room?.votes) return 0;
-    return Object.values(room.votes).filter(
+    if (!room?.votes) {
+      __DEV__ && console.log('No room votes yet');
+      return 0;
+    }
+    const count = Object.values(room.votes).filter(
       userVotes => userVotes[restaurantId] === 'like'
     ).length;
+    return count;
   };
 
   const getAvatars = (restaurantId: string): string[] => {
@@ -225,10 +278,12 @@ export default function VotingScreen({ roomCode, selectedMoods, budgetLevel, onV
     return avatars;
   };
 
-  const voteData = {
+  const voteData = restaurant ? {
     liked: getLikeCount(restaurant.id),
     avatars: getAvatars(restaurant.id),
-  };
+  } : { liked: 0, avatars: [] };
+
+  __DEV__ && restaurant && console.log('Vote data for', restaurant.name, ':', voteData);
 
   return (
     <SafeAreaView style={styles.container}>
@@ -268,7 +323,7 @@ export default function VotingScreen({ roomCode, selectedMoods, budgetLevel, onV
           voteData={{
             avatars: voteData.avatars,
             liked: voteData.liked,
-            total: participants.length,
+            total: participantCount,
           }}
           translateX={translateX}
           rotate={rotate}

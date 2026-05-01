@@ -18,11 +18,12 @@ type Props = {
   votes: Record<string, Record<string, string>>; // {uid: {restaurantId: 'like'|'pass'}}
   totalVoters: number;
   onSelect: (restaurant: Restaurant) => void;
+  onFinalVote?: () => void;
   onStartOver: () => void;
 };
 
 export default function GroupLikedScreen({
-  restaurants, votes, totalVoters, onSelect, onStartOver
+  restaurants, votes, totalVoters, onSelect, onFinalVote, onStartOver
 }: Props) {
   // Calculate like count per restaurant
   const getLikeCount = (restaurantId: string): number => {
@@ -123,6 +124,11 @@ export default function GroupLikedScreen({
         showsVerticalScrollIndicator={false}
       />
       <View style={styles.bottom}>
+        {onFinalVote && sortedRestaurants.length > 1 && (
+          <TouchableOpacity style={styles.finalVoteButton} onPress={onFinalVote}>
+            <Text style={styles.finalVoteText}>Continue to final vote</Text>
+          </TouchableOpacity>
+        )}
         <TouchableOpacity style={styles.startOverButton} onPress={handleStartOver}>
           <Text style={styles.startOverText}>Start over</Text>
         </TouchableOpacity>
@@ -240,6 +246,18 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     paddingBottom: 16,
     paddingTop: 8,
+    gap: 10,
+  },
+  finalVoteButton: {
+    backgroundColor: Colors.accent,
+    borderRadius: 12,
+    paddingVertical: 14,
+    alignItems: 'center',
+  },
+  finalVoteText: {
+    color: '#fff',
+    fontSize: 15,
+    fontWeight: '700',
   },
   startOverButton: {
     borderWidth: 1.5,

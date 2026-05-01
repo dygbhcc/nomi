@@ -19,6 +19,8 @@ import LeaderboardScreen from "./screens/LeaderboardScreen";
 import ValidateScreen from "./screens/ValidateScreen";
 import SettingsScreen from "./screens/SettingsScreen";
 import GroupLikedScreen from "./screens/GroupLikedScreen";
+import GroupVoteScreen from "./screens/GroupVoteScreen";
+import EventPlanScreen from "./screens/EventPlanScreen";
 import { Colors } from "./theme/colors";
 
 const ONBOARDED_KEY = "nomi_has_onboarded";
@@ -41,6 +43,8 @@ type Screen =
   | "waitingRoom"
   | "voting"
   | "groupLiked"
+  | "groupVote"
+  | "eventPlan"
   | "result"
   | "profile"
   | "leaderboard"
@@ -61,6 +65,8 @@ function AppNavigator() {
   const [votingResult, setVotingResult] = useState<VotingResult | null>(null);
   const [groupVotes, setGroupVotes] = useState<Record<string, Record<string, string>>>({});
   const [groupRestaurants, setGroupRestaurants] = useState<Restaurant[]>([]);
+  const [likedGroupRestaurants, setLikedGroupRestaurants] = useState<Restaurant[]>([]);
+  const [isGroupMode, setIsGroupMode] = useState(false);
   const [returnScreen, setReturnScreen] = useState<Screen>("mood");
 
   // Check onboarding status on startup
@@ -106,7 +112,10 @@ function AppNavigator() {
             setScreen("budget");
           }}
           onSkip={() => setScreen("budget")}
-          onGroup={() => setScreen("group")}
+          onGroup={() => {
+            setIsGroupMode(true);
+            setScreen("group");
+          }}
           onProfile={() => setScreen("profile")}
           onNavigate={(s) => setScreen(s as Screen)}
         />
@@ -117,9 +126,12 @@ function AppNavigator() {
           onContinue={(budget, distance) => {
             setSelectedBudget(budget);
             setSelectedDistance(distance);
-            setScreen("swipe");
+            setScreen(isGroupMode ? "group" : "swipe");
           }}
-          onBack={() => setScreen("mood")}
+          onBack={() => {
+            setIsGroupMode(false);
+            setScreen("mood");
+          }}
           onNavigate={(s) => setScreen(s as Screen)}
         />
       )}
@@ -174,6 +186,12 @@ function AppNavigator() {
           onBack={() => setScreen("group")}
           onStartVoting={(names) => {
             setParticipants(names);
+            // Set default preferences for group mode if not already set
+            if (isGroupMode && !selectedBudget) {
+              setSelectedMoods([]); // No mood filter - show all
+              setSelectedBudget(2); // Default budget level (mid-range)
+              setSelectedDistance(5); // Default 5km
+            }
             setScreen("voting");
           }}
         />
@@ -191,6 +209,11 @@ function AppNavigator() {
           onBack={() => setScreen("waitingRoom")}
         />
       )}
+      {screen === "voting" && selectedBudget === null && (
+        <View style={{ flex: 1, alignItems: "center", justifyContent: "center", backgroundColor: Colors.background }}>
+          <Text style={{ color: Colors.textPrimary, fontSize: 18 }}>Loading preferences...</Text>
+        </View>
+      )}
       {screen === "groupLiked" && (
         <GroupLikedScreen
           restaurants={groupRestaurants}
@@ -201,15 +224,66 @@ function AppNavigator() {
             setPreviousScreen("groupLiked");
             setScreen("detail");
           }}
+          onFinalVote={() => {
+            // Calculate liked restaurants before going to vote screen
+            const getLikeCount = (restaurantId: string): number => {
+              return Object.values(groupVotes).filter(
+                userVotes => userVotes[restaurantId] === 'like'
+              ).length;
+            };
+            const liked = groupRestaurants
+              .map(r => ({ ...r, likeCount: getLikeCount(r.id) }))
+              .filter(r => r.likeCount > 0)
+              .sort((a, b) => b.likeCount - a.likeCount);
+            setLikedGroupRestaurants(liked);
+            setScreen("groupVote");
+          }}
           onStartOver={() => {
             setGroupRestaurants([]);
             setGroupVotes({});
+            setLikedGroupRestaurants([]);
+            setIsGroupMode(false);
             setSelectedMoods([]);
             setSelectedBudget(null);
             setSelectedDistance(null);
             setRoomCode("");
             setParticipants([]);
             setScreen("mood");
+          }}
+        />
+      )}
+      {screen === "groupVote" && likedGroupRestaurants.length > 0 && (
+        <GroupVoteScreen
+          roomCode={roomCode}
+          restaurants={likedGroupRestaurants}
+          totalParticipants={Object.keys(groupVotes).length}
+          onWinner={(restaurant) => {
+            setDetailRestaurant(restaurant);
+            setScreen("eventPlan");
+          }}
+          onStartOver={() => {
+            setGroupRestaurants([]);
+            setGroupVotes({});
+            setLikedGroupRestaurants([]);
+            setIsGroupMode(false);
+            setSelectedMoods([]);
+            setSelectedBudget(null);
+            setSelectedDistance(null);
+            setRoomCode("");
+            setParticipants([]);
+            setScreen("mood");
+          }}
+        />
+      )}
+      {screen === "eventPlan" && detailRestaurant && user && (
+        <EventPlanScreen
+          roomCode={roomCode}
+          restaurant={detailRestaurant}
+          isOrganizer={true}
+          currentUserId={user.uid}
+          onDone={() => {
+            // Navigate to event summary (Task 5.5-5.6)
+            setScreen("mood"); // For now, go back to mood
           }}
         />
       )}

@@ -9,7 +9,8 @@ import {
   Timestamp,
   Unsubscribe,
 } from 'firebase/firestore';
-import { db } from './firebase';
+import { ref, set, update, onValue, off } from 'firebase/database';
+import { db, database } from './firebase';
 
 export type Room = {
   code: string;
@@ -140,4 +141,61 @@ export const declareWinner = async (
   await updateDoc(userRef, {
     points: increment(100),
   });
+};
+
+// Final vote functions (using Realtime Database for real-time updates)
+export const recordFinalVote = async (
+  roomCode: string,
+  userId: string,
+  restaurantId: string
+): Promise<void> => {
+  const votesRef = ref(database, `rooms/${roomCode}/final_votes/${userId}`);
+  await set(votesRef, restaurantId);
+};
+
+export const listenToFinalVotes = (
+  roomCode: string,
+  callback: (votes: Record<string, string>) => void
+): (() => void) => {
+  const votesRef = ref(database, `rooms/${roomCode}/final_votes`);
+  const unsubscribe = onValue(votesRef, (snap) => {
+    callback(snap.exists() ? snap.val() : {});
+  }, (error) => {
+    __DEV__ && console.error('Error listening to final votes:', error);
+  });
+  return unsubscribe;
+};
+
+// Event details functions
+type EventDetails = {
+  event_time: string;
+  restaurant_id: string;
+  attendance: Record<string, string>;
+  note: string;
+};
+
+export const setEventDetails = async (
+  roomCode: string,
+  details: EventDetails
+): Promise<void> => {
+  // Update Realtime Database for real-time sync
+  const eventRef = ref(database, `rooms/${roomCode}/event`);
+  await update(eventRef, details);
+
+  // Also update Firestore for persistence
+  const roomRef = doc(db, 'rooms', roomCode);
+  await updateDoc(roomRef, {
+    event_time: details.event_time,
+    restaurant_id: details.restaurant_id,
+    note: details.note,
+  });
+};
+
+export const updateAttendance = async (
+  roomCode: string,
+  userId: string,
+  status: 'going' | 'not_going' | 'maybe'
+): Promise<void> => {
+  const attendanceRef = ref(database, `rooms/${roomCode}/event/attendance/${userId}`);
+  await set(attendanceRef, status);
 };

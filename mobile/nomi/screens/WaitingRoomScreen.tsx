@@ -79,6 +79,11 @@ export default function WaitingRoomScreen({ roomCode, onBack, onStartVoting }: P
     });
   };
 
+  const handleStartVoting = () => {
+    __DEV__ && console.log('Starting voting for room:', roomCode);
+    onStartVoting(participants.map((p) => p.name));
+  };
+
   return (
     <SafeAreaView style={styles.container}>
       <StatusBar style="dark" />
@@ -126,7 +131,7 @@ export default function WaitingRoomScreen({ roomCode, onBack, onStartVoting }: P
           style={[styles.startButton, !canStart && styles.startButtonDisabled]}
           disabled={!canStart}
           activeOpacity={0.8}
-          onPress={() => onStartVoting(participants.map((p) => p.name))}
+          onPress={handleStartVoting}
         >
           <Text style={styles.startButtonText}>
             {canStart ? 'Start Voting' : `Waiting for others... (${participants.length}/2)`}
