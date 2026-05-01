@@ -1,5 +1,5 @@
-import React, { useState, useEffect } from "react";
-import { View, ActivityIndicator } from "react-native";
+import React, { useState, useEffect, useRef } from "react";
+import { View, ActivityIndicator, Text } from "react-native";
 import { SafeAreaProvider } from "react-native-safe-area-context";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { AuthProvider, useAuth } from "./context/AuthContext";
@@ -22,6 +22,7 @@ import GroupLikedScreen from "./screens/GroupLikedScreen";
 import GroupVoteScreen from "./screens/GroupVoteScreen";
 import EventPlanScreen from "./screens/EventPlanScreen";
 import { Colors } from "./theme/colors";
+import { getRoomPreferences } from "./services/roomService";
 
 const ONBOARDED_KEY = "nomi_has_onboarded";
 
@@ -67,7 +68,9 @@ function AppNavigator() {
   const [groupRestaurants, setGroupRestaurants] = useState<Restaurant[]>([]);
   const [likedGroupRestaurants, setLikedGroupRestaurants] = useState<Restaurant[]>([]);
   const [isGroupMode, setIsGroupMode] = useState(false);
+  const [isHost, setIsHost] = useState(false);
   const [returnScreen, setReturnScreen] = useState<Screen>("mood");
+  const consensusCalculatedRef = useRef(false);
 
   // Check onboarding status on startup
   useEffect(() => {
@@ -75,6 +78,7 @@ function AppNavigator() {
       setScreen(value === "true" ? "mood" : "onboarding");
     });
   }, []);
+
 
   const handleOnboardingDone = async () => {
     await AsyncStorage.setItem(ONBOARDED_KEY, "true");
@@ -123,13 +127,17 @@ function AppNavigator() {
       {screen === "budget" && (
         <BudgetDistanceScreen
           selectedMoods={selectedMoods}
+          isGroupMode={isGroupMode}
+          isHost={isHost}
+          roomCode={roomCode}
           onContinue={(budget, distance) => {
             setSelectedBudget(budget);
             setSelectedDistance(distance);
-            setScreen(isGroupMode ? "group" : "swipe");
+            setScreen(isGroupMode && isHost ? "waitingRoom" : isGroupMode ? "groupPreferences" : "swipe");
           }}
           onBack={() => {
             setIsGroupMode(false);
+            setIsHost(false);
             setScreen("mood");
           }}
           onNavigate={(s) => setScreen(s as Screen)}
@@ -173,8 +181,19 @@ function AppNavigator() {
       {screen === "group" && (
         <GroupScreen
           onBack={() => setScreen("mood")}
+          onStartVoting={(code, moods, budget, distanceMeters) => {
+            setRoomCode(code);
+            setIsGroupMode(true);
+            setIsHost(true);
+            setSelectedMoods(moods);
+            setSelectedBudget(budget);
+            setSelectedDistance(distanceMeters);
+            setScreen("waitingRoom");
+          }}
           onJoinRoom={(code) => {
             setRoomCode(code);
+            setIsGroupMode(true);
+            setIsHost(false);
             setScreen("waitingRoom");
           }}
           onNavigate={(s) => setScreen(s as Screen)}
@@ -184,15 +203,30 @@ function AppNavigator() {
         <WaitingRoomScreen
           roomCode={roomCode}
           onBack={() => setScreen("group")}
-          onStartVoting={(names) => {
+          onStartVoting={async (names) => {
             setParticipants(names);
-            // Set default preferences for group mode if not already set
-            if (isGroupMode && !selectedBudget) {
-              setSelectedMoods([]); // No mood filter - show all
-              setSelectedBudget(2); // Default budget level (mid-range)
-              setSelectedDistance(5); // Default 5km
+
+            // If in group mode, load host's preferences from room
+            if (isGroupMode && roomCode) {
+              try {
+                const preferences = await getRoomPreferences(roomCode);
+                if (preferences) {
+                  __DEV__ && console.log('Loaded room preferences:', preferences);
+                  setSelectedMoods(preferences.moods);
+                  setSelectedBudget(preferences.budget);
+                  setSelectedDistance(preferences.distance * 1000); // Convert km to meters
+                  setScreen("voting");
+                } else {
+                  __DEV__ && console.warn('No preferences found in room');
+                  setScreen("voting");
+                }
+              } catch (error) {
+                __DEV__ && console.error('Error loading room preferences:', error);
+                setScreen("voting");
+              }
+            } else {
+              setScreen("mood");
             }
-            setScreen("voting");
           }}
         />
       )}
@@ -243,6 +277,7 @@ function AppNavigator() {
             setGroupVotes({});
             setLikedGroupRestaurants([]);
             setIsGroupMode(false);
+            setIsHost(false);
             setSelectedMoods([]);
             setSelectedBudget(null);
             setSelectedDistance(null);
@@ -266,6 +301,7 @@ function AppNavigator() {
             setGroupVotes({});
             setLikedGroupRestaurants([]);
             setIsGroupMode(false);
+            setIsHost(false);
             setSelectedMoods([]);
             setSelectedBudget(null);
             setSelectedDistance(null);
@@ -296,6 +332,8 @@ function AppNavigator() {
           roomCode={votingResult.roomCode}
           onStartOver={() => {
             setVotingResult(null);
+            setIsGroupMode(false);
+            setIsHost(false);
             setSelectedMoods([]);
             setSelectedBudget(null);
             setSelectedDistance(null);

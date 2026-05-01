@@ -10,6 +10,8 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { StatusBar } from "expo-status-bar";
 import { Colors, Shadows, Spacing, BorderRadius } from "../theme/colors";
 import BottomNavigationBar from "../components/BottomNavigationBar";
+import { useAuth } from "../context/AuthContext";
+import { createRoom } from "../services/roomService";
 
 type BudgetOption = {
   value: number;
@@ -46,6 +48,9 @@ const STEP_INACTIVE = Colors.stepInactive;
 
 type Props = {
   selectedMoods: string[];
+  isGroupMode?: boolean;
+  isHost?: boolean;
+  roomCode?: string;
   onContinue: (budget: number, distance: number) => void;
   onBack: () => void;
   onSkip?: () => void;
@@ -68,14 +73,45 @@ function ProgressBar() {
   );
 }
 
-export default function BudgetDistanceScreen({ onContinue, onBack, onSkip, onNavigate }: Props) {
+export default function BudgetDistanceScreen({
+  selectedMoods,
+  isGroupMode = false,
+  isHost = false,
+  roomCode = "",
+  onContinue,
+  onBack,
+  onSkip,
+  onNavigate
+}: Props) {
+  const { user } = useAuth();
   const [selectedBudget, setSelectedBudget] = useState<number | null>(null);
   const [selectedDistance, setSelectedDistance] = useState<number | null>(null);
 
-  const handleContinue = () => {
+  const handleContinue = async () => {
     // Use default values if not selected (auto mode)
     const budget = selectedBudget ?? 2; // default: €€
     const distance = selectedDistance ?? 3000; // default: A bit further
+
+    // If host in group mode, create room with preferences
+    if (isGroupMode && isHost && roomCode && user) {
+      __DEV__ && console.log('Creating room with host preferences:', { selectedMoods, budget, distance });
+      try {
+        await createRoom(
+          roomCode,
+          user.uid,
+          user.displayName || 'Host',
+          {
+            moods: selectedMoods,
+            budget,
+            distance: Math.round(distance / 1000), // Convert to km
+          }
+        );
+        __DEV__ && console.log('Room created successfully');
+      } catch (error) {
+        __DEV__ && console.error('Error creating room:', error);
+      }
+    }
+
     onContinue(budget, distance);
   };
 

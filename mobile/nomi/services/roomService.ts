@@ -20,12 +20,18 @@ export type Room = {
   status: 'waiting' | 'voting' | 'decided';
   winner_id?: string;
   created_at: Timestamp;
+  preferences?: {
+    moods: string[];
+    budget: number;
+    distance: number;
+  };
 };
 
 export const createRoom = async (
   code: string,
   organizerUid: string,
-  organizerName: string
+  organizerName: string,
+  preferences?: { moods: string[]; budget: number; distance: number }
 ): Promise<void> => {
   const roomRef = doc(db, 'rooms', code);
   await setDoc(roomRef, {
@@ -40,7 +46,30 @@ export const createRoom = async (
     votes: {},
     status: 'waiting',
     created_at: Timestamp.now(),
+    ...(preferences && { preferences }),
   });
+};
+
+export const setRoomPreferences = async (
+  code: string,
+  preferences: { moods: string[]; budget: number; distance: number }
+): Promise<void> => {
+  const roomRef = doc(db, 'rooms', code);
+  await updateDoc(roomRef, {
+    preferences,
+  });
+};
+
+export const getRoomPreferences = async (
+  code: string
+): Promise<{ moods: string[]; budget: number; distance: number } | null> => {
+  const roomRef = doc(db, 'rooms', code);
+  const roomSnap = await getDoc(roomRef);
+
+  if (!roomSnap.exists()) return null;
+
+  const room = roomSnap.data() as Room;
+  return room.preferences || null;
 };
 
 export const joinRoom = async (
@@ -198,4 +227,70 @@ export const updateAttendance = async (
 ): Promise<void> => {
   const attendanceRef = ref(database, `rooms/${roomCode}/event/attendance/${userId}`);
   await set(attendanceRef, status);
+};
+
+// Preference voting functions
+export type PreferenceVote = {
+  moods: string[];
+  budget: number;
+  distance: number;
+};
+
+export const recordPreferenceVote = async (
+  roomCode: string,
+  userId: string,
+  preferences: PreferenceVote
+): Promise<void> => {
+  const voteRef = ref(database, `rooms/${roomCode}/preference_votes/${userId}`);
+  await set(voteRef, preferences);
+};
+
+export const listenToPreferenceVotes = (
+  roomCode: string,
+  callback: (votes: Record<string, PreferenceVote>) => void
+): (() => void) => {
+  const votesRef = ref(database, `rooms/${roomCode}/preference_votes`);
+  const unsubscribe = onValue(votesRef, (snap) => {
+    callback(snap.exists() ? snap.val() : {});
+  }, (error) => {
+    __DEV__ && console.error('Error listening to preference votes:', error);
+  });
+  return unsubscribe;
+};
+
+export const calculateConsensus = (
+  votes: Record<string, PreferenceVote>
+): { moods: string[], budget: number, distance: number } => {
+  const voteArray = Object.values(votes);
+
+  if (voteArray.length === 0) {
+    return { moods: [], budget: 2, distance: 5 };
+  }
+
+  // Calculate mood consensus - moods that appear in majority of votes
+  const moodCounts: Record<string, number> = {};
+  voteArray.forEach(vote => {
+    vote.moods.forEach(mood => {
+      moodCounts[mood] = (moodCounts[mood] || 0) + 1;
+    });
+  });
+
+  const threshold = Math.ceil(voteArray.length / 2);
+  const consensusMoods = Object.entries(moodCounts)
+    .filter(([_, count]) => count >= threshold)
+    .map(([mood]) => mood);
+
+  // Calculate budget - round average
+  const avgBudget = voteArray.reduce((sum, vote) => sum + vote.budget, 0) / voteArray.length;
+  const consensusBudget = Math.round(avgBudget);
+
+  // Calculate distance - round average
+  const avgDistance = voteArray.reduce((sum, vote) => sum + vote.distance, 0) / voteArray.length;
+  const consensusDistance = Math.round(avgDistance);
+
+  return {
+    moods: consensusMoods,
+    budget: consensusBudget,
+    distance: consensusDistance,
+  };
 };
