@@ -75,6 +75,16 @@ export default function SwipeScreen({ selectedMoods, budgetLevel, onBack, onChan
     fetchRestaurants();
   }, [selectedMoods, budgetLevel]);
 
+  const batchEnd = batchStart + BATCH_SIZE;
+  const currentBatch = restaurants.slice(batchStart, batchEnd);
+  const allDone = batchStart >= restaurants.length;
+
+  useEffect(() => {
+    if (allDone && restaurants.length > 0) {
+      onShowLiked(likedRestaurants);
+    }
+  }, [allDone, likedRestaurants, onShowLiked, restaurants.length]);
+
   const translateX = useRef(new Animated.Value(0)).current;
   const rotate = translateX.interpolate({
     inputRange: [-SCREEN_WIDTH, 0, SCREEN_WIDTH],
@@ -91,9 +101,6 @@ export default function SwipeScreen({ selectedMoods, budgetLevel, onBack, onChan
     extrapolate: "clamp",
   });
 
-  const batchEnd = batchStart + BATCH_SIZE;
-  const currentBatch = restaurants.slice(batchStart, batchEnd);
-  const allDone = batchStart >= restaurants.length;
   const batchDone = currentIndex >= currentBatch.length && !allDone;
   const restaurant = currentBatch[currentIndex];
 
@@ -224,12 +231,6 @@ export default function SwipeScreen({ selectedMoods, budgetLevel, onBack, onChan
       </SafeAreaView>
     );
   }
-
-  useEffect(() => {
-    if (allDone) {
-      onShowLiked(likedRestaurants);
-    }
-  }, [allDone]);
 
   if (allDone) {
     // Transitioning to liked screen

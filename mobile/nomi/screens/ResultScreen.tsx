@@ -10,6 +10,7 @@ import {
   Image,
   ImageSourcePropType,
   Linking,
+  Alert,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { StatusBar } from "expo-status-bar";
@@ -207,6 +208,17 @@ export default function ResultScreen({
     Linking.openURL(`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(restaurant.name)}`);
   };
 
+  const handleStartOver = () => {
+    Alert.alert(
+      'Start New Search?',
+      "You'll lose your current picks.",
+      [
+        { text: 'Cancel', style: 'cancel' },
+        { text: 'Start Over', style: 'destructive', onPress: onStartOver },
+      ]
+    );
+  };
+
   return (
     <SafeAreaView style={styles.container}>
       <StatusBar style="dark" />
@@ -331,7 +343,7 @@ export default function ResultScreen({
           </TouchableOpacity>
         </View>
 
-        <TouchableOpacity style={styles.textButton} onPress={onStartOver}>
+        <TouchableOpacity style={styles.textButton} onPress={handleStartOver}>
           <Text style={styles.textButtonText}>Start Over</Text>
         </TouchableOpacity>
 

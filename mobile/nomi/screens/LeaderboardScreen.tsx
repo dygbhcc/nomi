@@ -111,6 +111,16 @@ export default function LeaderboardScreen({ onNavigate }: Props) {
         showsVerticalScrollIndicator={false}
       >
         {/* --- Header --- */}
+        <View style={styles.headerRow}>
+          <TouchableOpacity
+            onPress={() => onNavigate("mood")}
+            style={styles.homeButton}
+            accessibilityLabel="Back to home"
+            accessibilityRole="button"
+          >
+            <Text style={styles.homeButtonText}>{"\u2190"} Home</Text>
+          </TouchableOpacity>
+        </View>
         <Text style={styles.headerTitle}>This Week's Top Deciders</Text>
         <Text style={styles.cityName}>Lisbon {"\u{1F1F5}\u{1F1F9}"}</Text>
         <Text style={styles.countdown}>
@@ -247,11 +257,25 @@ const styles = StyleSheet.create({
   },
 
   // --- Header ---
+  headerRow: {
+    flexDirection: "row",
+    justifyContent: "flex-start",
+    paddingTop: 8,
+  },
+  homeButton: {
+    padding: 10,
+    minHeight: 44,
+  },
+  homeButtonText: {
+    color: ACCENT,
+    fontSize: 14,
+    fontWeight: "600",
+  },
   headerTitle: {
     color: TEXT_PRIMARY,
     fontSize: 24,
     fontWeight: "700",
-    marginTop: 16,
+    marginTop: 8,
     textAlign: "center",
   },
   cityName: {

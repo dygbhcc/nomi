@@ -7,6 +7,7 @@ import {
   Image,
   StyleSheet,
   SafeAreaView,
+  Alert,
 } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
 import * as Haptics from 'expo-haptics';
@@ -20,6 +21,17 @@ type Props = {
 };
 
 export default function LikedScreen({ likedRestaurants, onSelect, onStartOver }: Props) {
+  const handleStartOver = () => {
+    Alert.alert(
+      'Start New Search?',
+      "You'll lose your current picks.",
+      [
+        { text: 'Cancel', style: 'cancel' },
+        { text: 'Start Over', style: 'destructive', onPress: onStartOver },
+      ]
+    );
+  };
+
   const getPhotoUrl = (restaurant: Restaurant): string | null => {
     if (!restaurant.photos || restaurant.photos.length === 0) return null;
     const photo = restaurant.photos[0];
@@ -74,7 +86,7 @@ export default function LikedScreen({ likedRestaurants, onSelect, onStartOver }:
           <Text style={styles.emptySubtitle}>Try different preferences or explore more spots.</Text>
           <TouchableOpacity
             style={styles.startOverButton}
-            onPress={onStartOver}
+            onPress={handleStartOver}
             accessibilityLabel="Start over"
             accessibilityRole="button"
           >
@@ -104,7 +116,7 @@ export default function LikedScreen({ likedRestaurants, onSelect, onStartOver }:
       <View style={styles.bottom}>
         <TouchableOpacity
           style={styles.startOverButton}
-          onPress={onStartOver}
+          onPress={handleStartOver}
           accessibilityLabel="Start over with new preferences"
           accessibilityRole="button"
         >

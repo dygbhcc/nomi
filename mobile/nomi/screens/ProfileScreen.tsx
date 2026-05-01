@@ -124,8 +124,16 @@ export default function ProfileScreen({ onNavigate }: Props) {
         contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}
       >
-        {/* --- Settings Gear --- */}
+        {/* --- Header with Home and Settings --- */}
         <View style={styles.settingsRow}>
+          <TouchableOpacity
+            onPress={() => onNavigate("mood")}
+            style={styles.homeButton}
+            accessibilityLabel="Back to home"
+            accessibilityRole="button"
+          >
+            <Text style={styles.homeButtonText}>{"\u2190"} Home</Text>
+          </TouchableOpacity>
           <TouchableOpacity
             onPress={() => onNavigate("settings")}
             style={styles.settingsButton}
@@ -271,8 +279,18 @@ const styles = StyleSheet.create({
   // --- Settings ---
   settingsRow: {
     flexDirection: "row",
-    justifyContent: "flex-end",
+    justifyContent: "space-between",
+    alignItems: "center",
     paddingTop: 8,
+  },
+  homeButton: {
+    padding: 10,
+    minHeight: 44,
+  },
+  homeButtonText: {
+    color: ACCENT,
+    fontSize: 14,
+    fontWeight: "600",
   },
   settingsButton: {
     // FIX 6 - Touch target minimum

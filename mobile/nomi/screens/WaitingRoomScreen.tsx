@@ -128,7 +128,9 @@ export default function WaitingRoomScreen({ roomCode, onBack, onStartVoting }: P
           activeOpacity={0.8}
           onPress={() => onStartVoting(participants.map((p) => p.name))}
         >
-          <Text style={styles.startButtonText}>Start Voting</Text>
+          <Text style={styles.startButtonText}>
+            {canStart ? 'Start Voting' : `Waiting for others... (${participants.length}/2)`}
+          </Text>
         </TouchableOpacity>
         <TouchableOpacity style={styles.leaveButton} onPress={onBack}>
           <Text style={styles.leaveText}>Leave room</Text>
