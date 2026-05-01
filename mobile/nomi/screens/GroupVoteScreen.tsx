@@ -9,6 +9,7 @@ import {
   SafeAreaView,
 } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
+import { useTranslation } from 'react-i18next';
 import * as Haptics from 'expo-haptics';
 import { Colors } from '../theme/colors';
 import { Restaurant, getPhotoUrl } from '../services/restaurantService';
@@ -26,6 +27,7 @@ type Props = {
 export default function GroupVoteScreen({
   roomCode, restaurants, totalParticipants, onWinner, onStartOver
 }: Props) {
+  const { t } = useTranslation();
   const { user } = useAuth();
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [voted, setVoted] = useState(false);
@@ -122,13 +124,13 @@ export default function GroupVoteScreen({
         )}
         {isSelected && (
           <View style={styles.selectedBadge}>
-            <Text style={styles.selectedBadgeText}>Your pick ✓</Text>
+            <Text style={styles.selectedBadgeText}>{t('groupVote.yourPick')}</Text>
           </View>
         )}
         <View style={styles.cardInfo}>
           <Text style={styles.cardName} numberOfLines={1}>{item.name}</Text>
           <Text style={styles.cardMeta}>
-            {item.distance || 'Nearby'} · {'€'.repeat(item.budget_level)}
+            {item.distance || t('common.nearby')} · {'€'.repeat(item.budget_level)}
           </Text>
           {voteCount > 0 && (
             <View style={styles.voteRow}>
@@ -140,7 +142,7 @@ export default function GroupVoteScreen({
                   ]}
                 />
               </View>
-              <Text style={styles.voteCount}>{voteCount} vote{voteCount > 1 ? 's' : ''}</Text>
+              <Text style={styles.voteCount}>{t('groupVote.votes', { count: voteCount })}</Text>
             </View>
           )}
         </View>
@@ -154,12 +156,12 @@ export default function GroupVoteScreen({
         <StatusBar style="dark" />
         <View style={styles.emptyContainer}>
           <Text style={styles.emptyEmoji}>🤔</Text>
-          <Text style={styles.emptyTitle}>No restaurants to vote on</Text>
+          <Text style={styles.emptyTitle}>{t('groupVote.emptyState')}</Text>
           <Text style={styles.emptySubtitle}>
-            Something went wrong. Please start over.
+            {t('common.errorOccurred')}
           </Text>
           <TouchableOpacity style={styles.startOverButton} onPress={onStartOver}>
-            <Text style={styles.startOverText}>Start over</Text>
+            <Text style={styles.startOverText}>{t('common.back')}</Text>
           </TouchableOpacity>
         </View>
       </SafeAreaView>
@@ -170,11 +172,11 @@ export default function GroupVoteScreen({
     <SafeAreaView style={styles.container}>
       <StatusBar style="dark" />
       <View style={styles.header}>
-        <Text style={styles.title}>Final vote</Text>
+        <Text style={styles.title}>{t('groupVote.title')}</Text>
         <Text style={styles.subtitle}>
           {voted
-            ? `Waiting for others... (${waitingCount}/${totalParticipants} voted)`
-            : 'Pick your favourite'}
+            ? t('groupVote.waitingForVotes')
+            : t('groupVote.pickFavourite')}
         </Text>
       </View>
 

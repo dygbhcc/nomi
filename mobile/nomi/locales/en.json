@@ -229,11 +229,13 @@
     "cancel": "Cancel"
   },
   "groupVote": {
-    "title": "Voting Results",
+    "title": "Final vote",
     "waitingForVotes": "Waiting for everyone to vote...",
+    "pickFavourite": "Pick your favourite",
+    "yourPick": "Your pick ✓",
     "votes": "{{count}} vote",
     "votes_plural": "{{count}} votes",
-    "emptyState": "No votes yet"
+    "emptyState": "No restaurants to vote on"
   },
   "eventPlan": {
     "timeLabel": "What time?",
@@ -249,13 +251,15 @@
     "confirmButton": "Confirm plan 🎉"
   },
   "result": {
-    "title": "It's a Match!",
+    "title": "Nomi has decided! 🎉",
     "viewDetails": "View Details",
-    "planVisit": "Plan Visit",
-    "shareWithGroup": "Share with Group",
-    "winnerBadge": "Winner",
-    "shareTitle": "Share Match?",
-    "shareMessage": "Share this restaurant with your group?"
+    "reserve": "Reserve",
+    "shareTitle": "Start New Search?",
+    "shareMessage": "You'll lose your current picks.",
+    "voteSummary": "{{likedBy}} out of {{totalVoters}} people liked this",
+    "badgeTitle": "The Decider",
+    "badgeSubtitle": "You decided for the group! 👑",
+    "points": "+100 pts"
   },
   "profile": {
     "level": "Level {{level}}",

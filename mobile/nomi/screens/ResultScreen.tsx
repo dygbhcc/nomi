@@ -14,6 +14,7 @@ import {
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { StatusBar } from "expo-status-bar";
+import { useTranslation } from "react-i18next";
 import { Colors } from "../theme/colors";
 
 const ACCENT = Colors.accent;
@@ -143,6 +144,7 @@ export default function ResultScreen({
   onStartOver,
   onNavigate,
 }: Props) {
+  const { t } = useTranslation();
   // Trophy scale-in animation
   const trophyScale = useRef(new Animated.Value(0)).current;
   // Badge slide-up animation
@@ -210,11 +212,11 @@ export default function ResultScreen({
 
   const handleStartOver = () => {
     Alert.alert(
-      'Start New Search?',
-      "You'll lose your current picks.",
+      t('result.shareTitle'),
+      t('result.shareMessage'),
       [
-        { text: 'Cancel', style: 'cancel' },
-        { text: 'Start Over', style: 'destructive', onPress: onStartOver },
+        { text: t('common.cancel'), style: 'cancel' },
+        { text: t('common.confirm'), style: 'destructive', onPress: onStartOver },
       ]
     );
   };
@@ -239,7 +241,7 @@ export default function ResultScreen({
         </Animated.View>
 
         <Text style={styles.title}>
-          Nomi has decided! {"\u{1F389}"}
+          {t('result.title')}
         </Text>
 
         {/* --- Winner Card --- */}
@@ -274,7 +276,7 @@ export default function ResultScreen({
             </View>
 
             <View style={styles.reasonBox}>
-              <Text style={styles.reasonLabel}>Why this place?</Text>
+              <Text style={styles.reasonLabel}>{t('swipe.whyForYou')}</Text>
               <Text style={styles.reasonText}>{restaurant.reason}</Text>
             </View>
           </View>
@@ -300,7 +302,7 @@ export default function ResultScreen({
             ))}
           </View>
           <Text style={styles.voteText}>
-            {likedBy} out of {totalVoters} people liked this
+            {t('result.voteSummary', { likedBy, totalVoters })}
           </Text>
         </View>
 
@@ -313,7 +315,7 @@ export default function ResultScreen({
             accessibilityRole="button"
           >
             <Text style={styles.actionIcon}>{"\u{1F4CB}"}</Text>
-            <Text style={styles.actionLabel}>View Details</Text>
+            <Text style={styles.actionLabel}>{t('result.viewDetails')}</Text>
           </TouchableOpacity>
           <TouchableOpacity
             style={styles.actionButton}
@@ -322,7 +324,7 @@ export default function ResultScreen({
             accessibilityRole="button"
           >
             <Text style={styles.actionIcon}>{"\u{1F4C5}"}</Text>
-            <Text style={styles.actionLabel}>Reserve</Text>
+            <Text style={styles.actionLabel}>{t('result.reserve')}</Text>
           </TouchableOpacity>
           <TouchableOpacity
             style={styles.actionButton}
@@ -331,7 +333,7 @@ export default function ResultScreen({
             accessibilityRole="button"
           >
             <Text style={styles.actionIcon}>{"\u{1F5FA}"}</Text>
-            <Text style={styles.actionLabel}>Directions</Text>
+            <Text style={styles.actionLabel}>{t('restaurantDetail.actions.directions')}</Text>
           </TouchableOpacity>
           <TouchableOpacity
             style={styles.actionButton}
@@ -339,12 +341,12 @@ export default function ResultScreen({
             accessibilityRole="button"
           >
             <Text style={styles.actionIcon}>{"\u{1F465}"}</Text>
-            <Text style={styles.actionLabel}>Share</Text>
+            <Text style={styles.actionLabel}>{t('common.share')}</Text>
           </TouchableOpacity>
         </View>
 
         <TouchableOpacity style={styles.textButton} onPress={handleStartOver}>
-          <Text style={styles.textButtonText}>Start Over</Text>
+          <Text style={styles.textButtonText}>{t('common.back')}</Text>
         </TouchableOpacity>
 
         {/* --- The Decider Badge --- */}
@@ -361,9 +363,9 @@ export default function ResultScreen({
             <View style={styles.badgeCard}>
               <Text style={styles.badgeIcon}>{"\u{1F3C6}"}</Text>
               <View style={styles.badgeTextContainer}>
-                <Text style={styles.badgeTitle}>The Decider</Text>
+                <Text style={styles.badgeTitle}>{t('result.badgeTitle')}</Text>
                 <Text style={styles.badgeSubtitle}>
-                  You decided for the group! {"\u{1F451}"}
+                  {t('result.badgeSubtitle')}
                 </Text>
               </View>
               <Animated.View
@@ -372,7 +374,7 @@ export default function ResultScreen({
                   transform: [{ translateY: ptsTranslateY }],
                 }}
               >
-                <Text style={styles.badgePts}>+100 pts</Text>
+                <Text style={styles.badgePts}>{t('result.points')}</Text>
               </Animated.View>
             </View>
           </Animated.View>

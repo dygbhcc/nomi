@@ -229,11 +229,13 @@
     "cancel": "Cancelar"
   },
   "groupVote": {
-    "title": "Resultados da Votação",
+    "title": "Votação final",
     "waitingForVotes": "À espera que todos votem...",
+    "pickFavourite": "Escolhe o teu favorito",
+    "yourPick": "A tua escolha ✓",
     "votes": "{{count}} voto",
     "votes_plural": "{{count}} votos",
-    "emptyState": "Ainda sem votos"
+    "emptyState": "Sem restaurantes para votar"
   },
   "eventPlan": {
     "timeLabel": "A que horas?",
@@ -249,13 +251,15 @@
     "confirmButton": "Confirmar plano 🎉"
   },
   "result": {
-    "title": "É uma Combinação!",
+    "title": "O Nomi decidiu! 🎉",
     "viewDetails": "Ver Detalhes",
-    "planVisit": "Planear Visita",
-    "shareWithGroup": "Partilhar com o Grupo",
-    "winnerBadge": "Vencedor",
-    "shareTitle": "Partilhar Combinação?",
-    "shareMessage": "Partilhar este restaurante com o teu grupo?"
+    "reserve": "Reservar",
+    "shareTitle": "Nova Pesquisa?",
+    "shareMessage": "Vais perder as tuas escolhas atuais.",
+    "voteSummary": "{{likedBy}} de {{totalVoters}} pessoas gostaram disto",
+    "badgeTitle": "O Decisor",
+    "badgeSubtitle": "Decidiste pelo grupo! 👑",
+    "points": "+100 pts"
   },
   "profile": {
     "level": "Nível {{level}}",
