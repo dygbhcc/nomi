@@ -123,3 +123,12 @@ export const buildReason = (restaurant: Restaurant, selectedMoods: string[]): st
   if (restaurant.is_local_concept) return 'Authentic local experience';
   return 'Great spot near you';
 };
+
+export const getPhotoUrl = (restaurant: Restaurant): string | null => {
+  if (!restaurant.photos || restaurant.photos.length === 0) return null;
+  const photo = restaurant.photos[0];
+  if (photo.photo_reference) {
+    return `https://maps.googleapis.com/maps/api/place/photo?maxwidth=800&photo_reference=${photo.photo_reference}&key=${process.env.EXPO_PUBLIC_GOOGLE_PLACES_API_KEY}`;
+  }
+  return null;
+};

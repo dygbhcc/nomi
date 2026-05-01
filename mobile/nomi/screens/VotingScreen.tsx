@@ -1,4 +1,4 @@
-import React, { useState, useRef } from "react";
+import React, { useState, useRef, useEffect } from "react";
 import {
   View,
   Text,
@@ -7,79 +7,19 @@ import {
   Dimensions,
   Animated,
   PanResponder,
-  ImageSourcePropType,
+  ActivityIndicator,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { StatusBar } from "expo-status-bar";
+import * as Haptics from "expo-haptics";
 import { Colors } from "../theme/colors";
 import SwipeVoteCard from "../components/SwipeVoteCard";
+import { recordVote, calculateWinner, declareWinner, listenToRoom, Room } from '../services/roomService';
+import { getRestaurantsByMood, Restaurant, buildReason } from '../services/restaurantService';
+import { useAuth } from '../context/AuthContext';
 
-type Restaurant = {
-  id: string;
-  name: string;
-  distance: string;
-  budget: number;
-  moods: string[];
-  reason: string;
-  photo?: ImageSourcePropType;
-};
+export { type Restaurant };
 
-const MOCK_RESTAURANTS: Restaurant[] = [
-  {
-    id: "1",
-    name: "Taberna da Rua das Flores",
-    distance: "0.3 km",
-    budget: 2,
-    moods: ["romantic", "cozy"],
-    reason: "Perfect match for your romantic + cozy mood",
-    photo: require("../assets/images/restaurants/taberna-rua-das-flores.jpg"),
-  },
-  {
-    id: "2",
-    name: "ZeroZero",
-    distance: "0.8 km",
-    budget: 2,
-    moods: ["fresh", "lively"],
-    reason: "Great fresh vibe with energetic crowd",
-    photo: require("../assets/images/restaurants/zerozero.jpg"),
-  },
-  {
-    id: "3",
-    name: "Cantinho do Avillez",
-    distance: "1.2 km",
-    budget: 3,
-    moods: ["hidden_gem", "romantic"],
-    reason: "Hidden gem with intimate atmosphere",
-    photo: require("../assets/images/restaurants/catinho.jpg"),
-  },
-  {
-    id: "4",
-    name: "A Cevicheria",
-    distance: "0.5 km",
-    budget: 3,
-    moods: ["fresh", "energetic"],
-    reason: "Fresh seafood, buzzing energy",
-    photo: require("../assets/images/restaurants/cevicheria.jpg"),
-  },
-  {
-    id: "5",
-    name: "Solar dos Presuntos",
-    distance: "1.8 km",
-    budget: 2,
-    moods: ["cozy"],
-    reason: "Traditional Portuguese cuisine",
-    photo: require("../assets/images/restaurants/solar.jpg"),
-  },
-];
-
-// Mock vote data per restaurant (simulating other participants' votes)
-const MOCK_VOTES: Record<string, { liked: number; avatars: string[] }> = {
-  "1": { liked: 3, avatars: ["A", "M", "S"] },
-  "2": { liked: 1, avatars: ["A"] },
-  "3": { liked: 2, avatars: ["M", "S"] },
-  "4": { liked: 2, avatars: ["A", "M"] },
-  "5": { liked: 1, avatars: ["S"] },
-};
 
 const AVATAR_COLORS = ["#C25A41", "#E06A4F", "#B54F3A", "#FF8A3D"];
 const SWIPE_THRESHOLD = 100;
@@ -97,23 +37,53 @@ function budgetSymbol(level: number): string {
   return "\u20AC".repeat(level);
 }
 
-export type VotingResult = {
-  restaurant: Restaurant;
-  totalVoters: number;
-  likedBy: number;
-  roomCode: string;
-};
-
 type Props = {
   roomCode: string;
-  participants: string[];
-  onFinish: (result: VotingResult) => void;
+  selectedMoods: string[];
+  budgetLevel: number;
+  onVotingComplete: (restaurants: Restaurant[], votes: Record<string, Record<string, string>>) => void;
   onBack: () => void;
 };
 
-export default function VotingScreen({ roomCode, participants, onFinish, onBack }: Props) {
+export default function VotingScreen({ roomCode, selectedMoods, budgetLevel, onVotingComplete, onBack }: Props) {
+  const { user } = useAuth();
+  const [restaurants, setRestaurants] = useState<Restaurant[]>([]);
   const [currentIndex, setCurrentIndex] = useState(0);
-  const [myVotes, setMyVotes] = useState<Record<string, boolean>>({});
+  const [room, setRoom] = useState<Room | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [myVotes, setMyVotes] = useState<Record<string, 'like' | 'pass'>>({});
+
+  // Fetch restaurants on mount
+  useEffect(() => {
+    const fetchRestaurants = async () => {
+      setLoading(true);
+      try {
+        const data = await getRestaurantsByMood(selectedMoods, budgetLevel, 6);
+        const withReasons = data.map(r => ({
+          ...r,
+          reason: buildReason(r, selectedMoods),
+        }));
+        setRestaurants(withReasons);
+      } catch (error) {
+        __DEV__ && console.error('Failed to fetch restaurants:', error);
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchRestaurants();
+  }, [selectedMoods, budgetLevel]);
+
+  // Listen to room for realtime votes
+  useEffect(() => {
+    const unsubscribe = listenToRoom(roomCode, (roomData) => {
+      setRoom(roomData);
+      if (roomData?.status === 'decided' && roomData.votes) {
+        // All votes are in, navigate to group liked screen
+        onVotingComplete(restaurants, roomData.votes);
+      }
+    });
+    return unsubscribe;
+  }, [roomCode, restaurants, onVotingComplete]);
 
   const translateX = useRef(new Animated.Value(0)).current;
   const rotate = translateX.interpolate({
@@ -131,21 +101,58 @@ export default function VotingScreen({ roomCode, participants, onFinish, onBack 
     extrapolate: "clamp",
   });
 
-  const restaurant = MOCK_RESTAURANTS[currentIndex];
-  const allDone = currentIndex >= MOCK_RESTAURANTS.length;
+  const restaurant = restaurants[currentIndex];
+  const allDone = currentIndex >= restaurants.length;
+
+  const handleVote = async (direction: 'like' | 'pass') => {
+    if (!user || !restaurant) return;
+
+    Haptics.impactAsync(
+      direction === 'like'
+        ? Haptics.ImpactFeedbackStyle.Medium
+        : Haptics.ImpactFeedbackStyle.Light
+    );
+
+    const newVotes = { ...myVotes, [restaurant.id]: direction };
+    setMyVotes(newVotes);
+
+    await recordVote(roomCode, user.uid, restaurant.id, direction);
+
+    const nextIndex = currentIndex + 1;
+
+    if (nextIndex >= restaurants.length) {
+      // All cards voted — check if all participants done
+      const participants = Object.keys(room?.participants || {});
+      const allVoted = participants.every(uid => {
+        const votes = room?.votes?.[uid] || {};
+        return restaurants.every(r => votes[r.id] !== undefined);
+      });
+
+      if (allVoted && room?.organizer_uid === user.uid) {
+        const winner = calculateWinner(
+          { ...room?.votes, [user.uid]: newVotes },
+          restaurants.map(r => r.id)
+        );
+        if (winner) {
+          await declareWinner(roomCode, winner, user.uid);
+        }
+      }
+    } else {
+      setCurrentIndex(nextIndex);
+    }
+  };
 
   const animateOut = (direction: "left" | "right") => {
     const toValue = direction === "right" ? SCREEN_WIDTH * 1.5 : -SCREEN_WIDTH * 1.5;
-    if (restaurant) {
-      setMyVotes((prev) => ({ ...prev, [restaurant.id]: direction === "right" }));
-    }
+    const vote = direction === "right" ? "like" : "pass";
+
     Animated.timing(translateX, {
       toValue,
       duration: 250,
       useNativeDriver: true,
     }).start(() => {
       translateX.setValue(0);
-      setCurrentIndex((prev) => prev + 1);
+      handleVote(vote);
     });
   };
 
@@ -170,40 +177,58 @@ export default function VotingScreen({ roomCode, participants, onFinish, onBack 
     })
   ).current;
 
-  // When all cards are done, determine winner
+  if (loading) {
+    return (
+      <SafeAreaView style={styles.container}>
+        <StatusBar style="dark" />
+        <View style={styles.doneContainer}>
+          <ActivityIndicator size="large" color={ACCENT} />
+          <Text style={styles.doneTitle}>Loading restaurants...</Text>
+        </View>
+      </SafeAreaView>
+    );
+  }
+
+  // When all cards are done, show waiting screen
   if (allDone) {
-    // Find the restaurant with highest combined votes (mock votes + my vote)
-    let bestId = "1";
-    let bestScore = 0;
-    for (const r of MOCK_RESTAURANTS) {
-      const mockLikes = MOCK_VOTES[r.id]?.liked || 0;
-      const myLike = myVotes[r.id] ? 1 : 0;
-      const total = mockLikes + myLike;
-      if (total > bestScore) {
-        bestScore = total;
-        bestId = r.id;
-      }
-    }
-    const winner = MOCK_RESTAURANTS.find((r) => r.id === bestId)!;
-    // Auto-navigate to result
-    setTimeout(() => onFinish({
-      restaurant: winner,
-      totalVoters: participants.length,
-      likedBy: bestScore,
-      roomCode,
-    }), 0);
     return (
       <SafeAreaView style={styles.container}>
         <StatusBar style="dark" />
         <View style={styles.doneContainer}>
           <Text style={styles.doneEmoji}>{"\u{1F4CA}"}</Text>
           <Text style={styles.doneTitle}>Counting votes...</Text>
+          <Text style={styles.doneSubtitle}>Waiting for everyone to finish</Text>
         </View>
       </SafeAreaView>
     );
   }
 
-  const voteData = MOCK_VOTES[restaurant.id] || { liked: 0, avatars: [] };
+  const participants = Object.values(room?.participants || {}).map(p => p.name);
+
+  // Calculate vote data for current restaurant
+  const getLikeCount = (restaurantId: string): number => {
+    if (!room?.votes) return 0;
+    return Object.values(room.votes).filter(
+      userVotes => userVotes[restaurantId] === 'like'
+    ).length;
+  };
+
+  const getAvatars = (restaurantId: string): string[] => {
+    if (!room?.votes || !room?.participants) return [];
+    const avatars: string[] = [];
+    for (const uid in room.votes) {
+      if (room.votes[uid][restaurantId] === 'like') {
+        const name = room.participants[uid]?.name || '';
+        avatars.push(name[0] || '?');
+      }
+    }
+    return avatars;
+  };
+
+  const voteData = {
+    liked: getLikeCount(restaurant.id),
+    avatars: getAvatars(restaurant.id),
+  };
 
   return (
     <SafeAreaView style={styles.container}>
@@ -225,7 +250,7 @@ export default function VotingScreen({ roomCode, participants, onFinish, onBack 
           ))}
         </View>
         <Text style={styles.counterText}>
-          {currentIndex + 1}/{MOCK_RESTAURANTS.length}
+          {currentIndex + 1}/{restaurants.length}
         </Text>
       </View>
 
@@ -233,10 +258,13 @@ export default function VotingScreen({ roomCode, participants, onFinish, onBack 
       <View style={styles.cardWrapper}>
         <SwipeVoteCard
           name={restaurant.name}
-          photo={restaurant.photo}
-          distance={restaurant.distance}
-          budget={restaurant.budget}
-          moods={restaurant.moods}
+          photo={restaurant.photos?.[0]?.photo_reference
+            ? { uri: `https://maps.googleapis.com/maps/api/place/photo?maxwidth=800&photo_reference=${restaurant.photos[0].photo_reference}&key=${process.env.EXPO_PUBLIC_GOOGLE_PLACES_API_KEY}` }
+            : undefined
+          }
+          distance={restaurant.distance || 'Nearby'}
+          budget={restaurant.budget_level}
+          moods={restaurant.mood_tags?.slice(0, 3) || []}
           voteData={{
             avatars: voteData.avatars,
             liked: voteData.liked,
@@ -373,5 +401,10 @@ const styles = StyleSheet.create({
     color: TEXT_PRIMARY,
     fontSize: 22,
     fontWeight: "700",
+    marginBottom: 8,
+  },
+  doneSubtitle: {
+    color: TEXT_SECONDARY,
+    fontSize: 15,
   },
 });

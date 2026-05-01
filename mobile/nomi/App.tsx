@@ -12,15 +12,23 @@ import SwipeScreen, { type Restaurant } from "./screens/SwipeScreen";
 import RestaurantDetailScreen from "./screens/RestaurantDetailScreen";
 import GroupScreen from "./screens/GroupScreen";
 import WaitingRoomScreen from "./screens/WaitingRoomScreen";
-import VotingScreen, { type VotingResult } from "./screens/VotingScreen";
+import VotingScreen from "./screens/VotingScreen";
 import ResultScreen from "./screens/ResultScreen";
 import ProfileScreen from "./screens/ProfileScreen";
 import LeaderboardScreen from "./screens/LeaderboardScreen";
 import ValidateScreen from "./screens/ValidateScreen";
 import SettingsScreen from "./screens/SettingsScreen";
+import GroupLikedScreen from "./screens/GroupLikedScreen";
 import { Colors } from "./theme/colors";
 
 const ONBOARDED_KEY = "nomi_has_onboarded";
+
+type VotingResult = {
+  restaurant: any;
+  totalVoters: number;
+  likedBy: number;
+  roomCode: string;
+};
 
 type Screen =
   | "onboarding"
@@ -32,6 +40,7 @@ type Screen =
   | "group"
   | "waitingRoom"
   | "voting"
+  | "groupLiked"
   | "result"
   | "profile"
   | "leaderboard"
@@ -50,6 +59,8 @@ function AppNavigator() {
   const [roomCode, setRoomCode] = useState("");
   const [participants, setParticipants] = useState<string[]>([]);
   const [votingResult, setVotingResult] = useState<VotingResult | null>(null);
+  const [groupVotes, setGroupVotes] = useState<Record<string, Record<string, string>>>({});
+  const [groupRestaurants, setGroupRestaurants] = useState<Restaurant[]>([]);
   const [returnScreen, setReturnScreen] = useState<Screen>("mood");
 
   // Check onboarding status on startup
@@ -167,15 +178,39 @@ function AppNavigator() {
           }}
         />
       )}
-      {screen === "voting" && (
+      {screen === "voting" && selectedBudget !== null && (
         <VotingScreen
           roomCode={roomCode}
-          participants={participants}
-          onFinish={(result) => {
-            setVotingResult(result);
-            setScreen("result");
+          selectedMoods={selectedMoods}
+          budgetLevel={selectedBudget}
+          onVotingComplete={(restaurants, votes) => {
+            setGroupRestaurants(restaurants);
+            setGroupVotes(votes);
+            setScreen("groupLiked");
           }}
           onBack={() => setScreen("waitingRoom")}
+        />
+      )}
+      {screen === "groupLiked" && (
+        <GroupLikedScreen
+          restaurants={groupRestaurants}
+          votes={groupVotes}
+          totalVoters={Object.keys(groupVotes).length}
+          onSelect={(restaurant) => {
+            setDetailRestaurant(restaurant);
+            setPreviousScreen("groupLiked");
+            setScreen("detail");
+          }}
+          onStartOver={() => {
+            setGroupRestaurants([]);
+            setGroupVotes({});
+            setSelectedMoods([]);
+            setSelectedBudget(null);
+            setSelectedDistance(null);
+            setRoomCode("");
+            setParticipants([]);
+            setScreen("mood");
+          }}
         />
       )}
       {screen === "result" && votingResult && (
