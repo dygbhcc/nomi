@@ -7,6 +7,7 @@ import {
   Linking,
   Dimensions,
   Image,
+  ScrollView,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { StatusBar } from "expo-status-bar";
@@ -126,7 +127,10 @@ export default function RestaurantDetailScreen({ restaurant, onBack }: Props) {
       </View>
 
       {/* Content */}
-      <View style={styles.content}>
+      <ScrollView
+        contentContainerStyle={styles.scrollContent}
+        showsVerticalScrollIndicator={false}
+      >
         {/* Name + meta */}
         <View>
           <View style={styles.nameRow}>
@@ -231,7 +235,7 @@ export default function RestaurantDetailScreen({ restaurant, onBack }: Props) {
             </TouchableOpacity>
           )}
         </View>
-      </View>
+      </ScrollView>
     </SafeAreaView>
   );
 }
@@ -288,12 +292,10 @@ const styles = StyleSheet.create({
   saveIcon: {
     fontSize: 20,
   },
-  content: {
-    flex: 1,
+  scrollContent: {
     paddingHorizontal: 20,
-    paddingTop: 16,
-    paddingBottom: 12,
-    justifyContent: "space-between",
+    paddingTop: 20,
+    paddingBottom: 32,
   },
   nameRow: {
     flexDirection: "row",

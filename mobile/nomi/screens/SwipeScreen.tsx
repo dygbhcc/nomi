@@ -17,8 +17,9 @@ import { Colors } from "../theme/colors";
 import { getRestaurantsByMood, buildReason, Restaurant } from '../services/restaurantService';
 import { recordSwipe } from '../services/swipeService';
 import { useAuth } from '../context/AuthContext';
+import LikedScreen from './LikedScreen';
 
-const BATCH_SIZE = 2;
+const BATCH_SIZE = 3;
 const SWIPE_THRESHOLD = 100;
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get("window");
 
@@ -52,7 +53,7 @@ export default function SwipeScreen({ selectedMoods, budgetLevel, onBack, onChan
   const [error, setError] = useState<string | null>(null);
   const [currentIndex, setCurrentIndex] = useState(0);
   const [batchStart, setBatchStart] = useState(0);
-  const [liked, setLiked] = useState<string[]>([]);
+  const [likedRestaurants, setLikedRestaurants] = useState<Restaurant[]>([]);
 
   useEffect(() => {
     const fetchRestaurants = async () => {
@@ -104,6 +105,11 @@ export default function SwipeScreen({ selectedMoods, budgetLevel, onBack, onChan
       Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     }
 
+    // Track liked restaurants
+    if (direction === "right" && restaurant) {
+      setLikedRestaurants((prev) => [...prev, restaurant]);
+    }
+
     // Record swipe to Firestore
     if (user && restaurant) {
       recordSwipe(
@@ -115,9 +121,6 @@ export default function SwipeScreen({ selectedMoods, budgetLevel, onBack, onChan
     }
 
     const toValue = direction === "right" ? SCREEN_WIDTH * 1.5 : -SCREEN_WIDTH * 1.5;
-    if (direction === "right" && restaurant) {
-      setLiked((prev) => [...prev, restaurant.id]);
-    }
     Animated.timing(translateX, {
       toValue,
       duration: 250,
@@ -224,21 +227,11 @@ export default function SwipeScreen({ selectedMoods, budgetLevel, onBack, onChan
 
   if (allDone) {
     return (
-      <SafeAreaView style={styles.container}>
-        <StatusBar style="dark" />
-        <View style={styles.emptyContainer}>
-          <Text style={styles.emptyEmoji}>{"\u{1F37D}"}</Text>
-          <Text style={styles.emptyTitle}>No more restaurants</Text>
-          <Text style={styles.emptySubtitle}>
-            {liked.length > 0
-              ? `You liked ${liked.length} place${liked.length > 1 ? "s" : ""}!`
-              : "Try different preferences to discover more."}
-          </Text>
-          <TouchableOpacity style={styles.preferencesButton} onPress={onChangePreferences}>
-            <Text style={styles.preferencesButtonText}>Change Preferences</Text>
-          </TouchableOpacity>
-        </View>
-      </SafeAreaView>
+      <LikedScreen
+        likedRestaurants={likedRestaurants}
+        onSelect={onDetail}
+        onStartOver={onChangePreferences}
+      />
     );
   }
 
