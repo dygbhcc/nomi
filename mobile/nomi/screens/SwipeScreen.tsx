@@ -238,15 +238,20 @@ export default function SwipeScreen({ selectedMoods, budgetLevel, onBack, onChan
   }
 
   if (batchDone) {
+    // If no more restaurants, show liked list
+    if (batchEnd >= restaurants.length) {
+      onShowLiked(likedRestaurants);
+      return null;
+    }
+
+    // Otherwise show load more
     return (
       <SafeAreaView style={styles.container}>
         <StatusBar style="dark" />
         <View style={styles.emptyContainer}>
           <Text style={styles.emptyEmoji}>{"\u{1F50D}"}</Text>
           <Text style={styles.emptyTitle}>
-            {restaurants.length - batchEnd > 0
-              ? `${restaurants.length - batchEnd} more to discover`
-              : "Last batch coming up!"}
+            {`${restaurants.length - batchEnd} more to discover`}
           </Text>
           <TouchableOpacity style={styles.loadMoreButton} onPress={handleLoadMore}>
             <Text style={styles.loadMoreText}>Load More</Text>

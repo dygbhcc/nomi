@@ -9,6 +9,7 @@ import OnboardingScreen from "./screens/OnboardingScreen";
 import MoodScreen from "./screens/MoodScreen";
 import BudgetDistanceScreen from "./screens/BudgetDistanceScreen";
 import SwipeScreen, { type Restaurant } from "./screens/SwipeScreen";
+import LikedScreen from "./screens/LikedScreen";
 import RestaurantDetailScreen from "./screens/RestaurantDetailScreen";
 import GroupScreen from "./screens/GroupScreen";
 import WaitingRoomScreen from "./screens/WaitingRoomScreen";
@@ -168,7 +169,19 @@ function AppNavigator() {
             setPreviousScreen("liked");
             setScreen("detail");
           }}
-          onStartOver={() => setScreen("mood")}
+          onStartOver={() => {
+            __DEV__ && console.log('Start Over clicked - resetting state');
+            setLikedRestaurants([]);
+            setSelectedMoods([]);
+            setSelectedBudget(null);
+            setSelectedDistance(null);
+            setIsGroupMode(false);
+            setIsHost(false);
+            setRoomCode("");
+            setParticipants([]);
+            __DEV__ && console.log('Navigating to mood screen');
+            setScreen("mood");
+          }}
         />
       )}
       {screen === "detail" && detailRestaurant && (

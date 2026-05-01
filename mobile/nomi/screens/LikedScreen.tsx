@@ -22,12 +22,20 @@ type Props = {
 
 export default function LikedScreen({ likedRestaurants, onSelect, onStartOver }: Props) {
   const handleStartOver = () => {
+    __DEV__ && console.log('handleStartOver called in LikedScreen');
     Alert.alert(
       'Start New Search?',
       "You'll lose your current picks.",
       [
-        { text: 'Cancel', style: 'cancel' },
-        { text: 'Start Over', style: 'destructive', onPress: onStartOver },
+        { text: 'Cancel', style: 'cancel', onPress: () => __DEV__ && console.log('User cancelled') },
+        {
+          text: 'Start Over',
+          style: 'destructive',
+          onPress: () => {
+            __DEV__ && console.log('User confirmed Start Over');
+            onStartOver();
+          }
+        },
       ]
     );
   };
