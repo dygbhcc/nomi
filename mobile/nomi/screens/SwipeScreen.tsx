@@ -17,7 +17,6 @@ import { Colors } from "../theme/colors";
 import { getRestaurantsByMood, buildReason, Restaurant } from '../services/restaurantService';
 import { recordSwipe } from '../services/swipeService';
 import { useAuth } from '../context/AuthContext';
-import LikedScreen from './LikedScreen';
 
 const BATCH_SIZE = 3;
 const SWIPE_THRESHOLD = 100;
@@ -42,11 +41,12 @@ type Props = {
   onBack: () => void;
   onChangePreferences: () => void;
   onDetail: (restaurant: Restaurant) => void;
+  onShowLiked: (restaurants: Restaurant[]) => void;
 };
 
 export { type Restaurant };
 
-export default function SwipeScreen({ selectedMoods, budgetLevel, onBack, onChangePreferences, onDetail }: Props) {
+export default function SwipeScreen({ selectedMoods, budgetLevel, onBack, onChangePreferences, onDetail, onShowLiked }: Props) {
   const { user } = useAuth();
   const [restaurants, setRestaurants] = useState<Restaurant[]>([]);
   const [loading, setLoading] = useState(true);
@@ -225,14 +225,15 @@ export default function SwipeScreen({ selectedMoods, budgetLevel, onBack, onChan
     );
   }
 
+  useEffect(() => {
+    if (allDone) {
+      onShowLiked(likedRestaurants);
+    }
+  }, [allDone]);
+
   if (allDone) {
-    return (
-      <LikedScreen
-        likedRestaurants={likedRestaurants}
-        onSelect={onDetail}
-        onStartOver={onChangePreferences}
-      />
-    );
+    // Transitioning to liked screen
+    return null;
   }
 
   if (batchDone) {

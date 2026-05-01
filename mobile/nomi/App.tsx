@@ -27,6 +27,7 @@ type Screen =
   | "mood"
   | "budget"
   | "swipe"
+  | "liked"
   | "detail"
   | "group"
   | "waitingRoom"
@@ -40,10 +41,12 @@ type Screen =
 function AppNavigator() {
   const { user, loading, isGuest } = useAuth();
   const [screen, setScreen] = useState<Screen | null>(null);
+  const [previousScreen, setPreviousScreen] = useState<Screen>("mood");
   const [selectedMoods, setSelectedMoods] = useState<string[]>([]);
   const [selectedBudget, setSelectedBudget] = useState<number | null>(null);
   const [selectedDistance, setSelectedDistance] = useState<number | null>(null);
   const [detailRestaurant, setDetailRestaurant] = useState<Restaurant | null>(null);
+  const [likedRestaurants, setLikedRestaurants] = useState<Restaurant[]>([]);
   const [roomCode, setRoomCode] = useState("");
   const [participants, setParticipants] = useState<string[]>([]);
   const [votingResult, setVotingResult] = useState<VotingResult | null>(null);
@@ -117,14 +120,31 @@ function AppNavigator() {
           onChangePreferences={() => setScreen("mood")}
           onDetail={(restaurant) => {
             setDetailRestaurant(restaurant);
+            setPreviousScreen("swipe");
             setScreen("detail");
           }}
+          onShowLiked={(restaurants) => {
+            setLikedRestaurants(restaurants);
+            setScreen("liked");
+          }}
+        />
+      )}
+      {screen === "liked" && (
+        <LikedScreen
+          likedRestaurants={likedRestaurants}
+          onSelect={(restaurant) => {
+            setDetailRestaurant(restaurant);
+            setPreviousScreen("liked");
+            setScreen("detail");
+          }}
+          onStartOver={() => setScreen("mood")}
         />
       )}
       {screen === "detail" && detailRestaurant && (
         <RestaurantDetailScreen
           restaurant={detailRestaurant}
-          onBack={() => setScreen("swipe")}
+          previousScreen={previousScreen}
+          onBack={() => setScreen(previousScreen)}
         />
       )}
       {screen === "group" && (
@@ -173,6 +193,15 @@ function AppNavigator() {
             setRoomCode("");
             setParticipants([]);
             setScreen("mood");
+          }}
+          onNavigate={(s) => {
+            if (s === "detail" && votingResult.restaurant) {
+              setDetailRestaurant(votingResult.restaurant as Restaurant);
+              setPreviousScreen("result");
+              setScreen("detail");
+            } else {
+              setScreen(s as Screen);
+            }
           }}
         />
       )}

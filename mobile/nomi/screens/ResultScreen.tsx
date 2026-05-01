@@ -9,6 +9,7 @@ import {
   Dimensions,
   Image,
   ImageSourcePropType,
+  Linking,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { StatusBar } from "expo-status-bar";
@@ -41,6 +42,7 @@ type Props = {
   isCurrentUserWinner: boolean;
   roomCode: string;
   onStartOver: () => void;
+  onNavigate: (screen: string) => void;
 };
 
 function budgetSymbol(level: number): string {
@@ -138,6 +140,7 @@ export default function ResultScreen({
   isCurrentUserWinner,
   roomCode,
   onStartOver,
+  onNavigate,
 }: Props) {
   // Trophy scale-in animation
   const trophyScale = useRef(new Animated.Value(0)).current;
@@ -195,6 +198,14 @@ export default function ResultScreen({
   // Voter avatar dots
   const voterDots = Array.from({ length: totalVoters }, (_, i) => i);
   const AVATAR_COLORS = ["#C25A41", "#E06A4F", "#B54F3A", "#FF8A3D"];
+
+  const openReserve = () => {
+    Linking.openURL(`https://www.thefork.com/search?q=${encodeURIComponent(restaurant.name)}`);
+  };
+
+  const openDirections = () => {
+    Linking.openURL(`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(restaurant.name)}`);
+  };
 
   return (
     <SafeAreaView style={styles.container}>
@@ -281,14 +292,44 @@ export default function ResultScreen({
           </Text>
         </View>
 
-        {/* --- Action Buttons --- */}
-        <TouchableOpacity style={styles.primaryButton}>
-          <Text style={styles.primaryButtonText}>Get Directions</Text>
-        </TouchableOpacity>
-
-        <TouchableOpacity style={styles.secondaryButton}>
-          <Text style={styles.secondaryButtonText}>Make a Reservation</Text>
-        </TouchableOpacity>
+        {/* --- Action Buttons 2x2 grid --- */}
+        <View style={styles.actionsGrid}>
+          <TouchableOpacity
+            style={styles.actionButton}
+            onPress={() => onNavigate("detail")}
+            accessibilityLabel="View restaurant details"
+            accessibilityRole="button"
+          >
+            <Text style={styles.actionIcon}>{"\u{1F4CB}"}</Text>
+            <Text style={styles.actionLabel}>View Details</Text>
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={styles.actionButton}
+            onPress={openReserve}
+            accessibilityLabel="Make a reservation"
+            accessibilityRole="button"
+          >
+            <Text style={styles.actionIcon}>{"\u{1F4C5}"}</Text>
+            <Text style={styles.actionLabel}>Reserve</Text>
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={styles.actionButton}
+            onPress={openDirections}
+            accessibilityLabel="Get directions"
+            accessibilityRole="button"
+          >
+            <Text style={styles.actionIcon}>{"\u{1F5FA}"}</Text>
+            <Text style={styles.actionLabel}>Directions</Text>
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={styles.actionButton}
+            accessibilityLabel="Share with group"
+            accessibilityRole="button"
+          >
+            <Text style={styles.actionIcon}>{"\u{1F465}"}</Text>
+            <Text style={styles.actionLabel}>Share</Text>
+          </TouchableOpacity>
+        </View>
 
         <TouchableOpacity style={styles.textButton} onPress={onStartOver}>
           <Text style={styles.textButtonText}>Start Over</Text>
@@ -477,33 +518,31 @@ const styles = StyleSheet.create({
     flex: 1,
   },
 
-  // --- Buttons ---
-  primaryButton: {
-    backgroundColor: ACCENT,
-    borderRadius: 14,
-    paddingVertical: 16,
+  // --- Action Buttons Grid ---
+  actionsGrid: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: 8,
     width: "100%",
-    alignItems: "center",
     marginBottom: 12,
   },
-  primaryButtonText: {
+  actionButton: {
+    width: "48%",
+    backgroundColor: CARD_BG,
+    borderRadius: 12,
+    paddingVertical: 10,
+    alignItems: "center",
+    gap: 4,
+    borderWidth: 0.5,
+    borderColor: "#E8E8E8",
+  },
+  actionIcon: {
+    fontSize: 20,
+  },
+  actionLabel: {
     color: TEXT_PRIMARY,
-    fontSize: 17,
-    fontWeight: "700",
-  },
-  secondaryButton: {
-    borderWidth: 2,
-    borderColor: ACCENT,
-    borderRadius: 14,
-    paddingVertical: 14,
-    width: "100%",
-    alignItems: "center",
-    marginBottom: 12,
-  },
-  secondaryButtonText: {
-    color: ACCENT,
-    fontSize: 17,
-    fontWeight: "700",
+    fontSize: 11,
+    fontWeight: "600",
   },
   textButton: {
     paddingVertical: 12,

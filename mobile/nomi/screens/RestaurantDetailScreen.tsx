@@ -55,6 +55,7 @@ function getTodayIndex(): number {
 
 type Props = {
   restaurant: Restaurant;
+  previousScreen: string;
   onBack: () => void;
 };
 
