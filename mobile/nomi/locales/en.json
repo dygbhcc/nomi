@@ -156,6 +156,9 @@
     "subtitle": "{{count}} place",
     "subtitle_plural": "{{count}} places",
     "emptyState": "No liked restaurants yet. Start swiping!",
+    "startOver": "Start Over",
+    "startOverTitle": "Start New Search?",
+    "startOverMessage": "You'll lose your current picks.",
     "removeTitle": "Remove from Liked?",
     "removeMessage": "This restaurant will be removed from your liked list.",
     "remove": "Remove",
@@ -166,9 +169,13 @@
     "closed": "Closed",
     "hours": "Hours",
     "distance": "{{distance}} min walk",
+    "seeReviews": "See reviews →",
+    "validateMood": "Do you think this place is {{mood}}?",
     "actions": {
-      "directions": "Directions",
       "call": "Call",
+      "directions": "Directions",
+      "website": "Website",
+      "menu": "Menu",
       "share": "Share"
     },
     "days": {
@@ -269,6 +276,7 @@
     "title": "Nomi has decided! 🎉",
     "viewDetails": "View Details",
     "reserve": "Reserve",
+    "planVisit": "Reserve",
     "shareTitle": "Start New Search?",
     "shareMessage": "You'll lose your current picks.",
     "voteSummary": "{{likedBy}} out of {{totalVoters}} people liked this",

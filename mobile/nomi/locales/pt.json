@@ -156,6 +156,9 @@
     "subtitle": "{{count}} sítio",
     "subtitle_plural": "{{count}} sítios",
     "emptyState": "Ainda não gostas de nenhum restaurante. Começa a deslizar!",
+    "startOver": "Recomeçar",
+    "startOverTitle": "Nova Pesquisa?",
+    "startOverMessage": "Vais perder as tuas escolhas atuais.",
     "removeTitle": "Remover dos Gostei?",
     "removeMessage": "Este restaurante será removido da tua lista de gostei.",
     "remove": "Remover",
@@ -166,9 +169,13 @@
     "closed": "Fechado",
     "hours": "Horário",
     "distance": "{{distance}} min a pé",
+    "seeReviews": "Ver avaliações →",
+    "validateMood": "Achas que este lugar é {{mood}}?",
     "actions": {
-      "directions": "Direções",
       "call": "Ligar",
+      "directions": "Direções",
+      "website": "Website",
+      "menu": "Menu",
       "share": "Partilhar"
     },
     "days": {
@@ -269,6 +276,7 @@
     "title": "O Nomi decidiu! 🎉",
     "viewDetails": "Ver Detalhes",
     "reserve": "Reservar",
+    "planVisit": "Reservar",
     "shareTitle": "Nova Pesquisa?",
     "shareMessage": "Vais perder as tuas escolhas atuais.",
     "voteSummary": "{{likedBy}} de {{totalVoters}} pessoas gostaram disto",

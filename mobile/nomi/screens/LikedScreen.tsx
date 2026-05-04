@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import {
   View,
   Text,
@@ -7,7 +7,7 @@ import {
   Image,
   StyleSheet,
   SafeAreaView,
-  Alert,
+  Modal,
 } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
 import { useTranslation } from 'react-i18next';
@@ -23,24 +23,22 @@ type Props = {
 
 export default function LikedScreen({ likedRestaurants, onSelect, onStartOver }: Props) {
   const { t } = useTranslation();
+  const [showConfirmModal, setShowConfirmModal] = useState(false);
 
   const handleStartOver = () => {
-    __DEV__ && console.log('handleStartOver called in LikedScreen');
-    Alert.alert(
-      t('liked.removeTitle'),
-      t('liked.removeMessage'),
-      [
-        { text: t('liked.cancel'), style: 'cancel', onPress: () => __DEV__ && console.log('User cancelled') },
-        {
-          text: t('liked.remove'),
-          style: 'destructive',
-          onPress: () => {
-            __DEV__ && console.log('User confirmed Start Over');
-            onStartOver();
-          }
-        },
-      ]
-    );
+    console.log('🔴 handleStartOver called - showing modal');
+    setShowConfirmModal(true);
+  };
+
+  const handleConfirm = () => {
+    console.log('🟢 User confirmed Start Over');
+    setShowConfirmModal(false);
+    onStartOver();
+  };
+
+  const handleCancel = () => {
+    console.log('🟡 User cancelled');
+    setShowConfirmModal(false);
   };
 
   const getPhotoUrl = (restaurant: Restaurant): string | null => {
@@ -100,7 +98,7 @@ export default function LikedScreen({ likedRestaurants, onSelect, onStartOver }:
             accessibilityLabel="Start over"
             accessibilityRole="button"
           >
-            <Text style={styles.startOverText}>{t('common.back')}</Text>
+            <Text style={styles.startOverText}>{t('liked.startOver')}</Text>
           </TouchableOpacity>
         </View>
       </SafeAreaView>
@@ -130,9 +128,46 @@ export default function LikedScreen({ likedRestaurants, onSelect, onStartOver }:
           accessibilityLabel="Start over with new preferences"
           accessibilityRole="button"
         >
-          <Text style={styles.startOverText}>{t('common.back')}</Text>
+          <Text style={styles.startOverText}>{t('liked.startOver')}</Text>
         </TouchableOpacity>
       </View>
+
+      {/* Confirmation Modal */}
+      <Modal
+        visible={showConfirmModal}
+        transparent={true}
+        animationType="fade"
+        onRequestClose={handleCancel}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalContent}>
+            <Text style={styles.modalTitle}>
+              {t('liked.startOverTitle') || 'Start New Search?'}
+            </Text>
+            <Text style={styles.modalMessage}>
+              {t('liked.startOverMessage') || "You'll lose your current picks."}
+            </Text>
+            <View style={styles.modalButtons}>
+              <TouchableOpacity
+                style={[styles.modalButton, styles.modalCancelButton]}
+                onPress={handleCancel}
+              >
+                <Text style={styles.modalCancelText}>
+                  {t('common.cancel') || 'Cancel'}
+                </Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={[styles.modalButton, styles.modalConfirmButton]}
+                onPress={handleConfirm}
+              >
+                <Text style={styles.modalConfirmText}>
+                  {t('liked.startOver') || 'Start Over'}
+                </Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
     </SafeAreaView>
   );
 }
@@ -249,5 +284,66 @@ const styles = StyleSheet.create({
     color: Colors.accent,
     fontSize: 15,
     fontWeight: '600',
+  },
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 20,
+  },
+  modalContent: {
+    backgroundColor: Colors.cardBackground,
+    borderRadius: 16,
+    padding: 24,
+    width: '100%',
+    maxWidth: 400,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 8,
+  },
+  modalTitle: {
+    fontSize: 20,
+    fontWeight: '700',
+    color: Colors.textPrimary,
+    marginBottom: 12,
+    textAlign: 'center',
+  },
+  modalMessage: {
+    fontSize: 15,
+    color: Colors.textSecondary,
+    marginBottom: 24,
+    textAlign: 'center',
+    lineHeight: 22,
+  },
+  modalButtons: {
+    flexDirection: 'row',
+    gap: 12,
+  },
+  modalButton: {
+    flex: 1,
+    paddingVertical: 12,
+    borderRadius: 12,
+    alignItems: 'center',
+  },
+  modalCancelButton: {
+    backgroundColor: Colors.background,
+    borderWidth: 1.5,
+    borderColor: Colors.textSecondary,
+  },
+  modalConfirmButton: {
+    backgroundColor: Colors.accent,
+  },
+  modalCancelText: {
+    fontSize: 15,
+    fontWeight: '600',
+    color: Colors.textSecondary,
+  },
+  modalConfirmText: {
+    fontSize: 15,
+    fontWeight: '600',
+    color: '#FFFFFF',
   },
 });

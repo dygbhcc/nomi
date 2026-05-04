@@ -56,6 +56,7 @@ export default function SwipeScreen({ selectedMoods, budgetLevel, onBack, onChan
   const [currentIndex, setCurrentIndex] = useState(0);
   const [batchStart, setBatchStart] = useState(0);
   const [likedRestaurants, setLikedRestaurants] = useState<Restaurant[]>([]);
+  const transitionedRef = useRef(false);
 
   useEffect(() => {
     const fetchRestaurants = async () => {
@@ -68,6 +69,7 @@ export default function SwipeScreen({ selectedMoods, budgetLevel, onBack, onChan
           reason: buildReason(r, selectedMoods),
         }));
         setRestaurants(withReasons);
+        transitionedRef.current = false; // Reset when new restaurants load
       } catch (e) {
         setError(t('swipe.errorLoading'));
       } finally {
@@ -82,10 +84,26 @@ export default function SwipeScreen({ selectedMoods, budgetLevel, onBack, onChan
   const allDone = batchStart >= restaurants.length;
 
   useEffect(() => {
-    if (allDone && restaurants.length > 0) {
-      onShowLiked(likedRestaurants);
+    if (allDone && restaurants.length > 0 && !transitionedRef.current) {
+      transitionedRef.current = true;
+      // Use setTimeout to avoid updating parent during render
+      setTimeout(() => {
+        onShowLiked(likedRestaurants);
+      }, 0);
     }
-  }, [allDone, likedRestaurants, onShowLiked, restaurants.length]);
+  }, [allDone, restaurants.length]);
+
+  const batchDone = currentIndex >= currentBatch.length && !allDone;
+
+  // Handle transition when batch is done and no more restaurants
+  useEffect(() => {
+    if (batchDone && batchEnd >= restaurants.length && !transitionedRef.current) {
+      transitionedRef.current = true;
+      setTimeout(() => {
+        onShowLiked(likedRestaurants);
+      }, 0);
+    }
+  }, [batchDone, batchEnd, restaurants.length]);
 
   const translateX = useRef(new Animated.Value(0)).current;
   const rotate = translateX.interpolate({
@@ -103,7 +121,6 @@ export default function SwipeScreen({ selectedMoods, budgetLevel, onBack, onChan
     extrapolate: "clamp",
   });
 
-  const batchDone = currentIndex >= currentBatch.length && !allDone;
   const restaurant = currentBatch[currentIndex];
 
   const animateOut = (direction: "left" | "right") => {
@@ -240,9 +257,8 @@ export default function SwipeScreen({ selectedMoods, budgetLevel, onBack, onChan
   }
 
   if (batchDone) {
-    // If no more restaurants, show liked list
+    // If no more restaurants, transitioning to liked screen
     if (batchEnd >= restaurants.length) {
-      onShowLiked(likedRestaurants);
       return null;
     }
 

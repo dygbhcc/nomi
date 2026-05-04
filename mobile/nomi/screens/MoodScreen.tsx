@@ -213,7 +213,11 @@ export default function MoodScreen({ onContinue, onSkip, onGroup, onProfile, onN
 
             return rows.map((row, rowIndex) => (
               <View key={rowIndex} style={styles.gridRow}>
-                {row.map((item) => renderMoodCard({ item, index: MOODS.indexOf(item) }))}
+                {row.map((item) => (
+                  <React.Fragment key={item.id}>
+                    {renderMoodCard({ item, index: MOODS.indexOf(item) })}
+                  </React.Fragment>
+                ))}
               </View>
             ));
           })()}

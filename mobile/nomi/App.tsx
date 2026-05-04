@@ -191,7 +191,10 @@ function AppNavigator() {
         <RestaurantDetailScreen
           restaurant={detailRestaurant}
           previousScreen={previousScreen}
-          onBack={() => setScreen(previousScreen)}
+          onBack={() => {
+            // Go back to previous screen (swipe, liked, groupLiked, etc.)
+            setScreen(previousScreen);
+          }}
         />
       )}
       {screen === "group" && (
