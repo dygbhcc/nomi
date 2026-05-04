@@ -394,6 +394,7 @@
       "darkMode": "Modo escuro",
       "language": "Idioma",
       "defaultCity": "Cidade padrão",
+      "defaultMood": "Humor padrão",
       "defaultBudget": "Orçamento padrão",
       "cities": {
         "lisbon": "Lisboa 🇵🇹",

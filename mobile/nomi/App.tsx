@@ -260,6 +260,11 @@ function AppNavigator() {
             setScreen("groupLiked");
           }}
           onBack={() => setScreen("waitingRoom")}
+          onDetail={(restaurant) => {
+            setDetailRestaurant(restaurant);
+            setPreviousScreen("voting");
+            setScreen("detail");
+          }}
         />
       )}
       {screen === "voting" && selectedBudget === null && (

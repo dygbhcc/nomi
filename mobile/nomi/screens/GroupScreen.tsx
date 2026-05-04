@@ -1,10 +1,11 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View, Text, TouchableOpacity, StyleSheet,
-  SafeAreaView, ScrollView, Share, Alert, TextInput, Image,
+  SafeAreaView, ScrollView, Share, Alert, TextInput, Image, Modal,
 } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
 import { useTranslation } from 'react-i18next';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as Haptics from 'expo-haptics';
 import { Colors } from '../theme/colors';
 import { createRoom, joinRoom } from '../services/roomService';
@@ -57,17 +58,34 @@ export default function GroupScreen({ onStartVoting, onJoinRoom, onBack, onNavig
   const [loading, setLoading] = useState(false);
   const [joinCode, setJoinCode] = useState('');
   const [joining, setJoining] = useState(false);
+  const [showGuestModal, setShowGuestModal] = useState(false);
+  const [showErrorModal, setShowErrorModal] = useState(false);
+  const [errorMessage, setErrorMessage] = useState('');
+
+  // Load default mood from settings on mount
+  useEffect(() => {
+    AsyncStorage.getItem('default_mood').then((mood) => {
+      __DEV__ && console.log('📱 Loaded default mood from storage:', mood);
+      if (mood) {
+        setSelectedMoods([mood]);
+        __DEV__ && console.log('✅ Default mood set:', [mood]);
+      } else {
+        __DEV__ && console.log('⚠️ No default mood found in storage');
+      }
+    });
+  }, []);
 
   const handleCreateRoom = async () => {
+    __DEV__ && console.log('🚀 handleCreateRoom called');
+    __DEV__ && console.log('Selected moods:', selectedMoods);
+    __DEV__ && console.log('Budget:', budget);
+    __DEV__ && console.log('Distance:', distance);
+    __DEV__ && console.log('Is guest:', isGuest);
+    __DEV__ && console.log('User:', user);
+
     if (isGuest) {
-      Alert.alert(
-        t('auth.guestNote'),
-        t('auth.createAccount'),
-        [
-          { text: t('common.cancel'), style: 'cancel' },
-          { text: t('auth.signUp'), onPress: () => signOut() },
-        ]
-      );
+      __DEV__ && console.log('⚠️ User is guest, showing modal');
+      setShowGuestModal(true);
       return;
     }
 
@@ -76,16 +94,18 @@ export default function GroupScreen({ onStartVoting, onJoinRoom, onBack, onNavig
 
     try {
       const code = generateRoomCode();
+      __DEV__ && console.log('Generated room code:', code);
       await createRoom(code, user!.uid, user!.displayName || 'Host', {
         moods: selectedMoods,
         budget,
         distance: Math.round(distance / 1000),
       });
       setRoomCode(code);
-      __DEV__ && console.log('Room created:', code);
+      __DEV__ && console.log('✅ Room created successfully:', code);
     } catch (error) {
-      __DEV__ && console.error('Error creating room:', error);
-      Alert.alert(t('common.error'), t('group.errors.createFailed'));
+      __DEV__ && console.error('❌ Error creating room:', error);
+      setErrorMessage(t('group.errors.createFailed'));
+      setShowErrorModal(true);
     } finally {
       setLoading(false);
     }
@@ -93,10 +113,18 @@ export default function GroupScreen({ onStartVoting, onJoinRoom, onBack, onNavig
 
   const toggleMood = (id: string) => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-    setSelectedMoods(prev =>
-      prev.includes(id) ? prev.filter(m => m !== id) : [...prev, id]
-    );
+    setSelectedMoods(prev => {
+      const newMoods = prev.includes(id) ? prev.filter(m => m !== id) : [...prev, id];
+      __DEV__ && console.log('Mood toggled. New selection:', newMoods);
+      return newMoods;
+    });
   };
+
+  // Debug: Log when selectedMoods changes
+  useEffect(() => {
+    __DEV__ && console.log('🔘 Button state - selectedMoods:', selectedMoods);
+    __DEV__ && console.log('🔘 Button disabled?', selectedMoods.length === 0 || loading);
+  }, [selectedMoods, loading]);
 
   const handleShare = async () => {
     if (!roomCode) return;
@@ -116,14 +144,7 @@ export default function GroupScreen({ onStartVoting, onJoinRoom, onBack, onNavig
     if (joinCode.length !== 6 || !user) return;
 
     if (isGuest) {
-      Alert.alert(
-        t('auth.guestNote'),
-        t('auth.createAccount'),
-        [
-          { text: t('common.cancel'), style: 'cancel' },
-          { text: t('auth.signUp'), onPress: () => signOut() },
-        ]
-      );
+      setShowGuestModal(true);
       return;
     }
 
@@ -135,11 +156,13 @@ export default function GroupScreen({ onStartVoting, onJoinRoom, onBack, onNavig
       if (success) {
         onJoinRoom(joinCode.toUpperCase());
       } else {
-        Alert.alert(t('group.errors.invalidCode'), t('group.errors.joinFailed'));
+        setErrorMessage(t('group.errors.joinFailed'));
+        setShowErrorModal(true);
       }
     } catch (error) {
       __DEV__ && console.error('Error joining room:', error);
-      Alert.alert(t('common.error'), t('group.errors.joinFailed'));
+      setErrorMessage(t('group.errors.joinFailed'));
+      setShowErrorModal(true);
     } finally {
       setJoining(false);
     }
@@ -330,6 +353,59 @@ export default function GroupScreen({ onStartVoting, onJoinRoom, onBack, onNavig
         </View>
 
       </ScrollView>
+
+      {/* Guest Modal */}
+      <Modal
+        visible={showGuestModal}
+        transparent={true}
+        animationType="fade"
+        onRequestClose={() => setShowGuestModal(false)}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalContent}>
+            <Text style={styles.modalTitle}>{t('auth.guestNote')}</Text>
+            <Text style={styles.modalMessage}>{t('auth.createAccount')}</Text>
+            <View style={styles.modalButtons}>
+              <TouchableOpacity
+                style={[styles.modalButton, styles.modalCancelButton]}
+                onPress={() => setShowGuestModal(false)}
+              >
+                <Text style={styles.modalCancelText}>{t('common.cancel')}</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={[styles.modalButton, styles.modalConfirmButton]}
+                onPress={() => {
+                  setShowGuestModal(false);
+                  signOut();
+                }}
+              >
+                <Text style={styles.modalConfirmText}>{t('auth.signUp')}</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
+
+      {/* Error Modal */}
+      <Modal
+        visible={showErrorModal}
+        transparent={true}
+        animationType="fade"
+        onRequestClose={() => setShowErrorModal(false)}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalContent}>
+            <Text style={styles.modalTitle}>{t('common.error')}</Text>
+            <Text style={styles.modalMessage}>{errorMessage}</Text>
+            <TouchableOpacity
+              style={[styles.modalButton, styles.modalConfirmButton, { width: '100%' }]}
+              onPress={() => setShowErrorModal(false)}
+            >
+              <Text style={styles.modalConfirmText}>{t('common.ok')}</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
     </SafeAreaView>
   );
 }
@@ -568,5 +644,68 @@ const styles = StyleSheet.create({
     color: '#fff',
     fontSize: 14,
     fontWeight: '700',
+  },
+
+  // Modals
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 20,
+  },
+  modalContent: {
+    backgroundColor: Colors.cardBackground,
+    borderRadius: 16,
+    padding: 24,
+    width: '100%',
+    maxWidth: 400,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 8,
+  },
+  modalTitle: {
+    fontSize: 20,
+    fontWeight: '700',
+    color: Colors.textPrimary,
+    marginBottom: 12,
+    textAlign: 'center',
+  },
+  modalMessage: {
+    fontSize: 15,
+    color: Colors.textSecondary,
+    marginBottom: 24,
+    textAlign: 'center',
+    lineHeight: 22,
+  },
+  modalButtons: {
+    flexDirection: 'row',
+    gap: 12,
+  },
+  modalButton: {
+    flex: 1,
+    paddingVertical: 12,
+    borderRadius: 12,
+    alignItems: 'center',
+  },
+  modalCancelButton: {
+    backgroundColor: Colors.background,
+    borderWidth: 1.5,
+    borderColor: Colors.textSecondary,
+  },
+  modalConfirmButton: {
+    backgroundColor: Colors.accent,
+  },
+  modalCancelText: {
+    fontSize: 15,
+    fontWeight: '600',
+    color: Colors.textSecondary,
+  },
+  modalConfirmText: {
+    fontSize: 15,
+    fontWeight: '600',
+    color: '#FFFFFF',
   },
 });

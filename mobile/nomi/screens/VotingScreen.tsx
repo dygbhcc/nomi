@@ -44,15 +44,17 @@ type Props = {
   budgetLevel: number;
   onVotingComplete: (restaurants: Restaurant[], votes: Record<string, Record<string, string>>) => void;
   onBack: () => void;
+  onDetail: (restaurant: Restaurant) => void;
 };
 
-export default function VotingScreen({ roomCode, selectedMoods, budgetLevel, onVotingComplete, onBack }: Props) {
+export default function VotingScreen({ roomCode, selectedMoods, budgetLevel, onVotingComplete, onBack, onDetail }: Props) {
   const { t } = useTranslation();
   const { user } = useAuth();
   const [restaurants, setRestaurants] = useState<Restaurant[]>([]);
   const [currentIndex, setCurrentIndex] = useState(0);
   const [room, setRoom] = useState<Room | null>(null);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [myVotes, setMyVotes] = useState<Record<string, 'like' | 'pass'>>({});
 
   // Debug log
@@ -69,8 +71,19 @@ export default function VotingScreen({ roomCode, selectedMoods, budgetLevel, onV
   useEffect(() => {
     const fetchRestaurants = async () => {
       setLoading(true);
+      setError(null);
       try {
+        // TESTING: Uncomment to simulate delay
+        // await new Promise(resolve => setTimeout(resolve, 3000));
+
+        // TESTING: Uncomment to simulate error
+        // throw new Error('Failed to load restaurants');
+
         const data = await getRestaurantsByMood(selectedMoods, budgetLevel, 6);
+
+        // TESTING: Uncomment to simulate empty results
+        // const data = [];
+
         const withReasons = data.map(r => ({
           ...r,
           reason: buildReason(r, selectedMoods),
@@ -78,12 +91,19 @@ export default function VotingScreen({ roomCode, selectedMoods, budgetLevel, onV
         setRestaurants(withReasons);
       } catch (error) {
         __DEV__ && console.error('Failed to fetch restaurants:', error);
+        setError(t('swipe.errorLoading'));
       } finally {
         setLoading(false);
       }
     };
     fetchRestaurants();
   }, [selectedMoods, budgetLevel]);
+
+  // Debug: Log when myVotes changes
+  useEffect(() => {
+    __DEV__ && console.log('🔄 myVotes state changed:', myVotes);
+    __DEV__ && console.log('  Total votes:', Object.keys(myVotes).length);
+  }, [myVotes]);
 
   // Listen to room for realtime votes
   useEffect(() => {
@@ -95,11 +115,13 @@ export default function VotingScreen({ roomCode, selectedMoods, budgetLevel, onV
     __DEV__ && console.log('Setting up room listener for:', roomCode);
 
     const unsubscribe = listenToRoom(roomCode, (roomData) => {
-      __DEV__ && console.log('Room data update:', {
+      __DEV__ && console.log('🔄 Room data update:', {
         status: roomData?.status,
         voteCount: Object.keys(roomData?.votes || {}).length,
         participantCount: Object.keys(roomData?.participants || {}).length,
       });
+      __DEV__ && console.log('  Full votes object:', roomData?.votes);
+      __DEV__ && console.log('  Participants:', roomData?.participants);
 
       setRoom(roomData);
 
@@ -145,8 +167,8 @@ export default function VotingScreen({ roomCode, selectedMoods, budgetLevel, onV
         : Haptics.ImpactFeedbackStyle.Light
     );
 
+    // myVotes already updated in animateOut, just reference it for newVotes
     const newVotes = { ...myVotes, [restaurant.id]: direction };
-    setMyVotes(newVotes);
 
     // Record vote to Firestore
     try {
@@ -189,12 +211,27 @@ export default function VotingScreen({ roomCode, selectedMoods, budgetLevel, onV
     const toValue = direction === "right" ? SCREEN_WIDTH * 1.5 : -SCREEN_WIDTH * 1.5;
     const vote = direction === "right" ? "like" : "pass";
 
+    __DEV__ && console.log('🎬 animateOut called:', { direction, vote });
+    __DEV__ && console.log('  Current restaurant:', restaurant);
+    __DEV__ && console.log('  Restaurant ID:', restaurant?.id);
+
+    // Update myVotes IMMEDIATELY so the count shows during animation
+    if (restaurant) {
+      const newVotes = { ...myVotes, [restaurant.id]: vote };
+      __DEV__ && console.log('  📝 Updating myVotes with:', { [restaurant.id]: vote });
+      setMyVotes(newVotes);
+      __DEV__ && console.log('  ✅ Vote updated immediately:', { restaurant: restaurant.name, vote });
+    } else {
+      __DEV__ && console.error('  ❌ Restaurant is undefined/null!');
+    }
+
     Animated.timing(translateX, {
       toValue,
       duration: 250,
       useNativeDriver: true,
     }).start(() => {
       translateX.setValue(0);
+      __DEV__ && console.log('  🏁 Animation complete, calling handleVote');
       handleVote(vote);
     });
   };
@@ -232,6 +269,49 @@ export default function VotingScreen({ roomCode, selectedMoods, budgetLevel, onV
     );
   }
 
+  // Error state
+  if (error) {
+    return (
+      <SafeAreaView style={styles.container}>
+        <StatusBar style="dark" />
+        <View style={styles.doneContainer}>
+          <Text style={styles.doneEmoji}>😕</Text>
+          <Text style={styles.doneTitle}>{t('common.error')}</Text>
+          <Text style={styles.doneSubtitle}>{error}</Text>
+          <TouchableOpacity
+            style={styles.retryButton}
+            onPress={() => {
+              setLoading(true);
+              setError(null);
+            }}
+          >
+            <Text style={styles.retryButtonText}>Retry</Text>
+          </TouchableOpacity>
+        </View>
+      </SafeAreaView>
+    );
+  }
+
+  // Empty state
+  if (restaurants.length === 0) {
+    return (
+      <SafeAreaView style={styles.container}>
+        <StatusBar style="dark" />
+        <View style={styles.doneContainer}>
+          <Text style={styles.doneEmoji}>🔍</Text>
+          <Text style={styles.doneTitle}>{t('swipe.noResults')}</Text>
+          <Text style={styles.doneSubtitle}>Try different preferences</Text>
+          <TouchableOpacity
+            style={styles.retryButton}
+            onPress={onBack}
+          >
+            <Text style={styles.retryButtonText}>{t('common.back')}</Text>
+          </TouchableOpacity>
+        </View>
+      </SafeAreaView>
+    );
+  }
+
   // When all cards are done, show waiting screen
   if (allDone) {
     return (
@@ -258,21 +338,55 @@ export default function VotingScreen({ roomCode, selectedMoods, budgetLevel, onV
 
   // Calculate vote data for current restaurant
   const getLikeCount = (restaurantId: string): number => {
-    if (!room?.votes) {
-      __DEV__ && console.log('No room votes yet');
+    if (!room?.votes && !user) {
+      __DEV__ && console.log('❌ No room votes yet');
       return 0;
     }
-    const count = Object.values(room.votes).filter(
-      userVotes => userVotes[restaurantId] === 'like'
+
+    // Merge room votes with current user's pending votes
+    const allVotes = { ...room?.votes };
+
+    __DEV__ && console.log('📊 getLikeCount for restaurant:', restaurantId);
+    __DEV__ && console.log('  room.votes:', JSON.stringify(room?.votes, null, 2));
+    __DEV__ && console.log('  myVotes:', JSON.stringify(myVotes, null, 2));
+
+    if (user && myVotes[restaurantId]) {
+      allVotes[user.uid] = { ...allVotes[user.uid], [restaurantId]: myVotes[restaurantId] };
+      __DEV__ && console.log('  ✅ Added current user vote to allVotes');
+    }
+
+    __DEV__ && console.log('  allVotes FULL:', JSON.stringify(allVotes, null, 2));
+
+    // Debug: Check each user's vote
+    Object.entries(allVotes).forEach(([userId, userVotes]) => {
+      __DEV__ && console.log(`  User ${userId}:`, userVotes);
+      __DEV__ && console.log(`    Vote for ${restaurantId}:`, userVotes[restaurantId]);
+    });
+
+    const count = Object.values(allVotes).filter(
+      userVotes => {
+        const vote = userVotes[restaurantId];
+        __DEV__ && console.log(`  Checking vote: ${vote} === 'like' ?`, vote === 'like');
+        return vote === 'like';
+      }
     ).length;
+
+    __DEV__ && console.log('  💚 FINAL Like count:', count);
     return count;
   };
 
   const getAvatars = (restaurantId: string): string[] => {
-    if (!room?.votes || !room?.participants) return [];
+    if (!room?.participants) return [];
+
+    // Merge room votes with current user's pending votes
+    const allVotes = { ...room?.votes };
+    if (user && myVotes[restaurantId]) {
+      allVotes[user.uid] = { ...allVotes[user.uid], [restaurantId]: myVotes[restaurantId] };
+    }
+
     const avatars: string[] = [];
-    for (const uid in room.votes) {
-      if (room.votes[uid][restaurantId] === 'like') {
+    for (const uid in allVotes) {
+      if (allVotes[uid][restaurantId] === 'like') {
         const name = room.participants[uid]?.name || '';
         avatars.push(name[0] || '?');
       }
@@ -285,7 +399,9 @@ export default function VotingScreen({ roomCode, selectedMoods, budgetLevel, onV
     avatars: getAvatars(restaurant.id),
   } : { liked: 0, avatars: [] };
 
-  __DEV__ && restaurant && console.log('Vote data for', restaurant.name, ':', voteData);
+  __DEV__ && restaurant && console.log('🎯 Final vote data for', restaurant.name, ':', voteData);
+  __DEV__ && console.log('👥 Participant count:', participantCount);
+  __DEV__ && console.log('🏠 Room state:', room ? 'exists' : 'null');
 
   return (
     <SafeAreaView style={styles.container}>
@@ -309,6 +425,14 @@ export default function VotingScreen({ roomCode, selectedMoods, budgetLevel, onV
         <Text style={styles.counterText}>
           {currentIndex + 1}/{restaurants.length}
         </Text>
+        <TouchableOpacity
+          style={styles.detailButton}
+          onPress={() => restaurant && onDetail(restaurant)}
+          accessibilityLabel="View restaurant details"
+          accessibilityRole="button"
+        >
+          <Text style={styles.detailButtonText}>{t('common.details')}</Text>
+        </TouchableOpacity>
       </View>
 
       {/* Card */}
@@ -322,6 +446,7 @@ export default function VotingScreen({ roomCode, selectedMoods, budgetLevel, onV
           distance={restaurant.distance || 'Nearby'}
           budget={restaurant.budget_level}
           moods={restaurant.mood_tags?.slice(0, 3) || []}
+          reason={restaurant.reason}
           voteData={{
             avatars: voteData.avatars,
             liked: voteData.liked,
@@ -463,5 +588,32 @@ const styles = StyleSheet.create({
   doneSubtitle: {
     color: TEXT_SECONDARY,
     fontSize: 15,
+  },
+  retryButton: {
+    backgroundColor: ACCENT,
+    borderRadius: 12,
+    paddingVertical: 12,
+    paddingHorizontal: 24,
+    marginTop: 20,
+  },
+  retryButtonText: {
+    color: '#FFFFFF',
+    fontSize: 15,
+    fontWeight: '700',
+  },
+
+  // Detail button (top bar)
+  detailButton: {
+    paddingVertical: 6,
+    paddingHorizontal: 12,
+    backgroundColor: CARD_BG,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: Colors.border,
+  },
+  detailButtonText: {
+    color: TEXT_PRIMARY,
+    fontSize: 13,
+    fontWeight: "700",
   },
 });

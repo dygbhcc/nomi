@@ -40,6 +40,7 @@ type SwipeVoteCardProps = {
   budget?: number;
   moods?: string[];
   address?: string;
+  reason?: string; // "Why for you?" text
 
   // Vote info (optional, for group voting)
   voteData?: VoteData;
@@ -68,6 +69,7 @@ export default function SwipeVoteCard({
   budget,
   moods,
   address,
+  reason,
   voteData,
   translateX,
   rotate,
@@ -141,6 +143,13 @@ export default function SwipeVoteCard({
                 <Text style={styles.moodBadgeText}>{mood}</Text>
               </View>
             ))}
+          </View>
+        )}
+
+        {reason && (
+          <View style={styles.reasonBox}>
+            <Text style={styles.reasonLabel}>{t('swipe.whyForYou')}</Text>
+            <Text style={styles.reasonText}>{reason}</Text>
           </View>
         )}
 
@@ -292,5 +301,24 @@ const styles = StyleSheet.create({
   voteText: {
     color: TEXT_SECONDARY,
     fontSize: 13,
+  },
+  reasonBox: {
+    backgroundColor: "rgba(224, 106, 79, 0.08)",
+    borderRadius: 12,
+    padding: 12,
+    marginBottom: 8,
+  },
+  reasonLabel: {
+    color: ACCENT,
+    fontSize: 11,
+    fontWeight: "700",
+    textTransform: "uppercase",
+    letterSpacing: 0.5,
+    marginBottom: 4,
+  },
+  reasonText: {
+    color: TEXT_PRIMARY,
+    fontSize: 13,
+    lineHeight: 18,
   },
 });

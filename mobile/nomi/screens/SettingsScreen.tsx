@@ -31,12 +31,22 @@ const KEYS = {
   validateReminders: "notifications_validate",
   defaultCity: "default_city",
   defaultBudget: "default_budget",
+  defaultMood: "default_mood",
 };
 
 const CITIES = [
   { label: "Lisbon \u{1F1F5}\u{1F1F9}", value: "Lisbon" },
   { label: "Porto \u{1F1F5}\u{1F1F9}", value: "Porto" },
   { label: "Algarve \u{1F1F5}\u{1F1F9}", value: "Algarve" },
+];
+
+const MOODS = [
+  { id: 'romantic', labelKey: 'mood.moods.romantic.label' },
+  { id: 'energetic', labelKey: 'mood.moods.energetic.label' },
+  { id: 'chill', labelKey: 'mood.moods.chill.label' },
+  { id: 'explorer', labelKey: 'mood.moods.explorer.label' },
+  { id: 'focus', labelKey: 'mood.moods.focus.label' },
+  { id: 'hungry_quick', labelKey: 'mood.moods.hungryQuick.label' },
 ];
 
 type Props = {
@@ -61,17 +71,20 @@ export default function SettingsScreen({ onBack }: Props) {
   const [defaultCity, setDefaultCity] = useState("Lisbon");
   const [showCityPicker, setShowCityPicker] = useState(false);
   const [defaultBudget, setDefaultBudget] = useState(2);
+  const [defaultMood, setDefaultMood] = useState("chill");
+  const [showMoodPicker, setShowMoodPicker] = useState(false);
 
   // Load from AsyncStorage on mount
   useEffect(() => {
     (async () => {
-      const [gi, lb, nr, vr, city, budget] = await Promise.all([
+      const [gi, lb, nr, vr, city, budget, mood] = await Promise.all([
         AsyncStorage.getItem(KEYS.groupInvites),
         AsyncStorage.getItem(KEYS.leaderboard),
         AsyncStorage.getItem(KEYS.newRestaurants),
         AsyncStorage.getItem(KEYS.validateReminders),
         AsyncStorage.getItem(KEYS.defaultCity),
         AsyncStorage.getItem(KEYS.defaultBudget),
+        AsyncStorage.getItem(KEYS.defaultMood),
       ]);
       if (gi !== null) setGroupInvites(gi === "true");
       if (lb !== null) setLeaderboard(lb === "true");
@@ -79,6 +92,7 @@ export default function SettingsScreen({ onBack }: Props) {
       if (vr !== null) setValidateReminders(vr === "true");
       if (city !== null) setDefaultCity(city);
       if (budget !== null) setDefaultBudget(parseInt(budget, 10));
+      if (mood !== null) setDefaultMood(mood);
     })();
   }, []);
 
@@ -103,6 +117,12 @@ export default function SettingsScreen({ onBack }: Props) {
     AsyncStorage.setItem(KEYS.defaultBudget, String(level));
   };
 
+  const saveMoodAndClose = (mood: string) => {
+    setDefaultMood(mood);
+    setShowMoodPicker(false);
+    AsyncStorage.setItem(KEYS.defaultMood, mood);
+  };
+
   const initials = displayName
     .split(" ")
     .map((n) => n[0])
@@ -110,6 +130,8 @@ export default function SettingsScreen({ onBack }: Props) {
 
   const cityLabel =
     CITIES.find((c) => c.value === defaultCity)?.label || defaultCity;
+  const moodLabel =
+    MOODS.find((m) => m.id === defaultMood)?.labelKey || "mood.moods.chill.label";
 
   return (
     <SafeAreaView style={styles.container}>
@@ -271,9 +293,42 @@ export default function SettingsScreen({ onBack }: Props) {
           )}
           <View style={styles.divider} />
 
+          {/* Default mood */}
+          <TouchableOpacity
+            style={styles.row}
+            onPress={() => setShowMoodPicker(!showMoodPicker)}
+          >
+            <Text style={styles.rowLabel}>{t('settings.preferences.defaultMood')}</Text>
+            <Text style={styles.rowValue}>{t(moodLabel)}</Text>
+          </TouchableOpacity>
+          {showMoodPicker && (
+            <View style={styles.pickerContainer}>
+              {MOODS.map((m) => (
+                <TouchableOpacity
+                  key={m.id}
+                  style={[
+                    styles.pickerOption,
+                    defaultMood === m.id && styles.pickerOptionActive,
+                  ]}
+                  onPress={() => saveMoodAndClose(m.id)}
+                >
+                  <Text
+                    style={[
+                      styles.pickerOptionText,
+                      defaultMood === m.id && styles.pickerOptionTextActive,
+                    ]}
+                  >
+                    {t(m.labelKey)}
+                  </Text>
+                </TouchableOpacity>
+              ))}
+            </View>
+          )}
+          <View style={styles.divider} />
+
           {/* Default budget */}
           <View style={styles.row}>
-            <Text style={styles.rowLabel}>Default budget</Text>
+            <Text style={styles.rowLabel}>{t('settings.preferences.defaultBudget')}</Text>
             <View style={styles.budgetSelector}>
               {[1, 2, 3].map((level) => (
                 <TouchableOpacity
