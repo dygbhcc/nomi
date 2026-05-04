@@ -20,15 +20,15 @@ const MOODS = [
 ];
 
 const BUDGETS = [
-  { value: 1, label: '€', labelKey: 'budget.budgetOptions.1' },
-  { value: 2, label: '€€', labelKey: 'budget.budgetOptions.2' },
-  { value: 3, label: '€€€', labelKey: 'budget.budgetOptions.3' },
+  { value: 1, label: '€', labelKey: 'budget.budgetOptions.1.label' },
+  { value: 2, label: '€€', labelKey: 'budget.budgetOptions.2.label' },
+  { value: 3, label: '€€€', labelKey: 'budget.budgetOptions.3.label' },
 ];
 
 const DISTANCES = [
-  { value: 500, labelKey: 'budget.distanceOptions.5' },
-  { value: 3000, labelKey: 'budget.distanceOptions.15' },
-  { value: 10000, labelKey: 'budget.distanceOptions.30' },
+  { value: 500, labelKey: 'budget.distanceOptions.500.title' },
+  { value: 3500, labelKey: 'budget.distanceOptions.3500.title' },
+  { value: 10000, labelKey: 'budget.distanceOptions.10000.title' },
 ];
 
 function generateRoomCode(): string {
@@ -53,7 +53,7 @@ export default function GroupScreen({ onStartVoting, onJoinRoom, onBack, onNavig
   const [roomCode, setRoomCode] = useState<string | null>(null);
   const [selectedMoods, setSelectedMoods] = useState<string[]>([]);
   const [budget, setBudget] = useState<number>(2);
-  const [distance, setDistance] = useState<number>(3000);
+  const [distance, setDistance] = useState<number>(3500);
   const [loading, setLoading] = useState(false);
   const [joinCode, setJoinCode] = useState('');
   const [joining, setJoining] = useState(false);

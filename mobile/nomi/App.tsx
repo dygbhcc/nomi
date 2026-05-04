@@ -137,7 +137,7 @@ function AppNavigator() {
           onContinue={(budget, distance) => {
             setSelectedBudget(budget);
             setSelectedDistance(distance);
-            setScreen(isGroupMode && isHost ? "waitingRoom" : isGroupMode ? "groupPreferences" : "swipe");
+            setScreen(isGroupMode ? "waitingRoom" : "swipe");
           }}
           onBack={() => {
             setIsGroupMode(false);

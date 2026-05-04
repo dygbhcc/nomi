@@ -23,19 +23,20 @@ type BudgetOption = {
 type DistanceOption = {
   value: number;
   emoji: string;
-  labelKey: string;
+  titleKey: string;
+  subtitleKey: string;
 };
 
 const BUDGET_OPTIONS: BudgetOption[] = [
-  { value: 1, symbol: "\u20AC", labelKey: "budget.budgetOptions.1" },
-  { value: 2, symbol: "\u20AC\u20AC", labelKey: "budget.budgetOptions.2" },
-  { value: 3, symbol: "\u20AC\u20AC\u20AC", labelKey: "budget.budgetOptions.3" },
+  { value: 1, symbol: "\u20AC", labelKey: "budget.budgetOptions.1.label" },
+  { value: 2, symbol: "\u20AC\u20AC", labelKey: "budget.budgetOptions.2.label" },
+  { value: 3, symbol: "\u20AC\u20AC\u20AC", labelKey: "budget.budgetOptions.3.label" },
 ];
 
 const DISTANCE_OPTIONS: DistanceOption[] = [
-  { value: 5, emoji: "\u{1F6B6}", labelKey: "budget.distanceOptions.5" },
-  { value: 15, emoji: "\u{1F697}", labelKey: "budget.distanceOptions.15" },
-  { value: 30, emoji: "\u{1F5FA}", labelKey: "budget.distanceOptions.30" },
+  { value: 500, emoji: "\u{1F6B6}", titleKey: "budget.distanceOptions.500.title", subtitleKey: "budget.distanceOptions.500.subtitle" },
+  { value: 3500, emoji: "\u{1F697}", titleKey: "budget.distanceOptions.3500.title", subtitleKey: "budget.distanceOptions.3500.subtitle" },
+  { value: 10000, emoji: "\u{1F5FA}", titleKey: "budget.distanceOptions.10000.title", subtitleKey: "budget.distanceOptions.10000.subtitle" },
 ];
 
 // Using central theme
@@ -91,7 +92,7 @@ export default function BudgetDistanceScreen({
   const handleContinue = async () => {
     // Use default values if not selected (auto mode)
     const budget = selectedBudget ?? 2; // default: €€
-    const distance = selectedDistance ?? 3000; // default: A bit further
+    const distance = selectedDistance ?? 3500; // default: A bit further
 
     // If host in group mode, create room with preferences
     if (isGroupMode && isHost && roomCode && user) {
@@ -186,8 +187,11 @@ export default function BudgetDistanceScreen({
                 >
                   <Text style={styles.cardEmoji}>{option.emoji}</Text>
                   <View style={styles.cardTextContainer}>
+                    <Text style={[styles.cardLabel, isSelected && styles.cardLabelSelected]}>
+                      {t(option.titleKey)}
+                    </Text>
                     <Text style={[styles.cardDescription, isSelected && styles.cardDescriptionSelected]}>
-                      {t(option.labelKey)}
+                      {t(option.subtitleKey)}
                     </Text>
                   </View>
                 </TouchableOpacity>
@@ -308,18 +312,18 @@ const styles = StyleSheet.create({
     color: TEXT_PRIMARY,
     fontSize: 17,
     fontWeight: "600",
-    marginBottom: 2,
+    marginBottom: 4,
   },
   cardLabelSelected: {
-    color: ACCENT,
+    color: TEXT_PRIMARY,
   },
   cardDescription: {
     color: TEXT_SECONDARY,
-    fontSize: 15,
+    fontSize: 14,
     flex: 1,
   },
   cardDescriptionSelected: {
-    color: TEXT_PRIMARY,
+    color: "#666666",
   },
   bottomContainer: {
     position: "absolute",

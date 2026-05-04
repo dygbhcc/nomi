@@ -112,14 +112,29 @@
     "distanceTitle": "Distance",
     "continueButton": "Let's Eat",
     "budgetOptions": {
-      "1": "€ Cheap eats",
-      "2": "€€ Mid-range",
-      "3": "€€€ Fine dining"
+      "1": {
+        "label": "Up to €15 per person"
+      },
+      "2": {
+        "label": "€15-35 per person"
+      },
+      "3": {
+        "label": "€35+ per person"
+      }
     },
     "distanceOptions": {
-      "5": "5 min walk",
-      "15": "15 min walk",
-      "30": "30 min commute"
+      "500": {
+        "title": "Nearby",
+        "subtitle": "Walking distance (500m)"
+      },
+      "3500": {
+        "title": "A bit further",
+        "subtitle": "2-5 km away"
+      },
+      "10000": {
+        "title": "Explore",
+        "subtitle": "Anywhere in the city"
+      }
     }
   },
   "swipe": {

@@ -112,14 +112,29 @@
     "distanceTitle": "Distância",
     "continueButton": "Vamos Comer",
     "budgetOptions": {
-      "1": "€ Económico",
-      "2": "€€ Médio",
-      "3": "€€€ Requintado"
+      "1": {
+        "label": "Até €15 por pessoa"
+      },
+      "2": {
+        "label": "€15-35 por pessoa"
+      },
+      "3": {
+        "label": "€35+ por pessoa"
+      }
     },
     "distanceOptions": {
-      "5": "5 min a pé",
-      "15": "15 min a pé",
-      "30": "30 min de viagem"
+      "500": {
+        "title": "Perto",
+        "subtitle": "Distância a pé (500m)"
+      },
+      "3500": {
+        "title": "Um pouco mais longe",
+        "subtitle": "2-5 km de distância"
+      },
+      "10000": {
+        "title": "Explorar",
+        "subtitle": "Em qualquer lugar da cidade"
+      }
     }
   },
   "swipe": {
