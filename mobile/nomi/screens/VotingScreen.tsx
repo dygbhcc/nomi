@@ -88,6 +88,10 @@ export default function VotingScreen({ roomCode, selectedMoods, budgetLevel, onV
           ...r,
           reason: buildReason(r, selectedMoods),
         }));
+        __DEV__ && console.log('🍽️ Fetched restaurants:', withReasons);
+        __DEV__ && withReasons.length > 0 && console.log('First restaurant FULL OBJECT:', JSON.stringify(withReasons[0], null, 2));
+        __DEV__ && withReasons.length > 0 && console.log('Restaurant keys:', Object.keys(withReasons[0]));
+        __DEV__ && withReasons.length > 0 && console.log('Restaurant name field:', withReasons[0].name);
         setRestaurants(withReasons);
       } catch (error) {
         __DEV__ && console.error('Failed to fetch restaurants:', error);
@@ -313,7 +317,7 @@ export default function VotingScreen({ roomCode, selectedMoods, budgetLevel, onV
   }
 
   // When all cards are done, show waiting screen
-  if (allDone) {
+  if (allDone || !restaurant) {
     return (
       <SafeAreaView style={styles.container}>
         <StatusBar style="dark" />

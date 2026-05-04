@@ -32,6 +32,7 @@ const KEYS = {
   defaultCity: "default_city",
   defaultBudget: "default_budget",
   defaultMood: "default_mood",
+  defaultDistance: "default_distance",
 };
 
 const CITIES = [
@@ -47,6 +48,12 @@ const MOODS = [
   { id: 'explorer', labelKey: 'mood.moods.explorer.label' },
   { id: 'focus', labelKey: 'mood.moods.focus.label' },
   { id: 'hungry_quick', labelKey: 'mood.moods.hungryQuick.label' },
+];
+
+const DISTANCES = [
+  { id: 500, labelKey: 'budget.distanceOptions.500.title', subtitleKey: 'budget.distanceOptions.500.subtitle' },
+  { id: 3500, labelKey: 'budget.distanceOptions.3500.title', subtitleKey: 'budget.distanceOptions.3500.subtitle' },
+  { id: 10000, labelKey: 'budget.distanceOptions.10000.title', subtitleKey: 'budget.distanceOptions.10000.subtitle' },
 ];
 
 type Props = {
@@ -73,11 +80,13 @@ export default function SettingsScreen({ onBack }: Props) {
   const [defaultBudget, setDefaultBudget] = useState(2);
   const [defaultMood, setDefaultMood] = useState("chill");
   const [showMoodPicker, setShowMoodPicker] = useState(false);
+  const [defaultDistance, setDefaultDistance] = useState(3500);
+  const [showDistancePicker, setShowDistancePicker] = useState(false);
 
   // Load from AsyncStorage on mount
   useEffect(() => {
     (async () => {
-      const [gi, lb, nr, vr, city, budget, mood] = await Promise.all([
+      const [gi, lb, nr, vr, city, budget, mood, distance] = await Promise.all([
         AsyncStorage.getItem(KEYS.groupInvites),
         AsyncStorage.getItem(KEYS.leaderboard),
         AsyncStorage.getItem(KEYS.newRestaurants),
@@ -85,6 +94,7 @@ export default function SettingsScreen({ onBack }: Props) {
         AsyncStorage.getItem(KEYS.defaultCity),
         AsyncStorage.getItem(KEYS.defaultBudget),
         AsyncStorage.getItem(KEYS.defaultMood),
+        AsyncStorage.getItem(KEYS.defaultDistance),
       ]);
       if (gi !== null) setGroupInvites(gi === "true");
       if (lb !== null) setLeaderboard(lb === "true");
@@ -93,6 +103,7 @@ export default function SettingsScreen({ onBack }: Props) {
       if (city !== null) setDefaultCity(city);
       if (budget !== null) setDefaultBudget(parseInt(budget, 10));
       if (mood !== null) setDefaultMood(mood);
+      if (distance !== null) setDefaultDistance(parseInt(distance, 10));
     })();
   }, []);
 
@@ -123,6 +134,12 @@ export default function SettingsScreen({ onBack }: Props) {
     AsyncStorage.setItem(KEYS.defaultMood, mood);
   };
 
+  const saveDistanceAndClose = (distance: number) => {
+    setDefaultDistance(distance);
+    setShowDistancePicker(false);
+    AsyncStorage.setItem(KEYS.defaultDistance, String(distance));
+  };
+
   const initials = displayName
     .split(" ")
     .map((n) => n[0])
@@ -132,6 +149,8 @@ export default function SettingsScreen({ onBack }: Props) {
     CITIES.find((c) => c.value === defaultCity)?.label || defaultCity;
   const moodLabel =
     MOODS.find((m) => m.id === defaultMood)?.labelKey || "mood.moods.chill.label";
+  const distanceLabel =
+    DISTANCES.find((d) => d.id === defaultDistance)?.labelKey || "budget.distanceOptions.3500.title";
 
   return (
     <SafeAreaView style={styles.container}>
@@ -351,6 +370,39 @@ export default function SettingsScreen({ onBack }: Props) {
               ))}
             </View>
           </View>
+          <View style={styles.divider} />
+
+          {/* Default distance */}
+          <TouchableOpacity
+            style={styles.row}
+            onPress={() => setShowDistancePicker(!showDistancePicker)}
+          >
+            <Text style={styles.rowLabel}>{t('settings.preferences.defaultDistance')}</Text>
+            <Text style={styles.rowValue}>{t(distanceLabel)}</Text>
+          </TouchableOpacity>
+          {showDistancePicker && (
+            <View style={styles.pickerContainer}>
+              {DISTANCES.map((d) => (
+                <TouchableOpacity
+                  key={d.id}
+                  style={[
+                    styles.pickerOption,
+                    defaultDistance === d.id && styles.pickerOptionActive,
+                  ]}
+                  onPress={() => saveDistanceAndClose(d.id)}
+                >
+                  <Text
+                    style={[
+                      styles.pickerOptionText,
+                      defaultDistance === d.id && styles.pickerOptionTextActive,
+                    ]}
+                  >
+                    {t(d.labelKey)} • {t(d.subtitleKey)}
+                  </Text>
+                </TouchableOpacity>
+              ))}
+            </View>
+          )}
         </View>
 
         {/* ====== About ====== */}

@@ -167,9 +167,9 @@ export const declareWinner = async (
 
   // Award points to organizer
   const userRef = doc(db, 'users', organizerUid);
-  await updateDoc(userRef, {
+  await setDoc(userRef, {
     points: increment(100),
-  });
+  }, { merge: true });
 };
 
 // Final vote functions (using Realtime Database for real-time updates)

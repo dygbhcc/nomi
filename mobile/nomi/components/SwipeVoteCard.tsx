@@ -112,13 +112,13 @@ export default function SwipeVoteCard({
         <Image source={photo} style={styles.photoImage} resizeMode="cover" />
       ) : (
         <View style={[styles.photoPlaceholder, { backgroundColor: photoColor }]}>
-          <Text style={styles.photoInitial}>{name.charAt(0)}</Text>
+          <Text style={styles.photoInitial}>{name?.charAt(0) || '?'}</Text>
         </View>
       )}
 
       {/* Info */}
       <View style={styles.infoSection}>
-        <Text style={styles.restaurantName}>{name}</Text>
+        <Text style={styles.restaurantName}>{name || 'Unknown Restaurant'}</Text>
 
         {address && (
           <Text style={styles.address}>{address}</Text>

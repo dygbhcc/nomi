@@ -62,17 +62,32 @@ export default function GroupScreen({ onStartVoting, onJoinRoom, onBack, onNavig
   const [showErrorModal, setShowErrorModal] = useState(false);
   const [errorMessage, setErrorMessage] = useState('');
 
-  // Load default mood from settings on mount
+  // Load defaults from settings on mount
   useEffect(() => {
-    AsyncStorage.getItem('default_mood').then((mood) => {
-      __DEV__ && console.log('📱 Loaded default mood from storage:', mood);
-      if (mood) {
-        setSelectedMoods([mood]);
-        __DEV__ && console.log('✅ Default mood set:', [mood]);
-      } else {
-        __DEV__ && console.log('⚠️ No default mood found in storage');
+    (async () => {
+      const [defaultMood, defaultBudget, defaultDistance] = await Promise.all([
+        AsyncStorage.getItem('default_mood'),
+        AsyncStorage.getItem('default_budget'),
+        AsyncStorage.getItem('default_distance'),
+      ]);
+
+      __DEV__ && console.log('📱 Loaded defaults from storage:', { defaultMood, defaultBudget, defaultDistance });
+
+      if (defaultMood) {
+        setSelectedMoods([defaultMood]);
+        __DEV__ && console.log('✅ Default mood set:', [defaultMood]);
       }
-    });
+
+      if (defaultBudget) {
+        setBudget(parseInt(defaultBudget, 10));
+        __DEV__ && console.log('✅ Default budget set:', parseInt(defaultBudget, 10));
+      }
+
+      if (defaultDistance) {
+        setDistance(parseInt(defaultDistance, 10));
+        __DEV__ && console.log('✅ Default distance set:', parseInt(defaultDistance, 10));
+      }
+    })();
   }, []);
 
   const handleCreateRoom = async () => {

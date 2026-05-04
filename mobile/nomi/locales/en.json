@@ -396,6 +396,7 @@
       "defaultCity": "Default city",
       "defaultMood": "Default mood",
       "defaultBudget": "Default budget",
+      "defaultDistance": "Default distance",
       "cities": {
         "lisbon": "Lisbon 🇵🇹",
         "porto": "Porto 🇵🇹",

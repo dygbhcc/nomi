@@ -208,7 +208,7 @@ export default function ValidateScreen({ onDone, onSkip, onNavigate }: Props) {
     })
   ).current;
 
-  const allDone = validated >= DAILY_LIMIT || currentIndex >= MOCK_VALIDATE_QUEUE.length;
+  const allDone = validated >= DAILY_LIMIT;
 
   // --- Done State ---
   if (allDone) {
