@@ -1,18 +1,22 @@
 import { NextResponse } from 'next/server';
-import { getSwipeStats, getTopRestaurants, getConfidenceStats } from '@/lib/queries';
+import { getSwipeStats, getTopRestaurants, getConfidenceStats, getRestaurantDemandScores, getWeeklySwipeTrend } from '@/lib/queries';
 
 export async function GET() {
   try {
-    const [swipeStats, restaurants, confidenceStats] = await Promise.all([
+    const [swipeStats, restaurants, confidenceStats, demandScores, weeklyTrend] = await Promise.all([
       getSwipeStats(),
       getTopRestaurants(10),
       getConfidenceStats(),
+      getRestaurantDemandScores(15),
+      getWeeklySwipeTrend(),
     ]);
 
     return NextResponse.json({
       swipeStats,
       restaurants,
       confidenceStats,
+      demandScores,
+      weeklyTrend,
       generatedAt: new Date().toISOString(),
     });
   } catch (error) {

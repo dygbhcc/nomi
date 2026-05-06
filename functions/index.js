@@ -3,8 +3,10 @@ require("dotenv").config();
 const admin = require("firebase-admin");
 const logger = require("firebase-functions/logger");
 const {onCall, HttpsError} = require("firebase-functions/v2/https");
+const {onSchedule} = require("firebase-functions/v2/scheduler");
 const {nearbySearch, placeDetails} = require("./services/googlePlacesService");
 const {getOrUploadPhoto} = require("./services/cloudinaryService");
+const {calculateDemandForecast} = require("./services/demandScoringService");
 const lisbonNeighborhoods = require("./config/lisbonNeighborhoods");
 
 admin.initializeApp();
@@ -245,5 +247,58 @@ exports.warmupLisbonRestaurants = onCall(
         totalNeighborhoods: lisbonNeighborhoods.length,
         results,
       };
+    },
+);
+
+/**
+ * Callable function to get current demand forecast
+ * Combines weather, events, time, and tourism signals
+ */
+exports.getDemandForecast = onCall(
+    {
+      region: "europe-west1",
+    },
+    async () => {
+      try {
+        const forecast = await calculateDemandForecast();
+        return forecast;
+      } catch (error) {
+        logger.error("getDemandForecast error:", error);
+        throw new HttpsError("internal", "Failed to calculate demand forecast");
+      }
+    },
+);
+
+/**
+ * Scheduled function to update demand forecast every hour
+ * Stores result in Firestore for dashboard consumption
+ */
+exports.scheduledDemandUpdate = onSchedule(
+    {
+      schedule: "every 1 hours",
+      timeZone: "Europe/Lisbon",
+      region: "europe-west1",
+    },
+    async () => {
+      try {
+        logger.info("Running scheduled demand forecast update...");
+
+        const forecast = await calculateDemandForecast();
+
+        // Store in Firestore for admin dashboard
+        await db.collection("demand_forecasts").doc("latest").set({
+          ...forecast,
+          updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+        });
+
+        logger.info("Demand forecast updated successfully", {
+          overallScore: forecast.overall.score,
+        });
+
+        return {success: true, score: forecast.overall.score};
+      } catch (error) {
+        logger.error("scheduledDemandUpdate failed:", error);
+        throw error;
+      }
     },
 );

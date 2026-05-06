@@ -14,13 +14,24 @@ const HOURS = Array.from({ length: 16 }, (_, i) => `${i + 8}:00`);
 
 export default function Dashboard() {
   const [data, setData] = useState<any>(null);
+  const [demandData, setDemandData] = useState<any>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    fetch('/api/stats')
-      .then(r => r.json())
-      .then(d => { setData(d); setLoading(false); })
-      .catch((err) => { console.error(err); setLoading(false); });
+    // Fetch stats and demand forecast in parallel
+    Promise.all([
+      fetch('/api/stats').then(r => r.json()),
+      fetch('/api/demand').then(r => r.json()).catch(() => null),
+    ])
+      .then(([stats, demand]) => {
+        setData(stats);
+        setDemandData(demand);
+        setLoading(false);
+      })
+      .catch((err) => {
+        console.error(err);
+        setLoading(false);
+      });
   }, []);
 
   if (loading) return (
@@ -147,45 +158,203 @@ export default function Dashboard() {
               scales: { x: { grid: { display: false } }, y: { grid: { color: '#F5F5F5' } } }
             }} />
           </div>
+          {/* Demand score table */}
           <div className="bg-white rounded-xl border border-gray-100 p-5">
-            <div className="text-sm font-medium text-gray-700 mb-4">Top restaurants by rating</div>
-            <div className="space-y-2 max-h-56 overflow-y-auto">
-              {(restaurants || []).map((r: any, i: number) => (
-                <div key={r.id} className="flex items-center justify-between py-1.5 border-b border-gray-50 last:border-0">
-                  <div className="flex items-center gap-3">
-                    <span className="text-xs text-gray-400 w-4">{i + 1}</span>
-                    <span className="text-sm text-gray-700 truncate max-w-48">{r.name}</span>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <span className="text-xs text-gray-400">{r.budget_level ? '€'.repeat(r.budget_level) : '€€'}</span>
-                    <span className="text-sm font-medium text-[#E06A4F]">{r.google_rating?.toFixed(1) || '—'}</span>
-                  </div>
-                </div>
-              ))}
+            <div className="text-sm font-medium text-gray-700 mb-4">
+              Restaurant demand scores
+              <span className="text-xs text-gray-400 ml-2 font-normal">
+                swipe rate × confidence × activity
+              </span>
             </div>
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="text-xs text-gray-400 border-b border-gray-100">
+                  <th className="text-left pb-2 font-medium">Restaurant</th>
+                  <th className="text-center pb-2 font-medium">Swipes</th>
+                  <th className="text-center pb-2 font-medium">Like rate</th>
+                  <th className="text-center pb-2 font-medium">Demand score</th>
+                </tr>
+              </thead>
+              <tbody>
+                {(data?.demandScores || []).map((r: any) => (
+                  <tr key={r.id} className="border-b border-gray-50 last:border-0">
+                    <td className="py-2 pr-4">
+                      <div className="font-medium text-gray-800 truncate max-w-48">{r.name}</div>
+                      <div className="text-xs text-gray-400">{r.mood_tags?.slice(0, 2).join(' · ')}</div>
+                    </td>
+                    <td className="py-2 text-center text-gray-600">{r.totalSwipes}</td>
+                    <td className="py-2 text-center text-gray-600">{r.swipeRightRate}%</td>
+                    <td className="py-2 text-center">
+                      <span className={`inline-block px-2 py-0.5 rounded-full text-xs font-medium
+                        ${r.demandScore >= 70 ? 'bg-green-50 text-green-700' :
+                          r.demandScore >= 40 ? 'bg-orange-50 text-orange-700' :
+                          'bg-gray-50 text-gray-600'}`}>
+                        {r.demandScore}
+                      </span>
+                    </td>
+                  </tr>
+                ))}
+                {(!data?.demandScores || data.demandScores.length === 0) && (
+                  <tr><td colSpan={4} className="py-8 text-center text-gray-400 text-sm">
+                    No swipe data yet — start swiping in the app
+                  </td></tr>
+                )}
+              </tbody>
+            </table>
           </div>
         </div>
 
-        {/* Signal factors placeholder */}
-        <div className="bg-white rounded-xl border border-gray-100 p-5">
-          <div className="text-sm font-medium text-gray-700 mb-3">Demand signal factors — Lisbon this week</div>
+        {/* Weekly trend chart */}
+        <div className="bg-white rounded-xl border border-gray-100 p-5 mb-4">
+          <div className="text-sm font-medium text-gray-700 mb-4">Weekly demand pattern</div>
+          <Bar
+            data={{
+              labels: (data?.weeklyTrend || []).map((d: any) => d.label),
+              datasets: [
+                {
+                  label: 'Like rate %',
+                  data: (data?.weeklyTrend || []).map((d: any) => d.likeRate),
+                  backgroundColor: ACCENT,
+                  borderRadius: 6,
+                },
+                {
+                  label: 'Total swipes',
+                  data: (data?.weeklyTrend || []).map((d: any) => d.total),
+                  backgroundColor: '#F0E8E5',
+                  borderRadius: 6,
+                }
+              ]
+            }}
+            options={{
+              responsive: true,
+              plugins: { legend: { position: 'top' } },
+              scales: {
+                x: { grid: { display: false } },
+                y: { grid: { color: '#F5F5F5' } }
+              }
+            }}
+          />
+        </div>
+
+        {/* Explainable AI section */}
+        <div className="bg-white rounded-xl border border-gray-100 p-5 mb-4">
+          <div className="text-sm font-medium text-gray-700 mb-3">
+            How demand scores are calculated
+            <span className="ml-2 text-xs font-normal text-[#E06A4F]">Explainable AI</span>
+          </div>
           <div className="grid grid-cols-3 gap-3">
             {[
-              { label: 'Weather', value: 'Sunny, 24°C', impact: '+18% outdoor demand', color: 'text-green-600' },
-              { label: 'Events', value: 'No major events', impact: 'Baseline demand', color: 'text-gray-500' },
-              { label: 'Tourism', value: 'Peak season', impact: '+32% vs off-season', color: 'text-green-600' },
+              { factor: 'Swipe right rate', weight: '50%', desc: 'How often users liked this restaurant vs passed', icon: '→' },
+              { factor: 'Confidence score', weight: '30%', desc: 'How validated the mood tags are (Vision AI + human)', icon: '✓' },
+              { factor: 'Activity recency', weight: '20%', desc: 'How recently users have been discovering this venue', icon: '◉' },
             ].map(f => (
-              <div key={f.label} className="bg-gray-50 rounded-lg p-3">
-                <div className="text-xs text-gray-400 mb-1">{f.label}</div>
-                <div className="text-sm font-medium text-gray-800">{f.value}</div>
-                <div className={`text-xs mt-1 ${f.color}`}>{f.impact}</div>
+              <div key={f.factor} className="bg-gray-50 rounded-lg p-3">
+                <div className="flex items-center justify-between mb-1">
+                  <span className="text-xs font-medium text-gray-700">{f.factor}</span>
+                  <span className="text-xs font-bold text-[#E06A4F]">{f.weight}</span>
+                </div>
+                <div className="text-xs text-gray-500">{f.desc}</div>
               </div>
             ))}
           </div>
-          <div className="text-xs text-gray-400 mt-3">
-            Weather + events API integration coming Day 5–6. Signal factors will be dynamic.
-          </div>
         </div>
+
+        {/* Live demand signals */}
+        {demandData && !demandData.error ? (
+          <div className="bg-white rounded-xl border border-gray-100 p-5">
+            <div className="flex items-center justify-between mb-3">
+              <div className="text-sm font-medium text-gray-700">Live demand forecast — Lisbon right now</div>
+              <div className={`px-3 py-1 rounded-full text-xs font-semibold ${
+                demandData.overall?.category === 'very high' ? 'bg-green-100 text-green-700' :
+                demandData.overall?.category === 'high' ? 'bg-green-50 text-green-600' :
+                demandData.overall?.category === 'elevated' ? 'bg-orange-50 text-orange-600' :
+                demandData.overall?.category === 'low' ? 'bg-gray-100 text-gray-600' :
+                'bg-gray-50 text-gray-500'
+              }`}>
+                {demandData.overall?.percentageChange || '0%'} vs baseline
+              </div>
+            </div>
+            <div className="grid grid-cols-4 gap-3">
+              <div className="bg-gray-50 rounded-lg p-3">
+                <div className="text-xs text-gray-400 mb-1">Weather</div>
+                <div className="text-sm font-medium text-gray-800">
+                  {demandData.factors?.weather?.conditions}, {demandData.factors?.weather?.temperature}°C
+                </div>
+                <div className={`text-xs mt-1 ${
+                  demandData.factors?.weather?.category === 'high' ? 'text-green-600' :
+                  demandData.factors?.weather?.category === 'medium' ? 'text-orange-600' :
+                  'text-gray-500'
+                }`}>
+                  {demandData.factors?.weather?.description}
+                </div>
+              </div>
+              <div className="bg-gray-50 rounded-lg p-3">
+                <div className="text-xs text-gray-400 mb-1">Events</div>
+                <div className="text-sm font-medium text-gray-800">
+                  {demandData.factors?.events?.majorEventsCount > 0
+                    ? `${demandData.factors?.events?.majorEventsCount} major event${demandData.factors?.events?.majorEventsCount > 1 ? 's' : ''}`
+                    : 'No major events'}
+                </div>
+                <div className={`text-xs mt-1 ${
+                  demandData.factors?.events?.category === 'high' ? 'text-green-600' :
+                  demandData.factors?.events?.category === 'medium' ? 'text-orange-600' :
+                  'text-gray-500'
+                }`}>
+                  {demandData.factors?.events?.description}
+                </div>
+              </div>
+              <div className="bg-gray-50 rounded-lg p-3">
+                <div className="text-xs text-gray-400 mb-1">Time</div>
+                <div className="text-sm font-medium text-gray-800">
+                  {demandData.factors?.time?.currentHour}:00 · {['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'][demandData.factors?.time?.dayOfWeek]}
+                </div>
+                <div className={`text-xs mt-1 ${
+                  demandData.factors?.time?.category === 'high' ? 'text-green-600' :
+                  demandData.factors?.time?.category === 'medium' ? 'text-orange-600' :
+                  'text-gray-500'
+                }`}>
+                  {demandData.factors?.time?.description}
+                </div>
+              </div>
+              <div className="bg-gray-50 rounded-lg p-3">
+                <div className="text-xs text-gray-400 mb-1">Tourism</div>
+                <div className="text-sm font-medium text-gray-800">
+                  {demandData.factors?.tourism?.description}
+                </div>
+                <div className={`text-xs mt-1 ${
+                  demandData.factors?.tourism?.category === 'high' ? 'text-green-600' :
+                  demandData.factors?.tourism?.category === 'medium' ? 'text-orange-600' :
+                  'text-gray-500'
+                }`}>
+                  {demandData.factors?.tourism?.impactScore > 0 ? `+${demandData.factors?.tourism?.impactScore}%` : `${demandData.factors?.tourism?.impactScore}%`}
+                </div>
+              </div>
+            </div>
+            <div className="text-xs text-gray-400 mt-3">
+              Live data from OpenWeatherMap + Eventbrite · Updated every hour · Last update: {demandData.metadata?.calculatedAt ? new Date(demandData.metadata.calculatedAt).toLocaleTimeString() : 'N/A'}
+            </div>
+          </div>
+        ) : (
+          <div className="bg-white rounded-xl border border-gray-100 p-5">
+            <div className="text-sm font-medium text-gray-700 mb-3">Demand signal factors — Lisbon this week</div>
+            <div className="grid grid-cols-3 gap-3">
+              {[
+                { label: 'Weather', value: 'Loading...', impact: 'Fetching live data', color: 'text-gray-400' },
+                { label: 'Events', value: 'Loading...', impact: 'Fetching live data', color: 'text-gray-400' },
+                { label: 'Tourism', value: 'Loading...', impact: 'Fetching live data', color: 'text-gray-400' },
+              ].map(f => (
+                <div key={f.label} className="bg-gray-50 rounded-lg p-3">
+                  <div className="text-xs text-gray-400 mb-1">{f.label}</div>
+                  <div className="text-sm font-medium text-gray-800">{f.value}</div>
+                  <div className={`text-xs mt-1 ${f.color}`}>{f.impact}</div>
+                </div>
+              ))}
+            </div>
+            <div className="text-xs text-gray-400 mt-3">
+              {demandData?.error || 'Initializing demand forecast system...'}
+            </div>
+          </div>
+        )}
 
         <div className="text-xs text-gray-300 text-center mt-6">
           nomi demand intelligence · Lisbon pilot · data updated in real time
