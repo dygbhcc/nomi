@@ -1,8 +1,10 @@
 'use client';
+import { signIn } from 'next-auth/react';
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 
 export default function LoginPage() {
+  const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
@@ -13,70 +15,68 @@ export default function LoginPage() {
     setLoading(true);
     setError('');
 
-    try {
-      const res = await fetch('/api/auth/login', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ password }),
-      });
+    const result = await signIn('credentials', {
+      email, password, redirect: false,
+    });
 
-      if (res.ok) {
-        router.push('/');
-        router.refresh();
-      } else {
-        setError('Invalid password');
-      }
-    } catch (err) {
-      setError('Something went wrong');
-    } finally {
+    if (result?.error) {
+      setError('Invalid email or password');
       setLoading(false);
+    } else {
+      router.push('/');
     }
   };
 
   return (
-    <div className="min-h-screen bg-gray-50 flex items-center justify-center px-4">
-      <div className="max-w-md w-full">
+    <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+      <div className="bg-white rounded-2xl border border-gray-100 p-8 w-full max-w-sm">
         <div className="text-center mb-8">
-          <h1 className="text-4xl font-bold text-[#E06A4F] mb-2">nomi</h1>
-          <p className="text-gray-600">Admin Dashboard</p>
+          <div className="text-3xl font-bold text-[#E06A4F] mb-1">nomi</div>
+          <div className="text-sm text-gray-500">Restaurant Partner Dashboard</div>
         </div>
 
-        <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-8">
-          <h2 className="text-xl font-semibold text-gray-900 mb-6">Sign In</h2>
+        <form onSubmit={handleSubmit} className="space-y-4">
+          <div>
+            <label className="text-xs text-gray-500 mb-1 block">Email</label>
+            <input
+              type="email"
+              value={email}
+              onChange={e => setEmail(e.target.value)}
+              className="w-full border border-gray-200 rounded-xl px-4 py-3 text-sm focus:outline-none focus:border-[#E06A4F]"
+              placeholder="your@restaurant.com"
+              required
+            />
+          </div>
+          <div>
+            <label className="text-xs text-gray-500 mb-1 block">Password</label>
+            <input
+              type="password"
+              value={password}
+              onChange={e => setPassword(e.target.value)}
+              className="w-full border border-gray-200 rounded-xl px-4 py-3 text-sm focus:outline-none focus:border-[#E06A4F]"
+              placeholder="••••••••"
+              required
+            />
+          </div>
 
-          <form onSubmit={handleSubmit}>
-            <div className="mb-4">
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Password
-              </label>
-              <input
-                type="password"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#E06A4F] focus:border-transparent outline-none"
-                placeholder="Enter admin password"
-                required
-              />
-            </div>
+          {error && (
+            <div className="text-xs text-red-500 text-center">{error}</div>
+          )}
 
-            {error && (
-              <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-lg">
-                <p className="text-sm text-red-600">{error}</p>
-              </div>
-            )}
+          <button
+            type="submit"
+            disabled={loading}
+            className="w-full bg-[#E06A4F] text-white rounded-xl py-3 text-sm font-medium disabled:opacity-50"
+          >
+            {loading ? 'Signing in...' : 'Sign In'}
+          </button>
+        </form>
 
-            <button
-              type="submit"
-              disabled={loading}
-              className="w-full bg-[#E06A4F] text-white py-2 px-4 rounded-lg font-medium hover:bg-[#d5594a] disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-            >
-              {loading ? 'Signing in...' : 'Sign In'}
-            </button>
-          </form>
-
-          <p className="mt-6 text-xs text-gray-400 text-center">
-            Nomi Admin Dashboard · Secure Access
-          </p>
+        <div className="mt-6 p-3 bg-gray-50 rounded-xl">
+          <div className="text-xs text-gray-400 text-center mb-1">Demo credentials</div>
+          <div className="text-xs text-gray-600 text-center">
+            Check console after running seedPartner.ts
+          </div>
         </div>
       </div>
     </div>
