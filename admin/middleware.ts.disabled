@@ -1,0 +1,23 @@
+import { NextResponse } from 'next/server';
+import type { NextRequest } from 'next/server';
+
+export function middleware(request: NextRequest) {
+  // Check if user is authenticated
+  const authCookie = request.cookies.get('admin-auth');
+
+  // If not authenticated, redirect to login
+  if (!authCookie && request.nextUrl.pathname !== '/login') {
+    return NextResponse.redirect(new URL('/login', request.url));
+  }
+
+  // If authenticated and trying to access login, redirect to home
+  if (authCookie && request.nextUrl.pathname === '/login') {
+    return NextResponse.redirect(new URL('/', request.url));
+  }
+
+  return NextResponse.next();
+}
+
+export const config = {
+  matcher: ['/((?!api|_next/static|_next/image|favicon.ico).*)'],
+};
