@@ -257,7 +257,9 @@
     "yourPick": "A tua escolha ✓",
     "votes": "{{count}} voto",
     "votes_plural": "{{count}} votos",
-    "emptyState": "Sem restaurantes para votar"
+    "emptyState": "Sem restaurantes para votar",
+    "stillVoting": "{{count}} pessoa ainda a votar...",
+    "stillVoting_plural": "{{count}} pessoas ainda a votar..."
   },
   "eventPlan": {
     "timeLabel": "A que horas?",
@@ -287,8 +289,13 @@
   "profile": {
     "level": "Nível {{level}}",
     "points": "{{points}} pts",
+    "totalPoints": "pontos totais",
     "nextLevel": "{{points}} pts para Nível {{level}}",
+    "nextLevelText": "Próximo: Nível {{level}} — {{title}}",
     "memberSince": "Membro desde {{date}}",
+    "savedRestaurants": "Restaurantes Guardados",
+    "noSavedRestaurants": "Ainda sem restaurantes guardados",
+    "startSwiping": "Começa a deslizar para guardar os teus favoritos!",
     "sections": {
       "stats": "Estatísticas",
       "badges": "Distintivos",
@@ -301,69 +308,93 @@
       "matchesFound": "Combinações Encontradas"
     },
     "badges": {
-      "firstVisit": {
-        "name": "Primeira Visita",
-        "description": "Validaste o teu primeiro restaurante"
+      "romantic_scout": {
+        "name": "Explorador Romântico",
+        "condition": "Escolhe 5 sítios românticos"
       },
-      "socialButterfly": {
-        "name": "Borboleta Social",
-        "description": "Participaste em 5 sessões de grupo"
+      "hidden_gem_hunter": {
+        "name": "Caçador de Joias Escondidas",
+        "condition": "Encontra 3 joias escondidas"
       },
-      "explorer": {
-        "name": "Explorador",
-        "description": "Visitaste 10 restaurantes diferentes"
+      "pet_hero": {
+        "name": "Herói dos Animais",
+        "condition": "Visita 3 sítios que aceitam animais"
       },
-      "localGuide": {
-        "name": "Guia Local",
-        "description": "Validaste 25 restaurantes"
+      "the_decider": {
+        "name": "O Decisor",
+        "condition": "Ganha 5 votações de grupo"
       },
-      "weekendWarrior": {
-        "name": "Guerreiro do Fim de Semana",
-        "description": "Visitaste restaurantes 3 fins de semana seguidos"
+      "connector": {
+        "name": "Conector",
+        "condition": "Cria 3 sessões de grupo"
       },
-      "earlyBird": {
-        "name": "Madrugador",
-        "description": "Validaste 5 sítios de pequeno-almoço"
+      "local_expert": {
+        "name": "Especialista Local",
+        "condition": "Avalia 10 restaurantes"
+      },
+      "night_owl": {
+        "name": "Criatura da Noite",
+        "condition": "Janta depois das 22h 3 vezes"
+      },
+      "trendsetter": {
+        "name": "Inovador",
+        "condition": "Sê o primeiro a experimentar 3 novos sítios"
       }
     },
     "noBadges": "Ainda sem distintivos. Começa a explorar!",
     "levels": {
-      "1": "Principiante",
-      "2": "Explorador",
-      "3": "Habitual",
-      "4": "Apreciador",
-      "5": "Conhecedor"
+      "1": "Principiante Gastronómico",
+      "2": "Explorador de Sabores",
+      "3": "Mestre dos Humores",
+      "4": "Lenda Local",
+      "5": "Caçador de Joias Escondidas"
     }
   },
   "leaderboard": {
     "title": "Tabela de Classificação",
+    "weeklyTitle": "Top Decisores desta Semana",
     "tabs": {
       "weekly": "Semanal",
       "allTime": "Desde Sempre"
     },
+    "scopes": {
+      "friends": "Amigos",
+      "lisbon": "Lisboa",
+      "global": "Global"
+    },
     "resetsIn": "Reinicia em {{time}}",
     "you": "Tu",
     "points": "{{points}} pts",
+    "badgeCount": "{{count}} distintivo",
+    "badgeCount_plural": "{{count}} distintivos",
     "podium": {
       "1st": "1º",
       "2nd": "2º",
       "3rd": "3º"
-    }
+    },
+    "promoMessage": "Ganha uma bebida grátis nos nossos restaurantes parceiros esta semana 🍹"
   },
   "validate": {
     "title": "Validar Visitas",
     "progressLabel": "Progresso",
     "progressValue": "{{current}}/{{total}} validados",
-    "doneTitle": "Tudo em dia!",
-    "doneMessage": "Sem validações pendentes",
+    "doneTitle": "Estás a arrasar!",
+    "doneMessage": "Volta amanhã para mais validações.",
     "earnedPoints": "+{{points}} pts",
+    "earnedToday": "+{{points}} pts ganhos hoje",
     "visitedLabel": "Visitaste este sítio?",
     "visitedOn": "Visitado em {{date}}",
     "confirmButton": "Sim, visitei",
     "skipButton": "Saltar",
+    "helpImprove": "Ajuda-nos a melhorar!",
+    "swipePrompt": "Este lugar é {{mood}}? Desliza para validar e ganhar pontos",
+    "isThis": "Este lugar é",
     "moods": {
       "romantic": "Romântico",
+      "fresh": "Fresco",
       "energetic": "Energético",
+      "hidden_gem": "Joia Escondida",
+      "cozy": "Acolhedor",
       "chill": "Descontraído",
       "explorer": "Explorar",
       "focus": "Foco",

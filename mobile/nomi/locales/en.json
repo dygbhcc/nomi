@@ -257,7 +257,9 @@
     "yourPick": "Your pick ✓",
     "votes": "{{count}} vote",
     "votes_plural": "{{count}} votes",
-    "emptyState": "No restaurants to vote on"
+    "emptyState": "No restaurants to vote on",
+    "stillVoting": "{{count}} person still voting...",
+    "stillVoting_plural": "{{count}} people still voting..."
   },
   "eventPlan": {
     "timeLabel": "What time?",
@@ -287,8 +289,13 @@
   "profile": {
     "level": "Level {{level}}",
     "points": "{{points}} pts",
+    "totalPoints": "total points",
     "nextLevel": "{{points}} pts to Level {{level}}",
+    "nextLevelText": "Next: Level {{level}} — {{title}}",
     "memberSince": "Member since {{date}}",
+    "savedRestaurants": "Saved Restaurants",
+    "noSavedRestaurants": "No saved restaurants yet",
+    "startSwiping": "Start swiping to save your favorites!",
     "sections": {
       "stats": "Stats",
       "badges": "Badges",
@@ -301,69 +308,93 @@
       "matchesFound": "Matches Found"
     },
     "badges": {
-      "firstVisit": {
-        "name": "First Visit",
-        "description": "Validated your first restaurant"
+      "romantic_scout": {
+        "name": "Romantic Scout",
+        "condition": "Pick 5 romantic spots"
       },
-      "socialButterfly": {
-        "name": "Social Butterfly",
-        "description": "Joined 5 group sessions"
+      "hidden_gem_hunter": {
+        "name": "Hidden Gem Hunter",
+        "condition": "Find 3 hidden gems"
       },
-      "explorer": {
-        "name": "Explorer",
-        "description": "Visited 10 different restaurants"
+      "pet_hero": {
+        "name": "Pet Hero",
+        "condition": "Visit 3 pet-friendly places"
       },
-      "localGuide": {
-        "name": "Local Guide",
-        "description": "Validated 25 restaurants"
+      "the_decider": {
+        "name": "The Decider",
+        "condition": "Win 5 group votes"
       },
-      "weekendWarrior": {
-        "name": "Weekend Warrior",
-        "description": "Visited restaurants 3 weekends in a row"
+      "connector": {
+        "name": "Connector",
+        "condition": "Create 3 group sessions"
       },
-      "earlyBird": {
-        "name": "Early Bird",
-        "description": "Validated 5 breakfast spots"
+      "local_expert": {
+        "name": "Local Expert",
+        "condition": "Rate 10 restaurants"
+      },
+      "night_owl": {
+        "name": "Night Owl",
+        "condition": "Dine after 10pm 3 times"
+      },
+      "trendsetter": {
+        "name": "Trendsetter",
+        "condition": "Be first to try 3 new spots"
       }
     },
     "noBadges": "No badges earned yet. Start exploring!",
     "levels": {
-      "1": "Newbie",
-      "2": "Explorer",
-      "3": "Regular",
-      "4": "Foodie",
-      "5": "Connoisseur"
+      "1": "Foodie Newbie",
+      "2": "Taste Explorer",
+      "3": "Mood Master",
+      "4": "Local Legend",
+      "5": "Hidden Gem Hunter"
     }
   },
   "leaderboard": {
     "title": "Leaderboard",
+    "weeklyTitle": "This Week's Top Deciders",
     "tabs": {
       "weekly": "Weekly",
       "allTime": "All-Time"
     },
+    "scopes": {
+      "friends": "Friends",
+      "lisbon": "Lisbon",
+      "global": "Global"
+    },
     "resetsIn": "Resets in {{time}}",
     "you": "You",
     "points": "{{points}} pts",
+    "badgeCount": "{{count}} badge",
+    "badgeCount_plural": "{{count}} badges",
     "podium": {
       "1st": "1st",
       "2nd": "2nd",
       "3rd": "3rd"
-    }
+    },
+    "promoMessage": "Win a free drink at our partner restaurants this week 🍹"
   },
   "validate": {
     "title": "Validate Visits",
     "progressLabel": "Progress",
     "progressValue": "{{current}}/{{total}} validated",
-    "doneTitle": "All caught up!",
-    "doneMessage": "No pending validations",
+    "doneTitle": "You're on fire!",
+    "doneMessage": "Come back tomorrow for more validations.",
     "earnedPoints": "+{{points}} pts",
+    "earnedToday": "+{{points}} pts earned today",
     "visitedLabel": "Did you visit this place?",
     "visitedOn": "Visited on {{date}}",
     "confirmButton": "Yes, I visited",
     "skipButton": "Skip",
+    "helpImprove": "Help us improve!",
+    "swipePrompt": "Is this place {{mood}}? Swipe to validate and earn points",
+    "isThis": "Is this",
     "moods": {
       "romantic": "Romantic",
+      "fresh": "Fresh",
       "energetic": "Energetic",
+      "hidden_gem": "Hidden Gem",
+      "cozy": "Cozy",
       "chill": "Chill",
       "explorer": "Explore",
       "focus": "Focus",

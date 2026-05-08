@@ -83,16 +83,6 @@ const MOCK_VALIDATE_QUEUE: ValidateItem[] = [
   },
 ];
 
-function moodLabel(mood: string): string {
-  const map: Record<string, string> = {
-    romantic: "Romantic",
-    fresh: "Fresh",
-    energetic: "Energetic",
-    hidden_gem: "Hidden Gem",
-    cozy: "Cozy",
-  };
-  return map[mood] || mood;
-}
 
 type Props = {
   onDone: () => void;
@@ -101,6 +91,7 @@ type Props = {
 };
 
 export default function ValidateScreen({ onDone, onSkip, onNavigate }: Props) {
+  const { t } = useTranslation();
   const { user } = useAuth();
   const [currentIndex, setCurrentIndex] = useState(0);
   const [validated, setValidated] = useState(0);
@@ -217,15 +208,15 @@ export default function ValidateScreen({ onDone, onSkip, onNavigate }: Props) {
         <StatusBar style="dark" />
         <View style={styles.doneContainer}>
           <Text style={styles.doneEmoji}>{"\u{1F525}"}</Text>
-          <Text style={styles.doneTitle}>You're on fire!</Text>
+          <Text style={styles.doneTitle}>{t('validate.doneTitle')}</Text>
           <Text style={styles.doneSubtitle}>
-            Come back tomorrow for more validations.
+            {t('validate.doneMessage')}
           </Text>
           <Text style={styles.donePoints}>
-            +{totalPoints} pts earned today
+            {t('validate.earnedToday', { points: totalPoints })}
           </Text>
           <TouchableOpacity style={styles.doneButton} onPress={onDone}>
-            <Text style={styles.doneButtonText}>Done</Text>
+            <Text style={styles.doneButtonText}>{t('common.done')}</Text>
           </TouchableOpacity>
         </View>
       </SafeAreaView>
@@ -247,7 +238,7 @@ export default function ValidateScreen({ onDone, onSkip, onNavigate }: Props) {
       {/* --- Header --- */}
       <View style={styles.header}>
         <View style={{ flex: 1 }}>
-          <Text style={styles.title}>Help us improve!</Text>
+          <Text style={styles.title}>{t('validate.helpImprove')}</Text>
         </View>
         <Text style={styles.pointsTotal}>
           {"\u{2B50}"} {totalPoints} pts
@@ -255,7 +246,7 @@ export default function ValidateScreen({ onDone, onSkip, onNavigate }: Props) {
       </View>
 
       <Text style={styles.subtitle}>
-        Is this place {moodLabel(item.mood).toLowerCase()}? Swipe to validate and earn points
+        {t('validate.swipePrompt', { mood: t(`validate.moods.${item.mood}`).toLowerCase() })}
       </Text>
 
       {/* --- Card --- */}
@@ -271,8 +262,8 @@ export default function ValidateScreen({ onDone, onSkip, onNavigate }: Props) {
           likeOpacity={yesOpacity}
           nopeOpacity={noOpacity}
           panHandlers={panResponder.panHandlers}
-          likeLabel="YES"
-          rejectLabel="NO"
+          likeLabel={t('common.yes').toUpperCase()}
+          rejectLabel={t('common.no').toUpperCase()}
           rejectColor={RED}
         />
 
@@ -287,13 +278,13 @@ export default function ValidateScreen({ onDone, onSkip, onNavigate }: Props) {
           ]}
           pointerEvents="none"
         >
-          <Text style={styles.pointsFlyupText}>+5 pts</Text>
+          <Text style={styles.pointsFlyupText}>{t('validate.earnedPoints', { points: 5 })}</Text>
         </Animated.View>
       </View>
 
       {/* --- Mood Question --- */}
       <Text style={styles.moodQuestion}>
-        Is this <Text style={styles.moodHighlight}>{moodLabel(item.mood)}</Text>?
+        {t('validate.isThis')} <Text style={styles.moodHighlight}>{t(`validate.moods.${item.mood}`)}</Text>?
       </Text>
 
       {/* --- Buttons --- */}
@@ -303,21 +294,21 @@ export default function ValidateScreen({ onDone, onSkip, onNavigate }: Props) {
           onPress={() => handleAnswer("left")}
         >
           <Text style={styles.noButtonIcon}>{"\u2715"}</Text>
-          <Text style={styles.noButtonText}>No</Text>
+          <Text style={styles.noButtonText}>{t('common.no')}</Text>
         </TouchableOpacity>
         <TouchableOpacity
           style={styles.yesButton}
           onPress={() => handleAnswer("right")}
         >
           <Text style={styles.yesButtonIcon}>{"\u2713"}</Text>
-          <Text style={styles.yesButtonText}>Yes</Text>
+          <Text style={styles.yesButtonText}>{t('common.yes')}</Text>
         </TouchableOpacity>
       </View>
 
       {/* --- Progress --- */}
       <View style={styles.progressSection}>
         <Text style={styles.progressText}>
-          {validated} of {DAILY_LIMIT} validated today
+          {t('validate.progressValue', { current: validated, total: DAILY_LIMIT })}
         </Text>
         <View style={styles.progressBarBg}>
           <View
@@ -331,7 +322,7 @@ export default function ValidateScreen({ onDone, onSkip, onNavigate }: Props) {
 
       {/* --- Skip --- */}
       <TouchableOpacity style={styles.skipButton} onPress={onSkip}>
-        <Text style={styles.skipText}>Skip for now</Text>
+        <Text style={styles.skipText}>{t('mood.skipButton')}</Text>
       </TouchableOpacity>
 
       <BottomNavigationBar activeTab="validate" onNavigate={onNavigate} />

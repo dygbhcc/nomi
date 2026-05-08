@@ -6,12 +6,14 @@ import {
   TouchableOpacity,
   StyleSheet,
   ScrollView,
-  FlatList,
+  ActivityIndicator,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { StatusBar } from "expo-status-bar";
 import { Colors } from "../theme/colors";
 import BottomNavigationBar from "../components/BottomNavigationBar";
+import { getLeaderboard, getUserRank, LeaderboardEntry } from "../services/userService";
+import { useAuth } from "../context/AuthContext";
 
 const ACCENT = Colors.accent;
 const BG = Colors.background;
@@ -23,28 +25,13 @@ const GOLD = "#FFD700";
 const SILVER = "#C0C0C0";
 const BRONZE = "#CD7F32";
 
-type LeaderboardEntry = {
+type Scope = "Friends" | "Lisbon" | "Global";
+
+type LeaderboardEntryWithRank = LeaderboardEntry & {
   rank: number;
   name: string;
-  points: number;
-  badges: number;
   isCurrentUser: boolean;
 };
-
-const MOCK_LEADERBOARD: LeaderboardEntry[] = [
-  { rank: 1, name: "Maria S.", points: 1240, badges: 8, isCurrentUser: false },
-  { rank: 2, name: "Jo\u00E3o M.", points: 980, badges: 6, isCurrentUser: false },
-  { rank: 3, name: "Ana P.", points: 756, badges: 5, isCurrentUser: false },
-  { rank: 4, name: "Duygu B.", points: 340, badges: 3, isCurrentUser: true },
-  { rank: 5, name: "Carlos R.", points: 290, badges: 2, isCurrentUser: false },
-  { rank: 6, name: "Sofia L.", points: 245, badges: 2, isCurrentUser: false },
-  { rank: 7, name: "Miguel F.", points: 198, badges: 1, isCurrentUser: false },
-  { rank: 8, name: "Beatriz C.", points: 167, badges: 1, isCurrentUser: false },
-  { rank: 9, name: "Tiago N.", points: 134, badges: 1, isCurrentUser: false },
-  { rank: 10, name: "In\u00EAs V.", points: 98, badges: 0, isCurrentUser: false },
-];
-
-type Scope = "Friends" | "Lisbon" | "Global";
 
 function getNextMonday(): Date {
   const now = new Date();
@@ -81,8 +68,13 @@ type Props = {
 };
 
 export default function LeaderboardScreen({ onNavigate }: Props) {
+  const { t } = useTranslation();
+  const { user } = useAuth();
   const [scope, setScope] = useState<Scope>("Lisbon");
   const [countdown, setCountdown] = useState("");
+  const [leaderboard, setLeaderboard] = useState<LeaderboardEntryWithRank[]>([]);
+  const [userRank, setUserRank] = useState<number>(-1);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     const tick = () => {
@@ -94,11 +86,54 @@ export default function LeaderboardScreen({ onNavigate }: Props) {
     return () => clearInterval(interval);
   }, []);
 
-  const top3 = MOCK_LEADERBOARD.slice(0, 3);
-  const rest = MOCK_LEADERBOARD.slice(3);
+  useEffect(() => {
+    fetchLeaderboard();
+  }, [user]);
+
+  const fetchLeaderboard = async () => {
+    try {
+      setLoading(true);
+      const data = await getLeaderboard(10);
+
+      // Add rank and mark current user
+      const withRank: LeaderboardEntryWithRank[] = data.map((entry, index) => ({
+        ...entry,
+        rank: index + 1,
+        name: entry.displayName,
+        isCurrentUser: user ? entry.userId === user.uid : false,
+      }));
+
+      setLeaderboard(withRank);
+
+      // Fetch user's rank if not in top 10
+      if (user) {
+        const rank = await getUserRank(user.uid);
+        setUserRank(rank);
+      }
+    } catch (error) {
+      console.error('Failed to fetch leaderboard:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  if (loading) {
+    return (
+      <SafeAreaView style={styles.container}>
+        <StatusBar style="dark" />
+        <View style={styles.loadingContainer}>
+          <ActivityIndicator size="large" color={ACCENT} />
+        </View>
+        <BottomNavigationBar activeTab="ranking" onNavigate={onNavigate} />
+      </SafeAreaView>
+    );
+  }
+
+  const top3 = leaderboard.slice(0, 3);
+  const rest = leaderboard.slice(3);
 
   // Podium order: 2nd, 1st, 3rd for visual layout
-  const podiumOrder = [top3[1], top3[0], top3[2]];
+  const podiumOrder = top3.length >= 3 ? [top3[1], top3[0], top3[2]] : top3;
   const podiumHeights = [100, 130, 80];
   const podiumColors = [SILVER, GOLD, BRONZE];
   const podiumAvatarSizes = [52, 64, 48];
@@ -119,13 +154,13 @@ export default function LeaderboardScreen({ onNavigate }: Props) {
             accessibilityLabel="Back to home"
             accessibilityRole="button"
           >
-            <Text style={styles.homeButtonText}>{"\u2190"} Home</Text>
+            <Text style={styles.homeButtonText}>{"\u2190"} {t('tabs.home')}</Text>
           </TouchableOpacity>
         </View>
-        <Text style={styles.headerTitle}>This Week's Top Deciders</Text>
-        <Text style={styles.cityName}>Lisbon {"\u{1F1F5}\u{1F1F9}"}</Text>
+        <Text style={styles.headerTitle}>{t('leaderboard.weeklyTitle')}</Text>
+        <Text style={styles.cityName}>{t('settings.preferences.cities.lisbon')}</Text>
         <Text style={styles.countdown}>
-          Resets in {countdown}
+          {t('leaderboard.resetsIn', { time: countdown })}
         </Text>
 
         {/* --- Scope Tabs --- */}
@@ -142,62 +177,64 @@ export default function LeaderboardScreen({ onNavigate }: Props) {
                   scope === s && styles.scopeTabTextActive,
                 ]}
               >
-                {s}
+                {t(`leaderboard.scopes.${s.toLowerCase()}`)}
               </Text>
             </TouchableOpacity>
           ))}
         </View>
 
         {/* --- Podium --- */}
-        <View style={styles.podiumContainer}>
-          {podiumOrder.map((user, idx) => (
-            <View key={user.rank} style={styles.podiumSlot}>
-              {/* Crown for 1st */}
-              {idx === 1 && (
-                <Text style={styles.crown}>{"\u{1F451}"}</Text>
-              )}
-              <View
-                style={[
-                  styles.podiumAvatar,
-                  {
-                    width: podiumAvatarSizes[idx],
-                    height: podiumAvatarSizes[idx],
-                    borderRadius: podiumAvatarSizes[idx] / 2,
-                    borderColor: podiumColors[idx],
-                  },
-                ]}
-              >
-                <Text
+        {top3.length >= 3 && (
+          <View style={styles.podiumContainer}>
+            {podiumOrder.map((user, idx) => (
+              <View key={user.rank} style={styles.podiumSlot}>
+                {/* Crown for 1st */}
+                {idx === 1 && (
+                  <Text style={styles.crown}>{"\u{1F451}"}</Text>
+                )}
+                <View
                   style={[
-                    styles.podiumAvatarText,
-                    { fontSize: podiumAvatarSizes[idx] * 0.35 },
+                    styles.podiumAvatar,
+                    {
+                      width: podiumAvatarSizes[idx],
+                      height: podiumAvatarSizes[idx],
+                      borderRadius: podiumAvatarSizes[idx] / 2,
+                      borderColor: podiumColors[idx],
+                    },
                   ]}
                 >
-                  {getInitials(user.name)}
+                  <Text
+                    style={[
+                      styles.podiumAvatarText,
+                      { fontSize: podiumAvatarSizes[idx] * 0.35 },
+                    ]}
+                  >
+                    {getInitials(user.name)}
+                  </Text>
+                </View>
+                <Text style={styles.podiumName} numberOfLines={1}>
+                  {user.name}
                 </Text>
+                <Text
+                  style={[styles.podiumPoints, { color: podiumColors[idx] }]}
+                >
+                  {t('leaderboard.points', { points: user.points })}
+                </Text>
+                <View
+                  style={[
+                    styles.podiumBar,
+                    {
+                      height: podiumHeights[idx],
+                      backgroundColor: podiumColors[idx],
+                    },
+                  ]}
+                >
+                  <Text style={styles.podiumRank}>{t(`leaderboard.podium.${podiumRankLabels[idx]}`)}</Text>
+                </View>
               </View>
-              <Text style={styles.podiumName} numberOfLines={1}>
-                {user.name}
-              </Text>
-              <Text
-                style={[styles.podiumPoints, { color: podiumColors[idx] }]}
-              >
-                {user.points} pts
-              </Text>
-              <View
-                style={[
-                  styles.podiumBar,
-                  {
-                    height: podiumHeights[idx],
-                    backgroundColor: podiumColors[idx],
-                  },
-                ]}
-              >
-                <Text style={styles.podiumRank}>{podiumRankLabels[idx]}</Text>
-              </View>
-            </View>
-          ))}
-        </View>
+            ))}
+          </View>
+        )}
 
         {/* --- Rest of list (4-10) --- */}
         {rest.map((user) => (
@@ -222,20 +259,20 @@ export default function LeaderboardScreen({ onNavigate }: Props) {
                 ]}
               >
                 {user.name}
-                {user.isCurrentUser ? " (You)" : ""}
+                {user.isCurrentUser ? ` (${t('leaderboard.you')})` : ""}
               </Text>
               <Text style={styles.listBadges}>
-                {user.badges} badge{user.badges !== 1 ? "s" : ""}
+                {t('leaderboard.badgeCount', { count: user.badges })}
               </Text>
             </View>
-            <Text style={styles.listPoints}>{user.points} pts</Text>
+            <Text style={styles.listPoints}>{t('leaderboard.points', { points: user.points })}</Text>
           </View>
         ))}
 
         {/* --- Promo Banner --- */}
         <View style={styles.promoBanner}>
           <Text style={styles.promoText}>
-            Win a free drink at our partner restaurants this week {"\u{1F379}"}
+            {t('leaderboard.promoMessage')}
           </Text>
         </View>
 
@@ -252,6 +289,11 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: BG,
+  },
+  loadingContainer: {
+    flex: 1,
+    alignItems: "center",
+    justifyContent: "center",
   },
   scrollContent: {
     paddingHorizontal: 20,

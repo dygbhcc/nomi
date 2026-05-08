@@ -1,5 +1,5 @@
 import { useTranslation } from "react-i18next";
-import React from "react";
+import React, { useState, useEffect } from "react";
 import {
   View,
   Text,
@@ -9,11 +9,14 @@ import {
   Dimensions,
   Image,
   ImageSourcePropType,
+  ActivityIndicator,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { StatusBar } from "expo-status-bar";
 import { Colors } from "../theme/colors";
 import BottomNavigationBar from "../components/BottomNavigationBar";
+import { getUserProfile, getSavedRestaurants } from "../services/userService";
+import { useAuth } from "../context/AuthContext";
 
 const ACCENT = Colors.accent;
 const BG = Colors.background;
@@ -69,37 +72,12 @@ const ALL_BADGES: Badge[] = [
   { id: "trendsetter", name: "Trendsetter", emoji: "\u{1F525}", condition: "Be first to try 3 new spots" },
 ];
 
-// --- Mock Data ---
-const MOCK_SAVED_RESTAURANTS = [
-  {
-    id: "1",
-    name: "Taberna da Rua das Flores",
-    distance: "0.3 km",
-    budget: 2,
-    photo: require("../assets/images/restaurants/taberna-rua-das-flores.jpg")
-  },
-  {
-    id: "3",
-    name: "Cantinho do Avillez",
-    distance: "1.2 km",
-    budget: 3,
-    photo: require("../assets/images/restaurants/catinho.jpg")
-  },
-  {
-    id: "2",
-    name: "ZeroZero",
-    distance: "0.8 km",
-    budget: 2,
-    photo: require("../assets/images/restaurants/zerozero.jpg")
-  },
-];
-
-const MOCK_USER = {
-  name: "Duygu B.",
-  points: 340,
-  memberSince: "March 2026",
-  badges: ["romantic_scout", "the_decider"],
-  savedRestaurants: MOCK_SAVED_RESTAURANTS,
+type UserProfileData = {
+  name: string;
+  points: number;
+  memberSince: string;
+  badges: string[];
+  savedRestaurants: SavedRestaurant[];
 };
 
 function budgetSymbol(level: number): string {
@@ -111,7 +89,75 @@ type Props = {
 };
 
 export default function ProfileScreen({ onNavigate }: Props) {
-  const user = MOCK_USER;
+  const { t } = useTranslation();
+  const { user: authUser } = useAuth();
+  const [user, setUser] = useState<UserProfileData | null>(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    fetchProfile();
+  }, [authUser]);
+
+  const fetchProfile = async () => {
+    if (!authUser) {
+      setLoading(false);
+      return;
+    }
+
+    try {
+      setLoading(true);
+      const profile = await getUserProfile(authUser.uid);
+
+      if (profile) {
+        const restaurants = await getSavedRestaurants(profile.likedRestaurants);
+
+        // Map restaurants to SavedRestaurant format
+        const savedRestaurants: SavedRestaurant[] = restaurants.map((r) => ({
+          id: r.id,
+          name: r.name || 'Unknown',
+          distance: `${(r.distance_meters / 1000).toFixed(1)} km`,
+          budget: r.budget_level || 2,
+        }));
+
+        setUser({
+          name: profile.displayName,
+          points: profile.points,
+          memberSince: profile.memberSince,
+          badges: profile.badges,
+          savedRestaurants,
+        });
+      }
+    } catch (error) {
+      console.error('Failed to fetch profile:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  if (loading) {
+    return (
+      <SafeAreaView style={styles.container}>
+        <StatusBar style="dark" />
+        <View style={styles.loadingContainer}>
+          <ActivityIndicator size="large" color={ACCENT} />
+        </View>
+        <BottomNavigationBar activeTab="profile" onNavigate={onNavigate} />
+      </SafeAreaView>
+    );
+  }
+
+  if (!user) {
+    return (
+      <SafeAreaView style={styles.container}>
+        <StatusBar style="dark" />
+        <View style={styles.loadingContainer}>
+          <Text style={styles.errorText}>Please sign in to view your profile</Text>
+        </View>
+        <BottomNavigationBar activeTab="profile" onNavigate={onNavigate} />
+      </SafeAreaView>
+    );
+  }
+
   const levelInfo = getLevelInfo(user.points);
   const initials = user.name
     .split(" ")
@@ -133,7 +179,7 @@ export default function ProfileScreen({ onNavigate }: Props) {
             accessibilityLabel="Back to home"
             accessibilityRole="button"
           >
-            <Text style={styles.homeButtonText}>{"\u2190"} Home</Text>
+            <Text style={styles.homeButtonText}>{"\u2190"} {t('tabs.home')}</Text>
           </TouchableOpacity>
           <TouchableOpacity
             onPress={() => onNavigate("settings")}
@@ -153,17 +199,17 @@ export default function ProfileScreen({ onNavigate }: Props) {
           </View>
           <Text style={styles.displayName}>{user.name}</Text>
           <Text style={styles.memberSince}>
-            Member since {user.memberSince}
+            {t('profile.memberSince', { date: user.memberSince })}
           </Text>
           <Text style={styles.totalPoints}>{user.points}</Text>
-          <Text style={styles.pointsLabel}>total points</Text>
+          <Text style={styles.pointsLabel}>{t('profile.totalPoints')}</Text>
         </View>
 
         {/* --- Level Progress --- */}
         <View style={styles.levelSection}>
           <View style={styles.levelRow}>
             <Text style={styles.levelTitle}>
-              Level {levelInfo.level} — {levelInfo.title}
+              {t('profile.level', { level: levelInfo.level })} — {t(`profile.levels.${levelInfo.level}`)}
             </Text>
             {levelInfo.max !== Infinity && (
               <Text style={styles.levelPts}>
@@ -181,14 +227,16 @@ export default function ProfileScreen({ onNavigate }: Props) {
           </View>
           {levelInfo.level < 5 && (
             <Text style={styles.nextLevel}>
-              Next: Level {levelInfo.level + 1} —{" "}
-              {LEVELS[levelInfo.level].title}
+              {t('profile.nextLevelText', {
+                level: levelInfo.level + 1,
+                title: t(`profile.levels.${levelInfo.level + 1}`)
+              })}
             </Text>
           )}
         </View>
 
         {/* --- Badges --- */}
-        <Text style={styles.sectionTitle}>Badges</Text>
+        <Text style={styles.sectionTitle}>{t('profile.sections.badges')}</Text>
         <View style={styles.badgeGrid}>
           {ALL_BADGES.map((badge) => {
             const earned = user.badges.includes(badge.id);
@@ -207,7 +255,7 @@ export default function ProfileScreen({ onNavigate }: Props) {
                   ]}
                   numberOfLines={1}
                 >
-                  {badge.name}
+                  {t(`profile.badges.${badge.id}.name`)}
                 </Text>
                 <Text
                   style={[
@@ -216,7 +264,7 @@ export default function ProfileScreen({ onNavigate }: Props) {
                   ]}
                   numberOfLines={2}
                 >
-                  {badge.condition}
+                  {t(`profile.badges.${badge.id}.condition`)}
                 </Text>
               </View>
             );
@@ -224,7 +272,7 @@ export default function ProfileScreen({ onNavigate }: Props) {
         </View>
 
         {/* --- Saved Restaurants --- */}
-        <Text style={styles.sectionTitle}>Saved Restaurants</Text>
+        <Text style={styles.sectionTitle}>{t('profile.savedRestaurants')}</Text>
         {user.savedRestaurants.length > 0 ? (
           <ScrollView
             horizontal
@@ -254,8 +302,8 @@ export default function ProfileScreen({ onNavigate }: Props) {
         ) : (
           <View style={styles.emptyState}>
             <Text style={styles.emptyStateEmoji}>🍽️</Text>
-            <Text style={styles.emptyStateTitle}>No saved restaurants yet</Text>
-            <Text style={styles.emptyStateSubtext}>Start swiping to save your favorites!</Text>
+            <Text style={styles.emptyStateTitle}>{t('profile.noSavedRestaurants')}</Text>
+            <Text style={styles.emptyStateSubtext}>{t('profile.startSwiping')}</Text>
           </View>
         )}
 
@@ -268,10 +316,19 @@ export default function ProfileScreen({ onNavigate }: Props) {
   );
 }
 
-const styles = StyleSheet.create({
+const styles = StyleSheet.Create({
   container: {
     flex: 1,
     backgroundColor: BG,
+  },
+  loadingContainer: {
+    flex: 1,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  errorText: {
+    color: TEXT_SECONDARY,
+    fontSize: 15,
   },
   scrollContent: {
     paddingHorizontal: 20,

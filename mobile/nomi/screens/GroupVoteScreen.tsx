@@ -183,7 +183,7 @@ export default function GroupVoteScreen({
       {voted && (
         <View style={styles.waitingBanner}>
           <Text style={styles.waitingText}>
-            ⏳ {totalParticipants - waitingCount} person{totalParticipants - waitingCount > 1 ? 's' : ''} still voting...
+            ⏳ {t('groupVote.stillVoting', { count: totalParticipants - waitingCount })}
           </Text>
         </View>
       )}
