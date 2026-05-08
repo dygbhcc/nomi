@@ -1,23 +1,23 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getServerSession } from 'next-auth';
-import { authOptions } from '@/lib/auth';
 import {
   getRestaurantProfile,
   getRestaurantInsights,
 } from '@/lib/restaurantQueries';
+import { db } from '@/lib/firebase-admin';
 
 export async function GET(req: NextRequest) {
-  const session = await getServerSession(authOptions);
-  if (!session) {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-  }
-
-  const restaurantId = (session as any).restaurantId;
-  if (!restaurantId) {
-    return NextResponse.json({ error: 'No restaurant linked to this account' }, { status: 400 });
-  }
-
   try {
+    // Get first restaurant partner's restaurant_id
+    const partnerSnap = await db.collection('restaurant_partners')
+      .limit(1)
+      .get();
+
+    if (partnerSnap.empty) {
+      return NextResponse.json({ error: 'No restaurant found' }, { status: 404 });
+    }
+
+    const restaurantId = partnerSnap.docs[0].data().restaurant_id;
+
     const [profile, insights] = await Promise.all([
       getRestaurantProfile(restaurantId),
       getRestaurantInsights(restaurantId),
