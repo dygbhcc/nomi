@@ -316,7 +316,7 @@ export default function ProfileScreen({ onNavigate }: Props) {
   );
 }
 
-const styles = StyleSheet.Create({
+const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: BG,

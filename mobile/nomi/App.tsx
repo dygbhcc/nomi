@@ -347,13 +347,21 @@ function AppNavigator() {
           }}
         />
       )}
-      {screen === "result" && votingResult && (
+      {screen === "result" && (
         <ResultScreen
-          restaurant={votingResult.restaurant}
-          totalVoters={votingResult.totalVoters}
-          likedBy={votingResult.likedBy}
+          restaurant={votingResult?.restaurant || {
+            id: "test-1",
+            name: "Taberna da Rua das Flores",
+            distance: "5 min walk",
+            budget: 2,
+            moods: ["romantic", "chill"],
+            reason: "Perfect cozy atmosphere for a relaxed evening with Portuguese charm",
+            photo: require("./assets/images/restaurants/taberna-rua-das-flores.jpg")
+          }}
+          totalVoters={votingResult?.totalVoters || 4}
+          likedBy={votingResult?.likedBy || 3}
           isCurrentUserWinner={true}
-          roomCode={votingResult.roomCode}
+          roomCode={votingResult?.roomCode || "TEST123"}
           onStartOver={() => {
             setVotingResult(null);
             setIsGroupMode(false);
@@ -366,7 +374,7 @@ function AppNavigator() {
             setScreen("mood");
           }}
           onNavigate={(s) => {
-            if (s === "detail" && votingResult.restaurant) {
+            if (s === "detail" && votingResult?.restaurant) {
               setDetailRestaurant(votingResult.restaurant as Restaurant);
               setPreviousScreen("result");
               setScreen("detail");

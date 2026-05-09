@@ -1,10 +1,9 @@
-import React, { useRef, useState } from "react";
+import React, { useState } from "react";
 import {
   View,
   Text,
   TouchableOpacity,
   StyleSheet,
-  FlatList,
   Dimensions,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
@@ -226,17 +225,23 @@ type Props = {
 export default function OnboardingScreen({ onDone }: Props) {
   const { t } = useTranslation();
   const [activeIndex, setActiveIndex] = useState(0);
-  const flatListRef = useRef<FlatList>(null);
+
+  __DEV__ && console.log('OnboardingScreen - Rendering with activeIndex:', activeIndex);
 
   const isLast = activeIndex === SLIDES.length - 1;
+  const currentSlide = SLIDES[activeIndex];
+
+  __DEV__ && console.log('OnboardingScreen - Current slide:', currentSlide.id, 'Title:', t(currentSlide.titleKey));
 
   const goNext = () => {
+    __DEV__ && console.log('OnboardingScreen - goNext called. Current index:', activeIndex, 'isLast:', isLast);
     if (isLast) {
+      __DEV__ && console.log('OnboardingScreen - Calling onDone');
       onDone();
     } else {
-      const next = activeIndex + 1;
-      flatListRef.current?.scrollToIndex({ index: next, animated: true });
-      setActiveIndex(next);
+      const nextIndex = activeIndex + 1;
+      __DEV__ && console.log('OnboardingScreen - Setting activeIndex to:', nextIndex);
+      setActiveIndex(nextIndex);
     }
   };
 
@@ -251,16 +256,6 @@ export default function OnboardingScreen({ onDone }: Props) {
     }
   };
 
-  const renderSlide = ({ item }: { item: Slide }) => (
-    <View style={styles.slide}>
-      <View style={styles.illustrationWrapper}>
-        {renderIllustration(item.illustration)}
-      </View>
-      <Text style={styles.title}>{t(item.titleKey)}</Text>
-      <Text style={styles.subtitle}>{t(item.subtitleKey)}</Text>
-    </View>
-  );
-
   return (
     <SafeAreaView style={styles.container}>
       <StatusBar style="dark" />
@@ -272,23 +267,16 @@ export default function OnboardingScreen({ onDone }: Props) {
         </TouchableOpacity>
       </View>
 
-      <FlatList
-        ref={flatListRef}
-        data={SLIDES}
-        renderItem={renderSlide}
-        keyExtractor={(item) => item.id}
-        horizontal
-        pagingEnabled
-        showsHorizontalScrollIndicator={false}
-        scrollEventThrottle={16}
-        onMomentumScrollEnd={(e) => {
-          const idx = Math.round(
-            e.nativeEvent.contentOffset.x / SCREEN_WIDTH
-          );
-          setActiveIndex(idx);
-        }}
-        bounces={false}
-      />
+      {/* Current Slide */}
+      <View style={styles.slideContainer}>
+        <View style={styles.slide}>
+          <View style={styles.illustrationWrapper}>
+            {renderIllustration(currentSlide.illustration)}
+          </View>
+          <Text style={styles.title}>{t(currentSlide.titleKey)}</Text>
+          <Text style={styles.subtitle}>{t(currentSlide.subtitleKey)}</Text>
+        </View>
+      </View>
 
       {/* Dots */}
       <View style={styles.dotsRow}>
@@ -334,6 +322,9 @@ const styles = StyleSheet.create({
   skipText: {
     color: TEXT_SECONDARY,
     fontSize: 15,
+  },
+  slideContainer: {
+    flex: 1,
   },
   slide: {
     width: SCREEN_WIDTH,
