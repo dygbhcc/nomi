@@ -10,6 +10,7 @@ const {getOrUploadPhoto} = require("./services/cloudinaryService");
 const {calculateDemandForecast} = require("./services/demandScoringService");
 const {runFullPipeline} = require("./services/fullPipelineService");
 const {neighborhoods, filters} = require("./config/lisbonConfig");
+const {excelBufferToArray} = require("./services/excelService");
 
 // Define Cloudinary secrets
 const cloudinaryCloudName = defineSecret("CLOUDINARY_CLOUD_NAME");
@@ -465,6 +466,10 @@ exports.checkRestaurantById = onCall(
           address: firestoreData.address,
           business_status: firestoreData.business_status,
           last_status_check: firestoreData.last_status_check,
+          has_manual_scoring: firestoreData.has_manual_scoring,
+          mood_scores: firestoreData.mood_scores,
+          noise_level: firestoreData.noise_level,
+          is_local_concept: firestoreData.is_local_concept,
         } : null,
         googleData: googleData ? {
           name: googleData.name,
@@ -520,6 +525,278 @@ exports.getRestaurantStatusBreakdown = onCall(
         closedRestaurants: closed,
         noStatusCount: noStatus.length,
         noStatusSample: noStatus.slice(0, 10),
+      };
+    },
+);
+
+/**
+ * Import manual scores from Excel data
+ * Expects base64 encoded Excel file in request.data.fileData
+ */
+exports.importManualScoresFromExcel = onCall(
+    {
+      region: "europe-west1",
+      timeoutSeconds: 540,
+      memory: "1GiB",
+    },
+    async (request) => {
+      const {fileData} = request.data;
+
+      if (!fileData) {
+        throw new HttpsError("invalid-argument", "fileData is required");
+      }
+
+      logger.info("Starting Excel import...");
+
+      // Decode base64 to buffer
+      const buffer = Buffer.from(fileData, "base64");
+      const excelData = excelBufferToArray(buffer);
+
+      logger.info(`Found ${excelData.length} rows in Excel`);
+
+      const results = {
+        total: excelData.length,
+        updated: 0,
+        notFound: 0,
+        markedClosed: 0,
+        errors: 0,
+        notFoundList: [],
+      };
+
+      const BATCH_SIZE = 400;
+      let batch = db.batch();
+      let batchCount = 0;
+
+      for (const row of excelData) {
+        try {
+          const placeId = row.place_id;
+
+          if (!placeId) {
+            results.errors++;
+            continue;
+          }
+
+          // Find restaurant by place_id
+          const snapshot = await db.collection("restaurants")
+              .where("place_id", "==", placeId)
+              .limit(1)
+              .get();
+
+          if (snapshot.empty) {
+            results.notFound++;
+            results.notFoundList.push({
+              place_id: placeId,
+              name: row.name,
+            });
+            continue;
+          }
+
+          const doc = snapshot.docs[0];
+
+          // Build update object
+          const updateData = {};
+          let hasAnyScore = false;
+
+          // Map mood tags
+          if (row.mood_tag_energetic !== undefined && row.mood_tag_energetic !== "") {
+            updateData["mood_scores.energetic"] = Number(row.mood_tag_energetic);
+            hasAnyScore = true;
+          }
+          if (row.mood_tag_chill !== undefined && row.mood_tag_chill !== "") {
+            updateData["mood_scores.chill"] = Number(row.mood_tag_chill);
+            hasAnyScore = true;
+          }
+          if (row.mood_tag_hungry !== undefined && row.mood_tag_hungry !== "") {
+            updateData["mood_scores.hungry"] = Number(row.mood_tag_hungry);
+            hasAnyScore = true;
+          }
+
+          // Noise level
+          if (row.noise_level !== undefined && row.noise_level !== "") {
+            updateData.noise_level = Number(row.noise_level);
+            hasAnyScore = true;
+          }
+
+          // Is local concept
+          if (row.is_local_concept !== undefined && row.is_local_concept !== "") {
+            updateData.is_local_concept = row.is_local_concept.toLowerCase() === "yes";
+            hasAnyScore = true;
+          }
+
+          // Only mark as manually scored if at least one field has a value
+          if (hasAnyScore) {
+            updateData.has_manual_scoring = true;
+            updateData.manual_scoring_date = admin.firestore.FieldValue.serverTimestamp();
+          }
+
+          // Check if closed
+          const closedValue = row["closed "] || row.closed; // Handle space in column name
+          if (closedValue && (closedValue === "X" || closedValue === "x")) {
+            updateData.business_status = "CLOSED_PERMANENTLY";
+            updateData.is_manually_marked_closed = true;
+            results.markedClosed++;
+          }
+
+          // Only update if there's something to update
+          if (Object.keys(updateData).length > 0) {
+            batch.update(doc.ref, updateData);
+            batchCount++;
+            results.updated++;
+          }
+
+          // Commit batch when full
+          if (batchCount >= BATCH_SIZE) {
+            await batch.commit();
+            logger.info(`Committed batch: ${results.updated}/${excelData.length}`);
+            batch = db.batch();
+            batchCount = 0;
+          }
+        } catch (error) {
+          logger.error(`Error processing row:`, error.message);
+          results.errors++;
+        }
+      }
+
+      // Commit remaining
+      if (batchCount > 0) {
+        await batch.commit();
+      }
+
+      logger.info("Import completed", results);
+
+      return {
+        ...results,
+        notFoundList: results.notFoundList.slice(0, 20), // Limit response size
+      };
+    },
+);
+
+/**
+ * Fix has_manual_scoring flag - only keep it true if restaurant actually has mood scores
+ */
+exports.fixManualScoringFlags = onCall(
+    {
+      region: "europe-west1",
+      timeoutSeconds: 300,
+    },
+    async () => {
+      logger.info("Fixing manual scoring flags...");
+
+      const snapshot = await db.collection("restaurants")
+          .where("has_manual_scoring", "==", true)
+          .get();
+
+      logger.info(`Checking ${snapshot.size} restaurants with has_manual_scoring=true`);
+
+      let needsReset = 0;
+      let actuallyHasScores = 0;
+      const BATCH_SIZE = 400;
+      let batch = db.batch();
+      let batchCount = 0;
+
+      snapshot.docs.forEach((doc) => {
+        const data = doc.data();
+
+        // Check if restaurant actually has mood scores with valid values
+        const hasEnergetic = typeof data.mood_scores?.energetic === "number" && data.mood_scores.energetic > 0;
+        const hasChill = typeof data.mood_scores?.chill === "number" && data.mood_scores.chill > 0;
+        const hasHungry = typeof data.mood_scores?.hungry === "number" && data.mood_scores.hungry > 0;
+        const hasNoise = typeof data.noise_level === "number" && data.noise_level > 0;
+        const hasLocal = typeof data.is_local_concept === "boolean";
+        const isManuallyClosed = data.is_manually_marked_closed === true;
+
+        const hasAnyScore = hasEnergetic || hasChill || hasHungry || hasNoise || hasLocal || isManuallyClosed;
+
+        if (!hasAnyScore) {
+          // Restaurant doesn't actually have scores, remove the flag
+          batch.update(doc.ref, {
+            has_manual_scoring: false,
+            manual_scoring_date: admin.firestore.FieldValue.delete(),
+          });
+          batchCount++;
+          needsReset++;
+
+          if (batchCount >= BATCH_SIZE) {
+            batch.commit();
+            batch = db.batch();
+            batchCount = 0;
+          }
+        } else {
+          actuallyHasScores++;
+        }
+      });
+
+      // Commit remaining
+      if (batchCount > 0) {
+        await batch.commit();
+      }
+
+      return {
+        checked: snapshot.size,
+        actuallyHasScores,
+        needsReset,
+      };
+    },
+);
+
+/**
+ * Export restaurants without manual scoring to Excel format
+ * Returns base64 encoded Excel file
+ */
+exports.exportRestaurantsWithoutScoring = onCall(
+    {
+      region: "europe-west1",
+      timeoutSeconds: 300,
+      memory: "512MiB",
+    },
+    async () => {
+      logger.info("Exporting restaurants without manual scoring...");
+
+      const snapshot = await db.collection("restaurants")
+          .where("has_manual_scoring", "==", false)
+          .get();
+
+      logger.info(`Found ${snapshot.size} restaurants without manual scoring`);
+
+      const XLSX = require("xlsx");
+      const restaurants = [];
+
+      snapshot.docs.forEach((doc) => {
+        const data = doc.data();
+        restaurants.push({
+          place_id: data.place_id,
+          name: data.name,
+          neighborhood: data.neighborhood || "",
+          address: data.address,
+          lat: data.location?.lat || 0,
+          lng: data.location?.lng || 0,
+          google_rating: data.google_rating || 0,
+          budget_level: data.budget_level || 1,
+          phone: data.phone || "",
+          website: data.website || "",
+          is_open_monday: data.opening_hours?.is_open_monday ? "YES" : "NO",
+          mood_tag_energetic: "",
+          mood_tag_chill: "",
+          mood_tag_hungry: "",
+          noise_level: "",
+          is_local_concept: "",
+          closed: "",
+        });
+      });
+
+      // Convert to Excel
+      const worksheet = XLSX.utils.json_to_sheet(restaurants);
+      const workbook = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(workbook, worksheet, "Restaurants");
+      const buffer = XLSX.write(workbook, {type: "buffer", bookType: "xlsx"});
+
+      // Convert to base64
+      const base64 = buffer.toString("base64");
+
+      return {
+        count: restaurants.length,
+        fileData: base64,
+        filename: `restaurants_to_score_${Date.now()}.xlsx`,
       };
     },
 );
