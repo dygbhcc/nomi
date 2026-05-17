@@ -4,7 +4,8 @@
   "private": true,
   "type": "commonjs",
   "scripts": {
-    "import:restaurants": "node scripts/importRestaurants.js"
+    "import:restaurants": "node scripts/importRestaurants.js",
+    "import:excel": "node scripts/importFromExcel.js"
     
   },
   "dependencies": {

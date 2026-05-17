@@ -1,0 +1,56 @@
+module.exports = {
+  neighborhoods: [
+    // Lisbon merkez
+    {name: "Chiado", lat: 38.7102, lng: -9.1404, radius: 800},
+    {name: "Alfama", lat: 38.7139, lng: -9.1334, radius: 800},
+    {name: "Bairro Alto", lat: 38.7138, lng: -9.1450, radius: 800},
+    {name: "Mouraria", lat: 38.7162, lng: -9.1347, radius: 800},
+    {name: "Príncipe Real", lat: 38.7157, lng: -9.1487, radius: 800},
+    {name: "Baixa", lat: 38.7077, lng: -9.1366, radius: 800},
+    {name: "Intendente", lat: 38.7195, lng: -9.1359, radius: 600},
+    {name: "Martim Moniz", lat: 38.7168, lng: -9.1369, radius: 600},
+    {name: "Cais do Sodré", lat: 38.7069, lng: -9.1433, radius: 600},
+    {name: "Santos", lat: 38.7042, lng: -9.1558, radius: 700},
+    {name: "Alcântara", lat: 38.6985, lng: -9.1753, radius: 800},
+    {name: "Belém", lat: 38.6970, lng: -9.2059, radius: 1000},
+    {name: "Ajuda", lat: 38.7043, lng: -9.1975, radius: 700},
+    {name: "Campo de Ourique", lat: 38.7100, lng: -9.1614, radius: 700},
+    {name: "Estrela", lat: 38.7126, lng: -9.1573, radius: 700},
+    {name: "Amoreiras", lat: 38.7227, lng: -9.1566, radius: 700},
+    {name: "Campolide", lat: 38.7267, lng: -9.1617, radius: 700},
+    {name: "Saldanha", lat: 38.7348, lng: -9.1430, radius: 800},
+    {name: "Picoas", lat: 38.7299, lng: -9.1488, radius: 600},
+    {name: "Avenidas Novas", lat: 38.7382, lng: -9.1516, radius: 800},
+    {name: "Campo Pequeno", lat: 38.7415, lng: -9.1466, radius: 700},
+    {name: "Alvalade", lat: 38.7490, lng: -9.1423, radius: 900},
+    {name: "Roma", lat: 38.7440, lng: -9.1384, radius: 700},
+    {name: "Arroios", lat: 38.7254, lng: -9.1348, radius: 700},
+    {name: "Anjos", lat: 38.7228, lng: -9.1388, radius: 600},
+    {name: "Intendente", lat: 38.7195, lng: -9.1359, radius: 600},
+    {name: "Penha de França", lat: 38.7285, lng: -9.1273, radius: 700},
+    {name: "Beato", lat: 38.7228, lng: -9.1148, radius: 700},
+    {name: "Marvila", lat: 38.7299, lng: -9.1048, radius: 800},
+    {name: "Parque das Nações", lat: 38.7638, lng: -9.0963, radius: 1000},
+    {name: "Lumiar", lat: 38.7689, lng: -9.1570, radius: 900},
+    {name: "Odivelas", lat: 38.7953, lng: -9.1833, radius: 1000},
+    {name: "Amadora", lat: 38.7540, lng: -9.2300, radius: 1000},
+    // Cascais
+    {name: "Cascais Centro", lat: 38.6972, lng: -9.4213, radius: 1000},
+    {name: "Estoril", lat: 38.7058, lng: -9.3957, radius: 800},
+    {name: "Monte Estoril", lat: 38.7040, lng: -9.3930, radius: 600},
+    // Sintra
+    {name: "Sintra Centro", lat: 38.7980, lng: -9.3899, radius: 1000},
+    // Oeiras
+    {name: "Oeiras", lat: 38.6959, lng: -9.3099, radius: 1000},
+    // Setúbal bölgesi
+    {name: "Almada", lat: 38.6802, lng: -9.1594, radius: 1000},
+    {name: "Barreiro", lat: 38.6637, lng: -9.0724, radius: 1000},
+  ],
+
+  filters: {
+    minRating: 3.0,
+    minReviewCount: 10,
+    businessStatus: "OPERATIONAL",
+    type: "restaurant",
+  },
+};

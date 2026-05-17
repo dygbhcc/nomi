@@ -4,10 +4,17 @@ const admin = require("firebase-admin");
 const logger = require("firebase-functions/logger");
 const {onCall, HttpsError} = require("firebase-functions/v2/https");
 const {onSchedule} = require("firebase-functions/v2/scheduler");
+const {defineSecret} = require("firebase-functions/params");
 const {nearbySearch, placeDetails} = require("./services/googlePlacesService");
 const {getOrUploadPhoto} = require("./services/cloudinaryService");
 const {calculateDemandForecast} = require("./services/demandScoringService");
-const lisbonNeighborhoods = require("./config/lisbonNeighborhoods");
+const {runFullPipeline} = require("./services/fullPipelineService");
+const {neighborhoods, filters} = require("./config/lisbonConfig");
+
+// Define Cloudinary secrets
+const cloudinaryCloudName = defineSecret("CLOUDINARY_CLOUD_NAME");
+const cloudinaryApiKey = defineSecret("CLOUDINARY_API_KEY");
+const cloudinaryApiSecret = defineSecret("CLOUDINARY_API_SECRET");
 
 admin.initializeApp();
 const db = admin.firestore();
@@ -229,7 +236,7 @@ exports.warmupLisbonRestaurants = onCall(
     },
     async () => {
       const results = [];
-      for (const neighborhood of lisbonNeighborhoods) {
+      for (const neighborhood of neighborhoods) {
         const response = await fetchAndCacheByCoordinates({
           lat: neighborhood.lat,
           lng: neighborhood.lng,
@@ -244,7 +251,7 @@ exports.warmupLisbonRestaurants = onCall(
       }
 
       return {
-        totalNeighborhoods: lisbonNeighborhoods.length,
+        totalNeighborhoods: neighborhoods.length,
         results,
       };
     },
@@ -300,5 +307,219 @@ exports.scheduledDemandUpdate = onSchedule(
         logger.error("scheduledDemandUpdate failed:", error);
         throw error;
       }
+    },
+);
+
+exports.runFullLisbonPipeline = onCall(
+    {
+      region: "europe-west1",
+      timeoutSeconds: 540,
+      memory: "1GiB",
+      secrets: [cloudinaryCloudName, cloudinaryApiKey, cloudinaryApiSecret],
+    },
+    async () => {
+      return await runFullPipeline(neighborhoods, filters);
+    },
+);
+
+/**
+ * Check all restaurants in Firestore against Google Places API
+ * and update business_status field (OPERATIONAL, CLOSED_PERMANENTLY, CLOSED_TEMPORARILY)
+ */
+exports.markClosedRestaurants = onCall(
+    {
+      region: "europe-west1",
+      timeoutSeconds: 540,
+      memory: "512MiB",
+    },
+    async (request) => {
+      const batchSize = request.data?.batchSize || 50;
+      const delayMs = request.data?.delayMs || 100;
+
+      logger.info("Starting to check and mark closed restaurants...");
+
+      // Get all restaurants
+      const snapshot = await db.collection("restaurants").get();
+      logger.info(`Found ${snapshot.size} restaurants to check`);
+
+      let checked = 0;
+      let markedClosed = 0;
+      let markedOpen = 0;
+      let errors = 0;
+      let batch = db.batch();
+      let batchCount = 0;
+
+      for (const doc of snapshot.docs) {
+        try {
+          const restaurant = doc.data();
+          const placeId = restaurant.place_id;
+
+          if (!placeId) {
+            errors++;
+            continue;
+          }
+
+          // Get current status from Google Places
+          const details = await placeDetails(placeId);
+          checked++;
+
+          if (!details) {
+            logger.warn(`Could not fetch details for ${placeId}`);
+            errors++;
+            continue;
+          }
+
+          const businessStatus = details.business_status || "OPERATIONAL";
+          const isClosed = businessStatus === "CLOSED_PERMANENTLY" ||
+                          businessStatus === "CLOSED_TEMPORARILY";
+
+          // Update the document
+          const ref = db.collection("restaurants").doc(doc.id);
+          batch.update(ref, {
+            business_status: businessStatus,
+            last_status_check: admin.firestore.FieldValue.serverTimestamp(),
+          });
+
+          batchCount++;
+          if (isClosed) {
+            markedClosed++;
+          } else {
+            markedOpen++;
+          }
+
+          // Commit batch every batchSize updates
+          if (batchCount >= batchSize) {
+            await batch.commit();
+            logger.info(`Processed ${checked}/${snapshot.size} - Closed: ${markedClosed}, Open: ${markedOpen}`);
+            batch = db.batch(); // Create new batch
+            batchCount = 0;
+            // Small delay to avoid rate limits
+            await new Promise((resolve) => setTimeout(resolve, delayMs));
+          }
+        } catch (error) {
+          logger.error(`Error checking restaurant ${doc.id}:`, error.message);
+          errors++;
+        }
+      }
+
+      // Commit remaining updates
+      if (batchCount > 0) {
+        await batch.commit();
+      }
+
+      const result = {
+        total: snapshot.size,
+        checked,
+        markedClosed,
+        markedOpen,
+        errors,
+      };
+
+      logger.info("Finished marking closed restaurants", result);
+      return result;
+    },
+);
+
+/**
+ * Check a specific restaurant by place_id
+ */
+exports.checkRestaurantById = onCall(
+    {
+      region: "europe-west1",
+    },
+    async (request) => {
+      const placeId = request.data?.placeId;
+
+      if (!placeId) {
+        throw new HttpsError("invalid-argument", "placeId is required");
+      }
+
+      // Get from Firestore
+      const snapshot = await db.collection("restaurants")
+          .where("place_id", "==", placeId)
+          .limit(1)
+          .get();
+
+      let firestoreData = null;
+      if (!snapshot.empty) {
+        const doc = snapshot.docs[0];
+        firestoreData = {
+          id: doc.id,
+          ...doc.data(),
+        };
+      }
+
+      // Get from Google Places API
+      let googleData = null;
+      try {
+        googleData = await placeDetails(placeId);
+      } catch (error) {
+        logger.error("Failed to fetch from Google", error);
+      }
+
+      return {
+        placeId,
+        existsInFirestore: !!firestoreData,
+        firestoreData: firestoreData ? {
+          name: firestoreData.name,
+          address: firestoreData.address,
+          business_status: firestoreData.business_status,
+          last_status_check: firestoreData.last_status_check,
+        } : null,
+        googleData: googleData ? {
+          name: googleData.name,
+          business_status: googleData.business_status,
+          permanently_closed: googleData.permanently_closed,
+          formatted_address: googleData.formatted_address,
+        } : null,
+      };
+    },
+);
+
+/**
+ * Get restaurants status breakdown
+ */
+exports.getRestaurantStatusBreakdown = onCall(
+    {
+      region: "europe-west1",
+    },
+    async () => {
+      const snapshot = await db.collection("restaurants").get();
+
+      const statusBreakdown = {};
+      const closed = [];
+      const noStatus = [];
+
+      snapshot.docs.forEach((doc) => {
+        const data = doc.data();
+        const status = data.business_status || "NO_STATUS";
+
+        statusBreakdown[status] = (statusBreakdown[status] || 0) + 1;
+
+        if (status === "CLOSED_PERMANENTLY" || status === "CLOSED_TEMPORARILY") {
+          closed.push({
+            name: data.name,
+            address: data.address,
+            status: status,
+            place_id: data.place_id,
+          });
+        }
+
+        if (!data.business_status) {
+          noStatus.push({
+            name: data.name,
+            place_id: data.place_id,
+          });
+        }
+      });
+
+      return {
+        total: snapshot.size,
+        statusBreakdown,
+        closedCount: closed.length,
+        closedRestaurants: closed,
+        noStatusCount: noStatus.length,
+        noStatusSample: noStatus.slice(0, 10),
+      };
     },
 );
