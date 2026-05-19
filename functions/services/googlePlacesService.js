@@ -31,7 +31,7 @@ async function placeDetails(placeId) {
     params: {
       place_id: placeId,
       fields:
-        "place_id,name,formatted_address,geometry,opening_hours,formatted_phone_number,website,rating,price_level,photos",
+        "place_id,name,formatted_address,geometry,opening_hours,formatted_phone_number,website,rating,price_level,photos,user_ratings_total",
       key,
     },
   });

@@ -4,18 +4,11 @@ const admin = require("firebase-admin");
 const logger = require("firebase-functions/logger");
 const {onCall, HttpsError} = require("firebase-functions/v2/https");
 const {onSchedule} = require("firebase-functions/v2/scheduler");
-const {defineSecret} = require("firebase-functions/params");
 const {nearbySearch, placeDetails} = require("./services/googlePlacesService");
-const {getOrUploadPhoto} = require("./services/cloudinaryService");
 const {calculateDemandForecast} = require("./services/demandScoringService");
 const {runFullPipeline} = require("./services/fullPipelineService");
 const {neighborhoods, filters} = require("./config/lisbonConfig");
 const {excelBufferToArray} = require("./services/excelService");
-
-// Define Cloudinary secrets
-const cloudinaryCloudName = defineSecret("CLOUDINARY_CLOUD_NAME");
-const cloudinaryApiKey = defineSecret("CLOUDINARY_API_KEY");
-const cloudinaryApiSecret = defineSecret("CLOUDINARY_API_SECRET");
 
 admin.initializeApp();
 const db = admin.firestore();
@@ -27,6 +20,23 @@ function normalizeRegionKey(lat, lng, radius) {
   const latBucket = Number(lat).toFixed(3);
   const lngBucket = Number(lng).toFixed(3);
   return `${latBucket}_${lngBucket}_${radius}`;
+}
+
+/**
+ * Generate Google Photo API URL for frontend display
+ * @param {string} photoReference - photo_reference from Google Places
+ * @param {number} maxWidth - Photo width (default: 400px)
+ * @return {string} Google Photos API URL
+ *
+ * Usage:
+ * const photoUrl = getGooglePhotoUrl(restaurant.photos[0].photo_reference, 800);
+ * <img src={photoUrl} alt={restaurant.name} />
+ *
+ * IMPORTANT: Always display html_attributions (required for copyright compliance)
+ */
+function getGooglePhotoUrl(photoReference, maxWidth = 400) {
+  const apiKey = process.env.GOOGLE_PLACES_API_KEY || "";
+  return `https://maps.googleapis.com/maps/api/place/photo?maxwidth=${maxWidth}&photo_reference=${photoReference}&key=${apiKey}`;
 }
 
 function isOpenMonday(openingHours) {
@@ -46,31 +56,25 @@ function isOpenMonday(openingHours) {
 }
 
 async function buildRestaurantDocument(place) {
-  let cloudinaryPhotos = [];
+  let photos = [];
 
   if (place.photos && place.photos.length > 0) {
-    const firstPhoto = place.photos[0];
-    const cloudinaryUrl = await getOrUploadPhoto(
-        firstPhoto.photo_reference,
-        place.place_id,
-        0,
-    );
+    // Get first 5 photos (or total available)
+    const maxPhotos = Math.min(5, place.photos.length);
 
-    if (cloudinaryUrl) {
-      cloudinaryPhotos = [{
-        url: cloudinaryUrl,
-        source: "cloudinary",
-        width: firstPhoto.width,
-        height: firstPhoto.height,
-      }];
-    } else {
-      cloudinaryPhotos = [{
-        photo_reference: firstPhoto.photo_reference,
-        source: "google",
-        width: firstPhoto.width,
-        height: firstPhoto.height,
-      }];
-    }
+    // Sort photos by size (highest resolution first)
+    const sortedPhotos = [...place.photos]
+        .sort((a, b) => (b.width * b.height) - (a.width * a.height))
+        .slice(0, maxPhotos);
+
+    photos = sortedPhotos.map((photo, index) => ({
+      photo_reference: photo.photo_reference,
+      width: photo.width,
+      height: photo.height,
+      html_attributions: photo.html_attributions || [],
+      index: index,
+      source: "google",
+    }));
   }
 
   return {
@@ -92,7 +96,7 @@ async function buildRestaurantDocument(place) {
     phone: place.formatted_phone_number || "",
     website: place.website || "",
     google_rating: place.rating || 0,
-    photos: cloudinaryPhotos,
+    photos: photos,
     cache_date: admin.firestore.FieldValue.serverTimestamp(),
     is_local_concept: false,
   };
@@ -316,7 +320,6 @@ exports.runFullLisbonPipeline = onCall(
       region: "europe-west1",
       timeoutSeconds: 540,
       memory: "1GiB",
-      secrets: [cloudinaryCloudName, cloudinaryApiKey, cloudinaryApiSecret],
     },
     async () => {
       return await runFullPipeline(neighborhoods, filters);
@@ -736,6 +739,165 @@ exports.fixManualScoringFlags = onCall(
         actuallyHasScores,
         needsReset,
       };
+    },
+);
+
+/**
+ * Delete restaurants with rating = 0 or rating < 3
+ */
+exports.deleteLowRatingRestaurants = onCall(
+    {
+      region: "europe-west1",
+      timeoutSeconds: 300,
+    },
+    async () => {
+      logger.info("Starting to delete low rating restaurants...");
+
+      const snapshot = await db.collection("restaurants").get();
+
+      const toDelete = [];
+      const stats = {
+        total: snapshot.size,
+        zeroRating: 0,
+        lessThan3: 0,
+        deleted: 0,
+        zeroRatingManualScored: 0,
+        lessThan3ManualScored: 0,
+      };
+
+      snapshot.docs.forEach((doc) => {
+        const data = doc.data();
+        const rating = data.google_rating || 0;
+        const hasManualScoring = data.has_manual_scoring === true;
+
+        // Count all low rating restaurants
+        if (rating === 0) {
+          stats.zeroRating++;
+          if (hasManualScoring) stats.zeroRatingManualScored++;
+        } else if (rating < 3) {
+          stats.lessThan3++;
+          if (hasManualScoring) stats.lessThan3ManualScored++;
+        }
+
+        // Only delete if low rating AND no manual scoring
+        if ((rating === 0 || rating < 3) && !hasManualScoring) {
+          toDelete.push({
+            id: doc.id,
+            name: data.name,
+            rating: rating,
+            hasManualScoring: hasManualScoring,
+          });
+        }
+      });
+
+      logger.info(`Found ${toDelete.length} restaurants to delete`);
+
+      // Delete in batches
+      const BATCH_SIZE = 400;
+      let batch = db.batch();
+      let batchCount = 0;
+
+      for (const restaurant of toDelete) {
+        batch.delete(db.collection("restaurants").doc(restaurant.id));
+        batchCount++;
+        stats.deleted++;
+
+        if (batchCount >= BATCH_SIZE) {
+          await batch.commit();
+          logger.info(`Deleted ${stats.deleted}/${toDelete.length}`);
+          batch = db.batch();
+          batchCount = 0;
+        }
+      }
+
+      // Commit remaining
+      if (batchCount > 0) {
+        await batch.commit();
+      }
+
+      logger.info("Deletion completed", stats);
+
+      return {
+        ...stats,
+        deletedSample: toDelete.slice(0, 20).map((r) => ({
+          name: r.name,
+          rating: r.rating,
+          hadManualScoring: r.hasManualScoring,
+        })),
+      };
+    },
+);
+
+/**
+ * Get statistics about restaurant ratings
+ */
+exports.getRestaurantRatingStats = onCall(
+    {
+      region: "europe-west1",
+    },
+    async () => {
+      const snapshot = await db.collection("restaurants").get();
+
+      const stats = {
+        total: snapshot.size,
+        withManualScoring: 0,
+        withoutManualScoring: 0,
+        zeroRating: 0,
+        lessThan3: 0,
+        lessThan35: 0,
+        above35: 0,
+        zeroRatingWithScoring: 0,
+        lowRatingWithScoring: 0,
+      };
+
+      snapshot.docs.forEach((doc) => {
+        const data = doc.data();
+        const rating = data.google_rating || 0;
+        const hasScoring = data.has_manual_scoring === true;
+
+        if (hasScoring) {
+          stats.withManualScoring++;
+        } else {
+          stats.withoutManualScoring++;
+        }
+
+        if (rating === 0) {
+          stats.zeroRating++;
+          if (hasScoring) stats.zeroRatingWithScoring++;
+        } else if (rating < 3) {
+          stats.lessThan3++;
+          if (hasScoring) stats.lowRatingWithScoring++;
+        } else if (rating < 3.5) {
+          stats.lessThan35++;
+        } else {
+          stats.above35++;
+        }
+      });
+
+      return stats;
+    },
+);
+
+/**
+ * Generate Google Photo URLs for frontend
+ * Creates URLs on backend to avoid exposing API key on client-side
+ */
+exports.getPhotoUrls = onCall(
+    {
+      region: "europe-west1",
+    },
+    async (request) => {
+      const {photoReferences, maxWidth = 400} = request.data || {};
+
+      if (!photoReferences || !Array.isArray(photoReferences)) {
+        throw new HttpsError("invalid-argument", "photoReferences array is required");
+      }
+
+      const urls = photoReferences.map((ref) =>
+        getGooglePhotoUrl(ref, maxWidth),
+      );
+
+      return {urls};
     },
 );
 
