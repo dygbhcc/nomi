@@ -319,10 +319,15 @@ export default function SwipeScreen({ selectedMoods, budgetLevel, onBack, onChan
 
           {/* Photo */}
           {restaurant.photos && restaurant.photos.length > 0 ? (
-            <Image
-              source={{ uri: `https://maps.googleapis.com/maps/api/place/photo?maxwidth=800&photo_reference=${restaurant.photos[0].photo_reference}&key=${process.env.EXPO_PUBLIC_GOOGLE_PLACES_API_KEY}` }}
-              style={styles.photoSection}
-            />
+            <View>
+              <Image
+                source={{ uri: `https://maps.googleapis.com/maps/api/place/photo?maxwidth=800&photo_reference=${restaurant.photos[0].photo_reference}&key=${process.env.EXPO_PUBLIC_GOOGLE_PLACES_API_KEY}` }}
+                style={styles.photoSection}
+              />
+              <View style={styles.photoAttribution}>
+                <Text style={styles.photoAttributionText}>Photo from Google</Text>
+              </View>
+            </View>
           ) : (
             <View style={[styles.photoSection, { backgroundColor: '#E8E8E8' }]} />
           )}
@@ -453,6 +458,20 @@ const styles = StyleSheet.create({
     width: "100%",
     resizeMode: "cover",
     backgroundColor: PHOTO_BG,
+  },
+  photoAttribution: {
+    position: "absolute",
+    bottom: 4,
+    right: 4,
+    backgroundColor: "rgba(0, 0, 0, 0.5)",
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: 4,
+  },
+  photoAttributionText: {
+    color: "#FFFFFF",
+    fontSize: 9,
+    opacity: 0.8,
   },
   infoSection: {
     padding: 16,

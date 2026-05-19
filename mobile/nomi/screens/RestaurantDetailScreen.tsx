@@ -10,6 +10,7 @@ import {
   Dimensions,
   Image,
   ScrollView,
+  FlatList,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { StatusBar } from "expo-status-bar";
@@ -19,6 +20,8 @@ import { Colors } from "../theme/colors";
 import { Restaurant } from "../services/restaurantService";
 import { saveRestaurant, unsaveRestaurant } from "../services/swipeService";
 import { useAuth } from "../context/AuthContext";
+
+const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get("window");
 
 type DayHours = {
   day: string;
@@ -45,8 +48,6 @@ const TEXT_PRIMARY = Colors.textPrimary;
 const TEXT_SECONDARY = Colors.textSecondary;
 const GREEN = "#2ECC71";
 
-const { height: SCREEN_HEIGHT } = Dimensions.get("window");
-
 function budgetSymbol(level: number): string {
   return "\u20AC".repeat(level);
 }
@@ -67,6 +68,7 @@ export default function RestaurantDetailScreen({ restaurant, onBack }: Props) {
   const { user } = useAuth();
   const [saved, setSaved] = useState(false);
   const [validated, setValidated] = useState(false);
+  const [currentPhotoIndex, setCurrentPhotoIndex] = useState(0);
   const todayIndex = getTodayIndex();
 
   const handleBookmark = async () => {
@@ -86,13 +88,46 @@ export default function RestaurantDetailScreen({ restaurant, onBack }: Props) {
     <SafeAreaView style={styles.container}>
       <StatusBar style="dark" />
 
-      {/* Hero image */}
+      {/* Hero image carousel */}
       <View style={styles.heroContainer}>
         {restaurant.photos && restaurant.photos.length > 0 ? (
-          <Image
-            source={{ uri: `https://maps.googleapis.com/maps/api/place/photo?maxwidth=800&photo_reference=${restaurant.photos[0].photo_reference}&key=${process.env.EXPO_PUBLIC_GOOGLE_PLACES_API_KEY}` }}
-            style={styles.heroImage}
-          />
+          <>
+            <ScrollView
+              horizontal
+              pagingEnabled
+              showsHorizontalScrollIndicator={false}
+              onMomentumScrollEnd={(event) => {
+                const index = Math.round(event.nativeEvent.contentOffset.x / SCREEN_WIDTH);
+                setCurrentPhotoIndex(index);
+              }}
+              style={styles.photoScroll}
+            >
+              {restaurant.photos.slice(0, 5).map((photo, index) => (
+                <View key={index} style={{ width: SCREEN_WIDTH, height: SCREEN_HEIGHT * 0.32 }}>
+                  <Image
+                    source={{ uri: `https://maps.googleapis.com/maps/api/place/photo?maxwidth=800&photo_reference=${photo.photo_reference}&key=${process.env.EXPO_PUBLIC_GOOGLE_PLACES_API_KEY}` }}
+                    style={styles.heroImage}
+                  />
+                </View>
+              ))}
+            </ScrollView>
+            <View style={styles.photoAttribution}>
+              <Text style={styles.photoAttributionText}>Photo from Google</Text>
+            </View>
+            {restaurant.photos.length > 1 && (
+              <View style={styles.photoPagination}>
+                {restaurant.photos.slice(0, 5).map((_, index) => (
+                  <View
+                    key={index}
+                    style={[
+                      styles.paginationDot,
+                      index === currentPhotoIndex && styles.paginationDotActive
+                    ]}
+                  />
+                ))}
+              </View>
+            )}
+          </>
         ) : (
           <View style={[styles.heroImage, { backgroundColor: '#E8E8E8' }]} />
         )}
@@ -342,11 +377,51 @@ const styles = StyleSheet.create({
     height: SCREEN_HEIGHT * 0.32,
     position: "relative",
   },
+  photoScroll: {
+    width: SCREEN_WIDTH,
+    height: SCREEN_HEIGHT * 0.32,
+  },
   heroImage: {
     width: "100%",
     height: "100%",
     resizeMode: "cover",
     backgroundColor: PHOTO_BG,
+  },
+  photoAttribution: {
+    position: "absolute",
+    bottom: 4,
+    right: 4,
+    backgroundColor: "rgba(0, 0, 0, 0.5)",
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: 4,
+  },
+  photoAttributionText: {
+    color: "#FFFFFF",
+    fontSize: 9,
+    opacity: 0.8,
+  },
+  photoPagination: {
+    position: "absolute",
+    bottom: 12,
+    left: 0,
+    right: 0,
+    flexDirection: "row",
+    justifyContent: "center",
+    alignItems: "center",
+    gap: 6,
+  },
+  paginationDot: {
+    width: 6,
+    height: 6,
+    borderRadius: 3,
+    backgroundColor: "rgba(255, 255, 255, 0.5)",
+  },
+  paginationDotActive: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+    backgroundColor: "#FFFFFF",
   },
   backButtonContainer: {
     position: "absolute",

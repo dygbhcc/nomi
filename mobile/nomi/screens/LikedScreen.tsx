@@ -64,7 +64,12 @@ export default function LikedScreen({ likedRestaurants, onSelect, onStartOver }:
         accessibilityRole="button"
       >
         {photoUrl ? (
-          <Image source={{ uri: photoUrl }} style={styles.cardImage} resizeMode="cover" />
+          <View>
+            <Image source={{ uri: photoUrl }} style={styles.cardImage} resizeMode="cover" />
+            <View style={styles.photoAttribution}>
+              <Text style={styles.photoAttributionText}>Photo from Google</Text>
+            </View>
+          </View>
         ) : (
           <View style={[styles.cardImage, { backgroundColor: '#E8E8E8' }]} />
         )}
@@ -210,6 +215,20 @@ const styles = StyleSheet.create({
   cardImage: {
     width: '100%',
     height: 160,
+  },
+  photoAttribution: {
+    position: "absolute",
+    bottom: 4,
+    right: 4,
+    backgroundColor: "rgba(0, 0, 0, 0.5)",
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: 4,
+  },
+  photoAttributionText: {
+    color: "#FFFFFF",
+    fontSize: 9,
+    opacity: 0.8,
   },
   cardInfo: {
     padding: 14,
