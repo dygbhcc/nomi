@@ -2,13 +2,14 @@ require("dotenv").config();
 
 const admin = require("firebase-admin");
 const logger = require("firebase-functions/logger");
-const {onCall, HttpsError} = require("firebase-functions/v2/https");
+const {onCall, onRequest, HttpsError} = require("firebase-functions/v2/https");
 const {onSchedule} = require("firebase-functions/v2/scheduler");
 const {nearbySearch, placeDetails} = require("./services/googlePlacesService");
 const {calculateDemandForecast} = require("./services/demandScoringService");
 const {runFullPipeline} = require("./services/fullPipelineService");
 const {neighborhoods, filters} = require("./config/lisbonConfig");
 const {excelBufferToArray} = require("./services/excelService");
+const {runGeminiNlpBatch} = require("./services/geminiNlpPipeline");
 
 admin.initializeApp();
 const db = admin.firestore();
@@ -960,5 +961,36 @@ exports.exportRestaurantsWithoutScoring = onCall(
         fileData: base64,
         filename: `restaurants_to_score_${Date.now()}.xlsx`,
       };
+    },
+);
+
+exports.scheduledGeminiNlp = onSchedule(
+    {
+      schedule: "0 1 * * *",
+      timeZone: "Europe/Lisbon",
+      region: "europe-west1",
+      timeoutSeconds: 540,
+      memory: "256MiB",
+    },
+    async () => {
+      const result = await runGeminiNlpBatch(50);
+      console.log("[Scheduler] Result:", result);
+    },
+);
+
+exports.manualGeminiNlp = onRequest(
+    {
+      region: "europe-west1",
+      timeoutSeconds: 540,
+      memory: "256MiB",
+    },
+    async (req, res) => {
+      const secret = req.headers["x-nomi-secret"];
+      if (secret !== process.env.MANUAL_TRIGGER_SECRET) {
+        return res.status(401).json({error: "Unauthorized"});
+      }
+      const batchSize = req.body?.batchSize || 10;
+      const result = await runGeminiNlpBatch(batchSize);
+      return res.json(result);
     },
 );
