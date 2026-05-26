@@ -52,31 +52,45 @@ function nlpToConfidence(score) {
 async function analyzeRestaurantWithGemini(ai, restaurant) {
   const {name, address, place_id: placeId} = restaurant;
 
+  const sentimentJson = restaurant.sentiment_breakdown ? JSON.stringify(restaurant.sentiment_breakdown) : "N/A";
+  const moodSummary = restaurant.general_mood_summary || "N/A";
+
   const prompt = `You are a restaurant mood classifier for Nomi, a restaurant discovery app in Lisbon, Portugal.
 
-Restaurant details:
+# Input Data
+## Restaurant Details
 - Name: ${name}
 - Address: ${address || "Lisbon, Portugal"}
 - Google Place ID: ${placeId || "unknown"}
 
-Based on your knowledge of this restaurant, its location, cuisine type, and typical atmosphere in Lisbon, score it for each mood from 0.0 to 1.0:
+## Verified Customer Sentiment & Metadata (Context)
+- Quantitative Data: ${sentimentJson}
+- Qualitative Summary: ${moodSummary}
 
-- romantic: Intimate atmosphere, dim lights, date night, couples
-- energetic: Loud, buzzing, lively crowd, high energy, fun
-- chill: Relaxed, no rush, laid-back, warm atmosphere
-- explorer: Unique, hidden gem, unusual menu, off the beaten path
-- focus: Quiet, calm, good for work or study, minimal distractions
-- retreat: Peaceful, slow pace, sanctuary feel, recharge
-- hungry_quick: Fast service, filling food, efficient, no wait
-- celebrating: Special occasions, group celebrations, festive, birthdays
+# Task
+Based on the provided verified customer sentiment metadata, restaurant details, cuisine type, and typical neighborhood context in Lisbon, score the restaurant for each mood from 0.0 to 1.0, map the specific metrics, and extract high-level qualitative insights.
 
-Rules:
-- Score 0.0 if you have no information or it clearly does not apply
-- Score above 0.5 only if you are reasonably confident
-- A restaurant can score high on multiple moods
-- If you do not recognize the restaurant, score based on its name, address, and neighborhood context
+# Mood Definitions & Scoring Criteria
+- romantic: Intimate atmosphere, dim lights, date night, couples.
+- energetic: Loud, buzzing, lively crowd, high energy, fun, busy traditional tasca environment.
+- chill: Relaxed, no rush, laid-back, warm atmosphere, feels like eating at home.
+- explorer: Unique, hidden gem, unusual menu, off the beaten path.
+- focus: Quiet, calm, good for work or study, minimal distractions.
+- retreat: Peaceful, slow pace, sanctuary feel, recharge.
+- hungry_quick: Fast service, filling food, efficient, good for quick lunch menus.
+- celebrating: Special occasions, group celebrations, festive, birthdays, family gatherings.
 
-Return ONLY valid JSON, no markdown, no explanation:
+# Strict Constraints for "insights" Object
+1. general_summary: Must be a highly concise summary of ONLY 1 or 2 sentences maximum. Keep it direct and punchy.
+2. food_admiration: Array of short keywords representing praised dishes or food qualities (e.g., ["bochechas", "lagartos", "farófias", "migas", "cozido à portuguesa", "bacalhau"]).
+3. negative_aspects: Array of short keywords representing weaknesses (e.g., ["estacionamento", "espera", "barulho", "preco"]).
+
+# Strict Output Rules
+1. Rely heavily on the provided "Verified Customer Sentiment & Metadata" to determine the scores, metrics, and insights.
+2. Output MUST be a single, valid JSON object.
+3. Do NOT include any markdown formatting (like json ... ), no pre-text, and no post-text. Return ONLY the raw JSON string.
+
+# Expected Output Format
 {
   "scores": {
     "romantic": 0.0,
@@ -88,10 +102,22 @@ Return ONLY valid JSON, no markdown, no explanation:
     "hungry_quick": 0.0,
     "celebrating": 0.0
   },
+  "metrics": {
+    "rating": 0.0,
+    "rating_source": "String",
+    "positive_comment_rate": 0,
+    "most_frequent_emotion": "String",
+    "primary_sentiment_nuances": ["String", "String"]
+  },
+  "insights": {
+    "general_summary": "1-2 sentences maximum summary text.",
+    "food_admiration": ["bochechas", "lagartos"],
+    "negative_aspects": ["estacionamento", "espera"]
+  },
   "review_count": 0,
   "review_sources": [],
   "top_keywords": [],
-  "confidence": "low"
+  "confidence": "low|medium|high"
 }`;
 
   try {
