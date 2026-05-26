@@ -2,15 +2,15 @@
  * Nomi — Gemini NLP Pipeline
  *
  * Runs nightly. Fetches restaurants with nlp_processed:false from Firestore,
- * analyzes them via Gemini 3.5 Flash + web search (TripAdvisor / RestaurantGuru),
+ * analyzes them via Gemini 2.5 Flash using internal knowledge,
  * computes weighted confidence scores, and writes results back to Firestore.
  *
- * Weight system: PMO(0.41) > NLP(0.32) > validate(0.18) > swipe(0.09)  [normalized to 1.0]
+ * Weight system: PMO(0.41) > NLP(0.32) > validate(0.18) > swipe(0.09) [normalized to 1.0]
  * PMO scale: 1-9 mapped to confidence 0-100
  * Batch: 50 restaurants/day (free tier)
  */
 
-const {GoogleGenerativeAI} = require("@google/generative-ai");
+const {GoogleGenAI} = require("@google/genai");
 const admin = require("firebase-admin");
 
 // Nomi canonical mood tags
@@ -24,48 +24,59 @@ const WEIGHTS = {
   swipe: 0.09,
 };
 
-// PMO score 1-9 -> confidence 0-100
+/**
+ * Maps PMO score (1-9) to confidence (0-100).
+ * @param {number} score - PMO score between 1 and 9
+ * @return {number|null} Confidence value or null if invalid
+ */
 function pmoToConfidence(score) {
   if (!score || score < 1 || score > 9) return null;
   return Math.round(((score - 1) / 8) * 100);
 }
 
-// Gemini NLP score 0-1 -> confidence 0-100
+/**
+ * Maps Gemini NLP score (0-1) to confidence (0-100).
+ * @param {number} score - NLP score between 0 and 1
+ * @return {number} Confidence value
+ */
 function nlpToConfidence(score) {
   return Math.round(score * 100);
 }
 
 /**
- * Runs Gemini analysis for a single restaurant.
- * Uses web search grounding to pull TripAdvisor + RestaurantGuru reviews.
- * @param {object} model - Gemini generative model instance
+ * Runs Gemini analysis for a single restaurant using internal knowledge.
+ * @param {object} ai - GoogleGenAI client instance
  * @param {object} restaurant - Restaurant document from Firestore
  * @return {object|null} Parsed Gemini result or null on failure
  */
-async function analyzeRestaurantWithGemini(model, restaurant) {
+async function analyzeRestaurantWithGemini(ai, restaurant) {
   const {name, address, place_id: placeId} = restaurant;
 
-  const prompt = `You are a restaurant mood analyzer for the Nomi app in Lisbon, Portugal.
+  const prompt = `You are a restaurant mood classifier for Nomi, a restaurant discovery app in Lisbon, Portugal.
 
-Search for reviews of this restaurant:
+Restaurant details:
 - Name: ${name}
 - Address: ${address || "Lisbon, Portugal"}
 - Google Place ID: ${placeId || "unknown"}
 
-Search TripAdvisor, RestaurantGuru, and Google reviews for this restaurant.
-Read at least 10-20 reviews if available.
+Based on your knowledge of this restaurant, its location, cuisine type, and typical atmosphere in Lisbon, score it for each mood from 0.0 to 1.0:
 
-Based on the reviews, score this restaurant for each mood (0.0 to 1.0):
-- romantic: Date night vibes, dim lights, intimate atmosphere, couples mentions
-- energetic: Loud, buzzing, fun, lively crowd, high energy
-- chill: Relaxed, no rush, warm, laid-back atmosphere
-- explorer: Unique, off the beaten path, hidden gem, unusual menu
-- focus: Quiet, good wifi, calm, suitable for work/study
-- retreat: Peaceful, slow pace, recharge, sanctuary feel
-- hungry_quick: Fast service, filling food, no wait, efficient
-- celebrating: Party vibes, special occasions, birthdays, group celebrations
+- romantic: Intimate atmosphere, dim lights, date night, couples
+- energetic: Loud, buzzing, lively crowd, high energy, fun
+- chill: Relaxed, no rush, laid-back, warm atmosphere
+- explorer: Unique, hidden gem, unusual menu, off the beaten path
+- focus: Quiet, calm, good for work or study, minimal distractions
+- retreat: Peaceful, slow pace, sanctuary feel, recharge
+- hungry_quick: Fast service, filling food, efficient, no wait
+- celebrating: Special occasions, group celebrations, festive, birthdays
 
-Return ONLY this JSON, no other text:
+Rules:
+- Score 0.0 if you have no information or it clearly does not apply
+- Score above 0.5 only if you are reasonably confident
+- A restaurant can score high on multiple moods
+- If you do not recognize the restaurant, score based on its name, address, and neighborhood context
+
+Return ONLY valid JSON, no markdown, no explanation:
 {
   "scores": {
     "romantic": 0.0,
@@ -80,19 +91,21 @@ Return ONLY this JSON, no other text:
   "review_count": 0,
   "review_sources": [],
   "top_keywords": [],
-  "confidence": "low|medium|high"
-}
-
-Score 0.0 if no evidence. Score 1.0 if strongly supported by multiple reviews.
-Only score above 0.5 if clearly evident from reviews.`;
+  "confidence": "low"
+}`;
 
   try {
-    const result = await model.generateContent({
+    const result = await ai.models.generateContent({
+      model: "gemini-2.5-flash",
       contents: [{role: "user", parts: [{text: prompt}]}],
-      tools: [{googleSearch: {}}],
+      config: {
+        temperature: 0.1,
+        maxOutputTokens: 1024,
+        thinkingConfig: {thinkingBudget: 0},
+      },
     });
 
-    const response = result.response.text();
+    const response = result.text;
 
     // Strip markdown code fences Gemini sometimes adds
     const cleaned = response.replace(/```json\n?/g, "").replace(/```\n?/g, "").trim();
@@ -151,14 +164,10 @@ function calculateWeightedConfidence(tag, {pmoScores, nlpScores, validateData, s
  */
 async function runGeminiNlpBatch(batchSize = 50) {
   const db = admin.firestore();
-  const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
-
-  const model = genAI.getGenerativeModel({
-    model: "gemini-3.5-flash",
-    generationConfig: {
-      temperature: 0.1, // Low temperature for consistent JSON output
-      maxOutputTokens: 1024,
-    },
+  const ai = new GoogleGenAI({
+    vertexai: true,
+    project: "nomi-mvp",
+    location: "us-central1",
   });
 
   console.log(`[Gemini Pipeline] Starting. Batch size: ${batchSize}`);
@@ -187,7 +196,7 @@ async function runGeminiNlpBatch(batchSize = 50) {
     try {
       console.log(`[Gemini] Analyzing: ${restaurant.name}`);
 
-      const geminiResult = await analyzeRestaurantWithGemini(model, restaurant);
+      const geminiResult = await analyzeRestaurantWithGemini(ai, restaurant);
 
       if (!geminiResult) {
         await doc.ref.update({
@@ -195,6 +204,7 @@ async function runGeminiNlpBatch(batchSize = 50) {
           nlp_error_at: admin.firestore.FieldValue.serverTimestamp(),
         });
         errors++;
+        await new Promise((resolve) => setTimeout(resolve, DELAY_MS));
         continue;
       }
 
@@ -210,12 +220,11 @@ async function runGeminiNlpBatch(batchSize = 50) {
           pmoScores,
           nlpScores: geminiResult.scores,
           validateData: existingConfidences,
-          swipeData: null, // Swipe signal not yet integrated
+          swipeData: null,
         });
 
         if (weighted !== null) {
           newConfidenceScores[tag] = weighted;
-          // Threshold: tag is active if confidence >= 50
           if (weighted >= 50) newMoodTags.push(tag);
         }
       }
@@ -231,10 +240,8 @@ async function runGeminiNlpBatch(batchSize = 50) {
         nlp_confidence_level: geminiResult.confidence || "low",
       });
 
-      console.log(`[Gemini] OK ${restaurant.name}: tags=[${newMoodTags.join(", ")}] reviews=${geminiResult.review_count}`);
+      console.log(`[Gemini] OK ${restaurant.name}: tags=[${newMoodTags.join(", ")}]`);
       processed++;
-
-      await new Promise((resolve) => setTimeout(resolve, DELAY_MS));
     } catch (err) {
       console.error(`[Gemini] Error processing "${restaurant.name}":`, err.message);
       errors++;
@@ -245,6 +252,8 @@ async function runGeminiNlpBatch(batchSize = 50) {
         nlp_error_at: admin.firestore.FieldValue.serverTimestamp(),
       }).catch(() => {});
     }
+
+    await new Promise((resolve) => setTimeout(resolve, DELAY_MS));
   }
 
   await db.collection("pipeline_logs").add({

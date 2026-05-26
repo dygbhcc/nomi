@@ -100,6 +100,7 @@ async function buildRestaurantDocument(place) {
     photos: photos,
     cache_date: admin.firestore.FieldValue.serverTimestamp(),
     is_local_concept: false,
+    nlp_processed: false,
   };
 }
 
@@ -992,5 +993,49 @@ exports.manualGeminiNlp = onRequest(
       const batchSize = req.body?.batchSize || 10;
       const result = await runGeminiNlpBatch(batchSize);
       return res.json(result);
+    },
+);
+
+/**
+ * One-time: set nlp_processed=false on all restaurants missing the field
+ */
+exports.initNlpFlags = onRequest(
+    {
+      region: "europe-west1",
+      timeoutSeconds: 300,
+    },
+    async (req, res) => {
+      const secret = req.headers["x-nomi-secret"];
+      if (secret !== process.env.MANUAL_TRIGGER_SECRET) {
+        return res.status(401).json({error: "Unauthorized"});
+      }
+
+      const snapshot = await db.collection("restaurants").get();
+      const BATCH_SIZE = 400;
+      let batch = db.batch();
+      let batchCount = 0;
+      let updated = 0;
+
+      for (const doc of snapshot.docs) {
+        const data = doc.data();
+        if (data.nlp_processed === undefined || data.nlp_processed === null) {
+          batch.update(doc.ref, {nlp_processed: false});
+          batchCount++;
+          updated++;
+
+          if (batchCount >= BATCH_SIZE) {
+            await batch.commit();
+            batch = db.batch();
+            batchCount = 0;
+          }
+        }
+      }
+
+      if (batchCount > 0) {
+        await batch.commit();
+      }
+
+      logger.info(`initNlpFlags: ${updated}/${snapshot.size} updated`);
+      return res.json({total: snapshot.size, updated});
     },
 );
