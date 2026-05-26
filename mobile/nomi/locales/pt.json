@@ -56,19 +56,42 @@
     "skip": "Saltar",
     "getStarted": "Começar",
     "next": "Seguinte",
-    "slides": {
-      "1": {
-        "title": "Cansado de 'onde vamos comer?'",
-        "subtitle": "Deixa de discutir. Deixa o Nomi decidir."
-      },
-      "2": {
-        "title": "Desliza. Combina. Come.",
-        "subtitle": "Diz-nos o teu humor e orçamento. Encontramos o sítio perfeito em segundos."
-      },
-      "3": {
-        "title": "Chega de caos no chat de grupo",
-        "subtitle": "Todos votam, o Nomi decide. Justo, rápido, divertido."
-      }
+    "back": "Voltar",
+    "decideForMe": "Decide por mim",
+    "letsEat": "Vamos comer",
+    "termsNotice": "Ao continuar, concordas com os Termos e Política de Privacidade do nomi.",
+    "splash": {
+      "tagline1": "deixa o mood",
+      "tagline2": "escolher a comida"
+    },
+    "value1": {
+      "title1": "onde vamos",
+      "title2": "comer?",
+      "subtitle": "A pergunta que ninguém quer responder. Até agora.",
+      "bubble1": "Sushi?",
+      "bubble2": "Pizza?",
+      "bubble3": "sei lá, escolhe tu"
+    },
+    "swipe": {
+      "title1": "Desliza. Combina.",
+      "title2": "Come.",
+      "card1": "Marisqueira Furnas",
+      "card1Price": "$$",
+      "card1Why": "Ótimo sítio de marisco perto de ti",
+      "card2": "Taberna da Rua das Flores",
+      "card2Price": "$$",
+      "card2Why": "Combinação perfeita para o teu mood romântico"
+    },
+    "group": {
+      "title1": "Uma sala.",
+      "title2": "Todos dentro.",
+      "subtitle": "Partilha um link. Votem juntos. O nomi escolhe o vencedor.",
+      "winner": "Tasca do Chico",
+      "votes": "3 votos"
+    },
+    "cta": {
+      "title1": "pronto para",
+      "title2": "algo bom?"
     }
   },
   "mood": {

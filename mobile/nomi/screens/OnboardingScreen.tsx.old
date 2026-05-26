@@ -1,0 +1,581 @@
+import React, { useState, useRef, useEffect } from 'react';
+import {
+  View, Text, Image, TouchableOpacity, ScrollView,
+  Animated, PanResponder, Dimensions, StyleSheet,
+  TextInput, Platform, ViewStyle,
+} from 'react-native';
+
+type Props = {
+  onDone: () => void;
+};
+
+interface RestaurantCard {
+  name: string;
+  price: string;
+  why: string;
+  img: string;
+  isBase64: boolean;
+}
+
+interface FoodItem {
+  img: string;
+  top?: number | `${number}%`;
+  bottom?: number | `${number}%`;
+  left?: number | `${number}%`;
+  right?: number | `${number}%`;
+  size: number;
+}
+
+interface AvatarItem {
+  initials: string;
+  color: string;
+  top?: number;
+  bottom?: number;
+  left?: number;
+  right?: number;
+}
+
+interface NavRowProps {
+  onBack: () => void;
+  onNext: () => void;
+  step: number;
+  totalSteps?: number;
+}
+
+interface ScreenProps {
+  onNext: () => void;
+  onBack: () => void;
+}
+
+interface SwipeCardProps {
+  card: RestaurantCard;
+  onSwipe: (dir: 'like' | 'nope') => void;
+}
+
+// ─── Brand Colors ─────────────────────────────────────────────
+const C = {
+  primary:     '#E06A4F',
+  orange:      '#FF8A3D',
+  accentLight: '#FFC98A',
+  bg:          '#FFF4EE',
+  dark:        '#1C1007',
+  darkCard:    '#2A1A0A',
+  text:        '#2B2B2B',
+  muted:       '#8C6B55',
+} as const;
+
+const { width: SCREEN_WIDTH } = Dimensions.get('window');
+
+// ─── Assets ───────────────────────────────────────────────────
+const FURNAS_IMG = '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';
+
+const RESTAURANT_CARDS: RestaurantCard[] = [
+  { name: 'Marisqueira Furnas',       price: '€€',  why: 'Great seafood spot near you',              img: FURNAS_IMG, isBase64: true  },
+  { name: 'Taberna da Rua das Flores', price: '€€',  why: 'Perfect match for your romantic mood',     img: 'https://images.unsplash.com/photo-1414235077428-338989a2e8c0?w=400&q=80', isBase64: false },
+  { name: 'Solar dos Presuntos',       price: '€€€', why: 'Classic Lisbon — highly rated near you',  img: 'https://images.unsplash.com/photo-1555396273-367ea4eb4db5?w=400&q=80', isBase64: false },
+];
+
+const FOOD_ITEMS: FoodItem[] = [
+  { img: 'https://images.unsplash.com/photo-1565299624946-b28f40a0ae38?w=200&h=200&fit=crop', top: '10%', left:  '12%', size: 76 },
+  { img: 'https://images.unsplash.com/photo-1569718212165-3a8278d5f624?w=200&h=200&fit=crop', top:  '6%', right: '10%', size: 68 },
+  { img: 'https://images.unsplash.com/photo-1546171753-97d7676e4602?w=200&h=200&fit=crop', top: '18%', right: '22%', size: 64 },
+  { img: 'https://images.unsplash.com/photo-1512621776951-a57141f2eefd?w=200&h=200&fit=crop', top: '52%', left:   '6%', size: 64 },
+  { img: 'https://images.unsplash.com/photo-1579584425555-c3ce17fd4351?w=200&h=200&fit=crop', top: '50%', right:  '8%', size: 72 },
+];
+
+// ─── Helpers ──────────────────────────────────────────────────
+function shadow(depth: number = 1): ViewStyle {
+  return {
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: depth * 4 },
+    shadowOpacity: 0.10 + depth * 0.03,
+    shadowRadius: depth * 8,
+    elevation: depth * 3,
+  };
+}
+
+// ─── FloatingFood ─────────────────────────────────────────────
+function FloatingFood(): React.JSX.Element {
+  const anims = useRef<Animated.Value[]>(FOOD_ITEMS.map(() => new Animated.Value(0))).current;
+
+  useEffect(() => {
+    anims.forEach((anim, i) => {
+      Animated.loop(
+        Animated.sequence([
+          Animated.timing(anim, { toValue: 1, duration: 2800 + i * 400, useNativeDriver: true }),
+          Animated.timing(anim, { toValue: 0, duration: 2800 + i * 400, useNativeDriver: true }),
+        ])
+      ).start();
+    });
+  }, []);
+
+  return (
+    <View style={StyleSheet.absoluteFillObject} pointerEvents="none">
+      {FOOD_ITEMS.map((item, i) => {
+        const translateY = anims[i].interpolate({ inputRange: [0, 1], outputRange: [0, -12] });
+        const rotate     = anims[i].interpolate({ inputRange: [0, 1], outputRange: ['-4deg', '4deg'] });
+        const posStyle = {
+          position: 'absolute' as const,
+          ...(item.top    !== undefined && { top:    item.top    }),
+          ...(item.bottom !== undefined && { bottom: item.bottom }),
+          ...(item.left   !== undefined && { left:   item.left   }),
+          ...(item.right  !== undefined && { right:  item.right  }),
+        };
+        return (
+          <Animated.Image
+            key={i}
+            source={{ uri: item.img }}
+            style={[posStyle as any, {
+              width: item.size,
+              height: item.size,
+              transform: [{ translateY }, { rotate }]
+            }]}
+          />
+        );
+      })}
+    </View>
+  );
+}
+
+// ─── NavRow ───────────────────────────────────────────────────
+function NavRow({ onBack, onNext, step, totalSteps = 4 }: NavRowProps): React.JSX.Element {
+  return (
+    <View style={s.navRow}>
+      <TouchableOpacity onPress={onBack} style={s.navBack}>
+        <Text style={s.navBackText}>← Back</Text>
+      </TouchableOpacity>
+      <View style={s.dots}>
+        {Array.from({ length: totalSteps }).map((_, i) => (
+          <View key={i} style={[s.dot, i === step && s.dotActive]} />
+        ))}
+      </View>
+      <TouchableOpacity onPress={onNext} style={s.navNext}>
+        <Text style={s.navNextText}>Next →</Text>
+      </TouchableOpacity>
+    </View>
+  );
+}
+
+// ─── Splash ───────────────────────────────────────────────────
+function Splash({ onNext }: Pick<ScreenProps, 'onNext'>): React.JSX.Element {
+  return (
+    <View style={[s.screen, { backgroundColor: C.bg }]}>
+      <View style={[StyleSheet.absoluteFillObject, { overflow: 'hidden' }]} pointerEvents="none">
+        <View style={{ position: 'absolute' as const, top: -50, right: -50, width: 240, height: 240, borderRadius: 120, backgroundColor: 'rgba(255,138,61,0.10)' }} />
+        <View style={{ position: 'absolute' as const, bottom: 80, left: -70, width: 200, height: 200, borderRadius: 100, backgroundColor: 'rgba(224,106,79,0.08)' }} />
+        <FloatingFood />
+      </View>
+      <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 32, zIndex: 2 }}>
+        <Image
+          source={require("../assets/nomi-logo.png")}
+          style={{ width: 200, height: 80, resizeMode: "contain", marginBottom: 32 }}
+        />
+
+        <Text style={s.splashTitle}>
+          let the mood{'\n'}
+          <Text style={{ color: C.primary }}>choose the food</Text>
+        </Text>
+      </View>
+      <View style={{ paddingHorizontal: 28, paddingBottom: 48 }}>
+        <TouchableOpacity onPress={onNext} style={s.primaryBtn}>
+          <Text style={s.primaryBtnText}>Get started →</Text>
+        </TouchableOpacity>
+      </View>
+    </View>
+  );
+}
+
+// ─── Value1 ───────────────────────────────────────────────────
+function Value1({ onNext, onBack }: ScreenProps): React.JSX.Element {
+  return (
+    <View style={[s.screen, { backgroundColor: C.bg }]}>
+      <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 32 }}>
+        <View style={s.chatBubbles}>
+          <View style={[s.bubble, s.bubbleLeft]}>
+            <Text style={s.bubbleText}>Sushi? 🍣</Text>
+          </View>
+          <View style={[s.bubble, s.bubbleRight]}>
+            <Text style={[s.bubbleText, { color: C.primary }]}>Pizza? 🍕</Text>
+          </View>
+          <View style={[s.bubble, s.bubbleCenter]}>
+            <Text style={[s.bubbleText, { color: C.muted }]}>idk, you choose 🤷</Text>
+          </View>
+        </View>
+        <Text style={s.valueTitle}>
+          where should{'\n'}
+          <Text style={{ color: C.primary }}>we eat?</Text>
+        </Text>
+        <Text style={s.valueSubtitle}>The question nobody wants to answer. Until now.</Text>
+      </View>
+      <NavRow onBack={onBack} onNext={onNext} step={0} />
+    </View>
+  );
+}
+
+// ─── SwipeCard ────────────────────────────────────────────────
+function SwipeCard({ card, onSwipe }: SwipeCardProps): React.JSX.Element | null {
+  const pan    = useRef(new Animated.ValueXY()).current;
+  const wiggle = useRef(new Animated.Value(0)).current;
+  const [gone, setGone] = useState(false);
+
+  useEffect(() => {
+    const t = setTimeout(() => {
+      Animated.sequence([
+        Animated.timing(wiggle, { toValue:  18, duration: 160, useNativeDriver: true }),
+        Animated.timing(wiggle, { toValue: -18, duration: 160, useNativeDriver: true }),
+        Animated.timing(wiggle, { toValue:  10, duration: 120, useNativeDriver: true }),
+        Animated.timing(wiggle, { toValue:  -5, duration: 100, useNativeDriver: true }),
+        Animated.timing(wiggle, { toValue:   0, duration:  80, useNativeDriver: true }),
+      ]).start();
+    }, 700);
+    return () => clearTimeout(t);
+  }, []);
+
+  const panResponder = useRef(
+    PanResponder.create({
+      onMoveShouldSetPanResponder: (_, g) => Math.abs(g.dx) > 5,
+      onPanResponderMove: Animated.event([null, { dx: pan.x, dy: pan.y }], { useNativeDriver: false }),
+      onPanResponderRelease: (_, g) => {
+        if (Math.abs(g.dx) > 80) {
+          const dir = g.dx > 0 ? 1 : -1;
+          Animated.timing(pan, {
+            toValue: { x: dir * (SCREEN_WIDTH + 100), y: g.dy },
+            duration: 300,
+            useNativeDriver: true,
+          }).start(() => {
+            setGone(true);
+            onSwipe(dir > 0 ? 'like' : 'nope');
+          });
+        } else {
+          Animated.spring(pan, { toValue: { x: 0, y: 0 }, useNativeDriver: true }).start();
+        }
+      },
+    })
+  ).current;
+
+  if (gone) return null;
+
+  const rotate  = pan.x.interpolate({ inputRange: [-150, 150], outputRange: ['-8deg', '8deg'] });
+  const likeOp  = pan.x.interpolate({ inputRange: [0,   80], outputRange: [0, 1], extrapolate: 'clamp' });
+  const nopeOp  = pan.x.interpolate({ inputRange: [-80,  0], outputRange: [1, 0], extrapolate: 'clamp' });
+
+  const imgSrc = card.isBase64
+    ? { uri: `data:image/jpeg;base64,${card.img}` }
+    : { uri: card.img };
+
+  return (
+    <Animated.View
+      style={[s.swipeCard, { transform: [{ translateX: Animated.add(pan.x, wiggle) }, { translateY: pan.y }, { rotate }] }]}
+      {...panResponder.panHandlers}
+    >
+      <Animated.View style={[s.stamp, s.stampLike, { opacity: likeOp }]}>
+        <Text style={[s.stampText, { color: '#3aaa72', borderColor: '#3aaa72' }]}>LIKE</Text>
+      </Animated.View>
+      <Animated.View style={[s.stamp, s.stampNope, { opacity: nopeOp }]}>
+        <Text style={[s.stampText, { color: C.primary, borderColor: C.primary }]}>NOPE</Text>
+      </Animated.View>
+
+      <View style={{ height: 220, overflow: 'hidden' }}>
+        <Image source={imgSrc} style={{ width: '100%', height: '100%' }} resizeMode="cover" />
+        <View style={s.photoTag}>
+          <Text style={s.photoTagText}>Photo from Google</Text>
+        </View>
+        <View style={s.swipeHint}>
+          <Text style={s.swipeHintText}>← swipe →</Text>
+        </View>
+      </View>
+
+      <View style={{ paddingHorizontal: 16, paddingTop: 14, paddingBottom: 8 }}>
+        <Text style={s.cardName}>{card.name}</Text>
+        <Text style={s.cardPrice}>{card.price}</Text>
+      </View>
+      <View style={s.whyBox}>
+        <Text style={s.whyLabel}>WHY FOR YOU?</Text>
+        <Text style={s.whyText}>{card.why}</Text>
+      </View>
+    </Animated.View>
+  );
+}
+
+// ─── SwipeMatch ───────────────────────────────────────────────
+function SwipeMatch({ onNext, onBack }: ScreenProps): React.JSX.Element {
+  const [cards, setCards] = useState<RestaurantCard[]>(RESTAURANT_CARDS);
+  const deck = cards.length === 0 ? RESTAURANT_CARDS : cards;
+
+  const handleSwipe = (_dir: 'like' | 'nope'): void => {
+    setCards(prev => {
+      const next = prev.slice(1);
+      return next.length === 0 ? RESTAURANT_CARDS : next;
+    });
+  };
+
+  return (
+    <View style={[s.screen, { backgroundColor: '#fff' }]}>
+      <View style={{ paddingHorizontal: 20, paddingTop: 16 }}>
+        <View style={{ height: 420, position: 'relative' }}>
+          {[...deck].reverse().map((card, i) => {
+            const idx   = deck.length - 1 - i;
+            const isTop = idx === 0;
+            const scale = 1 - (deck.length - 1 - idx) * 0.035;
+            const ty    = (deck.length - 1 - idx) * 7;
+
+            if (isTop) {
+              return <SwipeCard key={card.name} card={card} onSwipe={handleSwipe} />;
+            }
+            return (
+              <View
+                key={card.name + i}
+                style={[StyleSheet.absoluteFillObject, { transform: [{ scale }, { translateY: -ty }], zIndex: 0 }]}
+              >
+                <View style={s.backCard}>
+                  <Image
+                    source={card.isBase64 ? { uri: `data:image/jpeg;base64,${card.img}` } : { uri: card.img }}
+                    style={{ width: '100%', height: 220 }}
+                    resizeMode="cover"
+                  />
+                  <View style={{ padding: 14 }}>
+                    <Text style={s.cardName}>{card.name}</Text>
+                    <Text style={s.cardPrice}>{card.price}</Text>
+                  </View>
+                </View>
+              </View>
+            );
+          })}
+        </View>
+
+        <View style={s.actionBtns}>
+          <TouchableOpacity onPress={() => handleSwipe('nope')} style={s.btnNope}>
+            <Text style={{ fontSize: 20, color: C.primary }}>✕</Text>
+          </TouchableOpacity>
+          <TouchableOpacity onPress={() => handleSwipe('like')} style={s.btnLike}>
+            <Text style={{ fontSize: 20, color: '#fff' }}>♥</Text>
+          </TouchableOpacity>
+        </View>
+      </View>
+
+      <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}>
+        <Text style={s.swiperSlogan}>
+          Swipe. Match. <Text style={{ color: C.primary }}>Eat.</Text>
+        </Text>
+      </View>
+
+      <NavRow onBack={onBack} onNext={onNext} step={1} />
+    </View>
+  );
+}
+
+// ─── GroupDecision ────────────────────────────────────────────
+function GroupDecision({ onNext, onBack }: ScreenProps): React.JSX.Element {
+  const AVTS: AvatarItem[] = [
+    { initials: 'Y', color: C.primary, top:  10, left:  10 },
+    { initials: 'M', color: '#3aaa72', top:   8, right: 10 },
+    { initials: 'J', color: C.primary, bottom: 0, left:  0 },
+    { initials: 'K', color: C.primary, bottom: 0, right: 10 },
+  ];
+
+  return (
+    <View style={[s.screen, { backgroundColor: C.bg }]}>
+      <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 32 }}>
+        <View style={{ width: 240, height: 160, position: 'relative', marginBottom: 36 }}>
+          <View style={s.winnerCard}>
+            <Text style={{ fontSize: 28 }}>🏆</Text>
+            <Text style={s.winnerName}>Tasca do Chico</Text>
+            <Text style={s.winnerVotes}>3 votes ✓</Text>
+          </View>
+          {AVTS.map((a, i) => (
+            <View
+              key={i}
+              style={[
+                s.avatar,
+                {
+                  backgroundColor: a.color,
+                  ...(a.top    !== undefined && { top:    a.top    }),
+                  ...(a.bottom !== undefined && { bottom: a.bottom }),
+                  ...(a.left   !== undefined && { left:   a.left   }),
+                  ...(a.right  !== undefined && { right:  a.right  }),
+                },
+              ]}
+            >
+              <Text style={{ color: '#fff', fontWeight: '800', fontSize: 16 }}>{a.initials}</Text>
+              <View style={s.avatarBadge}>
+                <Text style={{ fontSize: 8 }}>{i === 1 ? '⬆' : '♥'}</Text>
+              </View>
+            </View>
+          ))}
+        </View>
+
+        <Text style={s.valueTitle}>
+          One room.{'\n'}
+          <Text style={{ color: C.primary }}>Everyone in.</Text>
+        </Text>
+        <Text style={s.valueSubtitle}>Share a link. Vote together. nomi picks the winner.</Text>
+      </View>
+      <NavRow onBack={onBack} onNext={onNext} step={2} />
+    </View>
+  );
+}
+
+// ─── CTA ──────────────────────────────────────────────────────
+function CTA({ onBack }: Pick<ScreenProps, 'onBack'>): React.JSX.Element {
+  const [email, setEmail] = useState('');
+  const [done,  setDone ] = useState(false);
+
+  return (
+    <View style={[s.screen, { backgroundColor: C.bg }]}>
+      <ScrollView contentContainerStyle={{ flexGrow: 1, padding: 28 }}>
+        <View style={{ flex: 1, justifyContent: 'center' }}>
+          <Text style={s.ctaTitle}>
+            ready for{'\n'}
+            <Text style={{ color: C.primary }}>something good?</Text>
+          </Text>
+
+          {!done ? (
+            <>
+              <TextInput
+                placeholder="your@email.com"
+                placeholderTextColor={C.muted}
+                value={email}
+                onChangeText={setEmail}
+                keyboardType="email-address"
+                autoCapitalize="none"
+                style={[s.input, email.length > 0 && { borderColor: C.primary }]}
+              />
+              <TouchableOpacity
+                onPress={() => email.length > 0 && setDone(true)}
+                style={[s.primaryBtn, email.length === 0 && { backgroundColor: '#DDD5D0' }]}
+              >
+                <Text style={s.primaryBtnText}>Let's eat →</Text>
+              </TouchableOpacity>
+
+              <View style={s.divider}>
+                <View style={s.dividerLine} />
+                <Text style={[s.dividerText, { marginHorizontal: 12 }]}>or</Text>
+                <View style={s.dividerLine} />
+              </View>
+
+              <TouchableOpacity style={s.googleBtn}>
+                <Text style={s.googleBtnText}>🇬  Continue with Google</Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity style={{ marginTop: 12, alignItems: 'center' }}>
+                <Text style={{ color: C.muted, fontSize: 14 }}>Continue as guest</Text>
+              </TouchableOpacity>
+            </>
+          ) : (
+            <View style={s.successBox}>
+              <Text style={{ fontSize: 48, marginBottom: 16 }}>🎉</Text>
+              <Text style={s.successTitle}>You're in!</Text>
+              <Text style={s.successSub}>Welcome to nomi. Your next great dinner is one swipe away.</Text>
+            </View>
+          )}
+        </View>
+        <Text style={s.terms}>By continuing, you agree to nomi's Terms & Privacy Policy.</Text>
+      </ScrollView>
+      <View style={s.navRow}>
+        <TouchableOpacity onPress={onBack} style={s.navBack}>
+          <Text style={s.navBackText}>← Back</Text>
+        </TouchableOpacity>
+      </View>
+    </View>
+  );
+}
+
+// ─── Main ─────────────────────────────────────────────────────
+type Screen = 'splash' | 'value1' | 'swipe' | 'group' | 'cta';
+const SCREENS: Screen[] = ['splash', 'value1', 'swipe', 'group', 'cta'];
+
+export default function OnboardingScreen({ onDone }: Props): React.JSX.Element {
+  const [step, setStep] = useState(0);
+
+  const go = (delta: number): void => {
+    const next = step + delta;
+    if (next >= SCREENS.length) {
+      onDone();
+      return;
+    }
+    setStep(Math.max(0, next));
+  };
+
+  return (
+    <View style={{ flex: 1 }}>
+      {step === 0 && <Splash  onNext={() => go(1)} />}
+      {step === 1 && <Value1  onNext={() => go(1)} onBack={() => go(-1)} />}
+      {step === 2 && <SwipeMatch onNext={() => go(1)} onBack={() => go(-1)} />}
+      {step === 3 && <GroupDecision onNext={() => go(1)} onBack={() => go(-1)} />}
+      {step === 4 && <CTA    onBack={() => go(-1)} />}
+    </View>
+  );
+}
+
+// ─── StyleSheet ───────────────────────────────────────────────
+const s = StyleSheet.create({
+  screen:         { flex: 1 },
+
+  // Nav
+  navRow:         { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 28, paddingBottom: Platform.OS === 'ios' ? 32 : 20, paddingTop: 12 },
+  navBack:        { padding: 8 },
+  navBackText:    { color: C.muted, fontSize: 15, fontWeight: '600' },
+  navNext:        { backgroundColor: C.primary, paddingHorizontal: 20, paddingVertical: 10, borderRadius: 50 },
+  navNextText:    { color: '#fff', fontSize: 15, fontWeight: '700' },
+  dots:           { flexDirection: 'row', gap: 6 },
+  dot:            { width: 6,  height: 6,  borderRadius: 3,  backgroundColor: 'rgba(224,106,79,0.25)' },
+  dotActive:      { width: 20, height: 6,  borderRadius: 3,  backgroundColor: C.primary },
+
+  // Splash
+  splashTitle:    { fontSize: 34, fontWeight: '800', textAlign: 'center', lineHeight: 44, letterSpacing: -1, color: C.text, marginBottom: 16 },
+  primaryBtn:     { backgroundColor: C.primary, borderRadius: 50, paddingVertical: 18, alignItems: 'center' },
+  primaryBtnText: { color: '#fff', fontSize: 17, fontWeight: '700' },
+
+  // Chat bubbles
+  chatBubbles:    { width: 280, height: 130, position: 'relative', marginBottom: 28 },
+  bubble:         { position: 'absolute' as const, paddingHorizontal: 16, paddingVertical: 10, borderRadius: 18, backgroundColor: '#fff', ...shadow(1) },
+  bubbleLeft:     { left: 0, top: 24, borderBottomLeftRadius: 4 },
+  bubbleRight:    { right: 0, top: 0, borderBottomRightRadius: 4, backgroundColor: 'rgba(224,106,79,0.08)', borderWidth: 1.5, borderColor: 'rgba(224,106,79,0.2)' },
+  bubbleCenter:   { bottom: 0, alignSelf: 'center', borderBottomLeftRadius: 4 },
+  bubbleText:     { fontSize: 14, fontWeight: '600', color: C.text },
+
+  // Value screens
+  valueTitle:     { fontSize: 36, fontWeight: '800', textAlign: 'center', lineHeight: 46, letterSpacing: -1, color: C.text, marginBottom: 14 },
+  valueSubtitle:  { fontSize: 16, color: C.muted, textAlign: 'center', lineHeight: 24 },
+
+  // Swipe card
+  swipeCard:      { position: 'absolute' as const, width: '100%', borderRadius: 24, backgroundColor: '#fff', overflow: 'hidden', ...shadow(2) },
+  stamp:          { position: 'absolute' as const, top: 24, zIndex: 10 },
+  stampLike:      { left: 16, transform: [{ rotate: '-15deg' }] },
+  stampNope:      { right: 16, transform: [{ rotate: '15deg' }] },
+  stampText:      { fontSize: 20, fontWeight: '900', letterSpacing: 2, borderWidth: 3, borderRadius: 8, paddingHorizontal: 14, paddingVertical: 4 },
+  photoTag:       { position: 'absolute' as const, bottom: 8, right: 10, backgroundColor: 'rgba(0,0,0,0.3)', borderRadius: 4, paddingHorizontal: 6, paddingVertical: 2 },
+  photoTagText:   { color: 'rgba(255,255,255,0.85)', fontSize: 10 },
+  swipeHint:      { position: 'absolute' as const, bottom: 8, left: 0, right: 0, alignItems: 'center' },
+  swipeHintText:  { color: 'rgba(255,255,255,0.8)', fontSize: 12, fontWeight: '600', letterSpacing: 1 },
+  cardName:       { fontSize: 18, fontWeight: '700', color: C.text, marginBottom: 2 },
+  cardPrice:      { fontSize: 14, color: C.muted },
+  whyBox:         { marginHorizontal: 16, marginBottom: 16, marginTop: 4, backgroundColor: 'rgba(224,106,79,0.07)', borderRadius: 12, padding: 12 },
+  whyLabel:       { fontSize: 11, fontWeight: '700', color: C.primary, textTransform: 'uppercase', letterSpacing: 1, marginBottom: 4 },
+  whyText:        { fontSize: 13, color: C.text, lineHeight: 20 },
+  backCard:       { borderRadius: 24, overflow: 'hidden', backgroundColor: '#fff', ...shadow(1) },
+  actionBtns:     { flexDirection: 'row', justifyContent: 'center', gap: 16, marginTop: 12 },
+  btnNope:        { width: 46, height: 46, borderRadius: 23, borderWidth: 1.5, borderColor: C.primary, backgroundColor: '#fff', alignItems: 'center', justifyContent: 'center', ...shadow(1) },
+  btnLike:        { width: 46, height: 46, borderRadius: 23, backgroundColor: C.primary, alignItems: 'center', justifyContent: 'center', ...shadow(1) },
+  swiperSlogan:   { fontSize: 26, fontWeight: '800', letterSpacing: -0.5, color: C.text, textAlign: 'center' },
+
+  // Group
+  winnerCard:     { position: 'absolute' as const, top: '50%', left: '50%', transform: [{ translateX: -80 }, { translateY: -50 }], backgroundColor: '#fff', borderRadius: 20, padding: 14, alignItems: 'center', zIndex: 2, ...shadow(2), width: 160 },
+  winnerName:     { fontWeight: '800', fontSize: 13, color: C.text, marginTop: 4 },
+  winnerVotes:    { fontSize: 11, color: C.primary, fontWeight: '600' },
+  avatar:         { position: 'absolute' as const, width: 44, height: 44, borderRadius: 22, alignItems: 'center', justifyContent: 'center', borderWidth: 2, borderColor: '#fff', ...shadow(1) },
+  avatarBadge:    { position: 'absolute' as const, bottom: -2, right: -2, width: 14, height: 14, borderRadius: 7, backgroundColor: '#fff', alignItems: 'center', justifyContent: 'center' },
+
+  // CTA
+  ctaTitle:       { fontSize: 34, fontWeight: '800', lineHeight: 44, letterSpacing: -1, color: C.text, marginBottom: 32 },
+  input:          { backgroundColor: '#fff', borderWidth: 1.5, borderColor: '#E8DDD8', borderRadius: 14, paddingHorizontal: 18, paddingVertical: 16, fontSize: 16, color: C.text, marginBottom: 12 },
+  divider:        { flexDirection: 'row', alignItems: 'center', marginVertical: 20 },
+  dividerLine:    { flex: 1, height: 1, backgroundColor: '#E8DDD8' },
+  dividerText:    { color: C.muted, fontSize: 13 },
+  googleBtn:      { borderWidth: 1.5, borderColor: '#E8DDD8', borderRadius: 50, paddingVertical: 15, alignItems: 'center', backgroundColor: '#fff' },
+  googleBtnText:  { color: C.text, fontSize: 15, fontWeight: '600' },
+  successBox:     { alignItems: 'center', padding: 32, backgroundColor: '#fff', borderRadius: 20, borderWidth: 1.5, borderColor: 'rgba(224,106,79,0.2)' },
+  successTitle:   { fontWeight: '800', fontSize: 22, color: C.text, marginBottom: 8 },
+  successSub:     { color: C.muted, fontSize: 14, lineHeight: 22, textAlign: 'center' },
+  terms:          { textAlign: 'center', color: C.muted, fontSize: 12, lineHeight: 18, marginTop: 16 },
+});

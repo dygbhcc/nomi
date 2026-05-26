@@ -56,19 +56,42 @@
     "skip": "Skip",
     "getStarted": "Get Started",
     "next": "Next",
-    "slides": {
-      "1": {
-        "title": "Tired of 'where should we eat?'",
-        "subtitle": "Stop arguing. Let Nomi decide."
-      },
-      "2": {
-        "title": "Swipe. Match. Eat.",
-        "subtitle": "Tell us your mood and budget. We'll find the perfect spot in seconds."
-      },
-      "3": {
-        "title": "No more group chat chaos",
-        "subtitle": "Everyone votes, Nomi decides. Fair, fast, fun."
-      }
+    "back": "Back",
+    "decideForMe": "Decide for me",
+    "letsEat": "Let's eat",
+    "termsNotice": "By continuing, you agree to nomi's Terms & Privacy Policy.",
+    "splash": {
+      "tagline1": "let the mood",
+      "tagline2": "choose the food"
+    },
+    "value1": {
+      "title1": "where should",
+      "title2": "we eat?",
+      "subtitle": "The question nobody wants to answer. Until now.",
+      "bubble1": "Sushi?",
+      "bubble2": "Pizza?",
+      "bubble3": "idk, you choose"
+    },
+    "swipe": {
+      "title1": "Swipe. Match.",
+      "title2": "Eat.",
+      "card1": "Marisqueira Furnas",
+      "card1Price": "$$",
+      "card1Why": "Great seafood spot near you",
+      "card2": "Taberna da Rua das Flores",
+      "card2Price": "$$",
+      "card2Why": "Perfect match for your romantic mood"
+    },
+    "group": {
+      "title1": "One room.",
+      "title2": "Everyone in.",
+      "subtitle": "Share a link. Vote together. nomi picks the winner.",
+      "winner": "Tasca do Chico",
+      "votes": "3 votes"
+    },
+    "cta": {
+      "title1": "ready for",
+      "title2": "something good?"
     }
   },
   "mood": {
