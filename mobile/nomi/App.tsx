@@ -151,6 +151,7 @@ function AppNavigator() {
         <SwipeScreen
           selectedMoods={selectedMoods}
           budgetLevel={selectedBudget}
+          selectedDistance={selectedDistance}
           onBack={() => setScreen("budget")}
           onChangePreferences={() => setScreen("mood")}
           onDetail={(restaurant) => {

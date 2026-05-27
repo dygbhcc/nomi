@@ -1298,11 +1298,29 @@ exports.importPmoScores = onRequest(
 );
 
 /**
+ * Haversine distance in metres between two lat/lng points
+ * @param {number} lat1 - Latitude of point 1
+ * @param {number} lng1 - Longitude of point 1
+ * @param {number} lat2 - Latitude of point 2
+ * @param {number} lng2 - Longitude of point 2
+ * @return {number} Distance in metres
+ */
+function haversineDistance(lat1, lng1, lat2, lng2) {
+  const R = 6371000; // metres
+  const toRad = (d) => d * Math.PI / 180;
+  const dLat = toRad(lat2 - lat1);
+  const dLng = toRad(lng2 - lng1);
+  const a = Math.sin(dLat / 2) ** 2 +
+    Math.cos(toRad(lat1)) * Math.cos(toRad(lat2)) * Math.sin(dLng / 2) ** 2;
+  return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+}
+
+/**
  * Smart 6 Recommendation Algorithm
  * Returns 6 personalized restaurant recommendations based on mood, budget,
- * swipe history, and diversity rules.
+ * distance, swipe history, and diversity rules.
  *
- * Input: { userId, moods[], budgetLevel }
+ * Input: { userId, moods[], budgetLevel, distance, userLat, userLng }
  * Output: { restaurants[6], meta: { algorithm, candidateCount, fallback, secondChance } }
  */
 exports.getSmartRecommendations = onCall(
@@ -1311,7 +1329,7 @@ exports.getSmartRecommendations = onCall(
       timeoutSeconds: 30,
     },
     async (request) => {
-      const {userId, moods = [], budgetLevel} = request.data || {};
+      const {userId, moods = [], budgetLevel, distance, userLat, userLng} = request.data || {};
 
       // Normalize moods: "hungry&quick" → "hungry_quick"
       const normalizedMoods = moods.map((m) =>
@@ -1329,14 +1347,31 @@ exports.getSmartRecommendations = onCall(
         // --- 1. Build candidate pool ---
         let candidates = [];
 
-        // Primary query: mood_tags + business_status OPERATIONAL
-        if (normalizedMoods.length > 0) {
-          const moodQuery = db.collection("restaurants")
+        // Primary query: mood_tags + business_status OPERATIONAL + budget_level
+        if (normalizedMoods.length > 0 && budgetLevel) {
+          const primaryQuery = db.collection("restaurants")
+              .where("mood_tags", "array-contains-any", normalizedMoods)
+              .where("business_status", "==", "OPERATIONAL")
+              .where("budget_level", "==", budgetLevel)
+              .limit(100);
+          const primarySnap = await primaryQuery.get();
+          candidates = primarySnap.docs.map((doc) => ({id: doc.id, ...doc.data()}));
+        }
+
+        // Fallback tier 0: mood + business_status (no budget filter)
+        if (candidates.length < 10 && normalizedMoods.length > 0) {
+          const moodStatusQuery = db.collection("restaurants")
               .where("mood_tags", "array-contains-any", normalizedMoods)
               .where("business_status", "==", "OPERATIONAL")
               .limit(100);
-          const moodSnap = await moodQuery.get();
-          candidates = moodSnap.docs.map((doc) => ({id: doc.id, ...doc.data()}));
+          const moodStatusSnap = await moodStatusQuery.get();
+          const existingIds = new Set(candidates.map((c) => c.id));
+          moodStatusSnap.docs.forEach((doc) => {
+            if (!existingIds.has(doc.id)) {
+              candidates.push({id: doc.id, ...doc.data()});
+              existingIds.add(doc.id);
+            }
+          });
         }
 
         // Fallback tier 1: mood only (no business_status filter)
@@ -1383,6 +1418,28 @@ exports.getSmartRecommendations = onCall(
         }
 
         meta.candidateCount = candidates.length;
+
+        // --- 1b. Distance filtering ---
+        if (userLat != null && userLng != null) {
+          candidates = candidates.map((c) => {
+            const lat = c.location?.lat;
+            const lng = c.location?.lng;
+            if (lat != null && lng != null) {
+              const dist = haversineDistance(userLat, userLng, lat, lng);
+              c._distanceMetres = dist;
+              c.distance = dist < 1000 ?
+                `${Math.round(dist)} m` :
+                `${(dist / 1000).toFixed(1)} km`;
+            }
+            return c;
+          });
+
+          if (distance) {
+            candidates = candidates.filter(
+                (c) => c._distanceMetres == null || c._distanceMetres <= distance,
+            );
+          }
+        }
 
         // --- 2. Fetch ALL swipe history ---
         const likedIds = new Set();
@@ -1560,8 +1617,10 @@ exports.getSmartRecommendations = onCall(
 
         // Clean internal fields before returning
         const restaurants = selected.map((c) => {
-          const {_selectionScore, _secondChance, ...rest} = c;
-          return rest;
+          delete c._selectionScore;
+          delete c._secondChance;
+          delete c._distanceMetres;
+          return c;
         });
 
         return {restaurants, meta};

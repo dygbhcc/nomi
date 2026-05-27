@@ -36,9 +36,14 @@ function budgetSymbol(level: number): string {
   return "\u20AC".repeat(level);
 }
 
+// Default location: Lisbon center (used for web and mobile)
+const DEFAULT_LAT = 38.7223;
+const DEFAULT_LNG = -9.1393;
+
 type Props = {
   selectedMoods: string[];
   budgetLevel: number;
+  selectedDistance: number | null;
   onBack: () => void;
   onChangePreferences: () => void;
   onDetail: (restaurant: Restaurant) => void;
@@ -47,7 +52,7 @@ type Props = {
 
 export { type Restaurant };
 
-export default function SwipeScreen({ selectedMoods, budgetLevel, onBack, onChangePreferences, onDetail, onShowLiked }: Props) {
+export default function SwipeScreen({ selectedMoods, budgetLevel, selectedDistance, onBack, onChangePreferences, onDetail, onShowLiked }: Props) {
   const { t } = useTranslation();
   const { user } = useAuth();
   const [restaurants, setRestaurants] = useState<Restaurant[]>([]);
@@ -63,7 +68,14 @@ export default function SwipeScreen({ selectedMoods, budgetLevel, onBack, onChan
       setLoading(true);
       setError(null);
       try {
-        const result = await getSmartRecommendations(user?.uid ?? null, selectedMoods, budgetLevel);
+        const result = await getSmartRecommendations(
+          user?.uid ?? null,
+          selectedMoods,
+          budgetLevel,
+          selectedDistance,
+          DEFAULT_LAT,
+          DEFAULT_LNG
+        );
         const withReasons = result.restaurants.map(r => ({
           ...r,
           reason: buildReason(r, selectedMoods),
@@ -77,7 +89,7 @@ export default function SwipeScreen({ selectedMoods, budgetLevel, onBack, onChan
       }
     };
     fetchRestaurants();
-  }, [selectedMoods, budgetLevel]);
+  }, [selectedMoods, budgetLevel, selectedDistance]);
 
   const batchEnd = batchStart + BATCH_SIZE;
   const currentBatch = restaurants.slice(batchStart, batchEnd);
@@ -187,7 +199,14 @@ export default function SwipeScreen({ selectedMoods, budgetLevel, onBack, onChan
     setLoading(true);
     setError(null);
     try {
-      const result = await getSmartRecommendations(user?.uid ?? null, selectedMoods, budgetLevel);
+      const result = await getSmartRecommendations(
+        user?.uid ?? null,
+        selectedMoods,
+        budgetLevel,
+        selectedDistance,
+        DEFAULT_LAT,
+        DEFAULT_LNG
+      );
       const withReasons = result.restaurants.map(r => ({
         ...r,
         reason: buildReason(r, selectedMoods),

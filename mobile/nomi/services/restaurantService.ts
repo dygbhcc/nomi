@@ -104,15 +104,18 @@ export type SmartRecommendationsResult = {
 export const getSmartRecommendations = async (
   userId: string | null,
   moods: string[],
-  budgetLevel: number
+  budgetLevel: number,
+  distance?: number | null,
+  userLat?: number | null,
+  userLng?: number | null
 ): Promise<SmartRecommendationsResult> => {
   try {
     const callable = httpsCallable<
-      { userId: string | null; moods: string[]; budgetLevel: number },
+      { userId: string | null; moods: string[]; budgetLevel: number; distance?: number | null; userLat?: number | null; userLng?: number | null },
       { restaurants: Restaurant[]; meta: SmartRecommendationsMeta }
     >(functions, 'getSmartRecommendations');
 
-    const result = await callable({ userId, moods, budgetLevel });
+    const result = await callable({ userId, moods, budgetLevel, distance, userLat, userLng });
     return {
       restaurants: result.data.restaurants,
       meta: result.data.meta,
