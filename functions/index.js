@@ -181,7 +181,9 @@ async function fetchAndCacheByCoordinates({lat, lng, radius = 800, maxResults = 
     radius: radiusNumber,
     type: "restaurant",
   });
-  const selected = nearby.slice(0, maxResultsNumber);
+  // Skip permanently closed restaurants — no need to spend effort on them
+  const filtered = nearby.filter((p) => p.business_status !== "CLOSED_PERMANENTLY");
+  const selected = filtered.slice(0, maxResultsNumber);
 
   const detailedPlaces = await Promise.all(
       selected.map(async (item) => {
@@ -200,6 +202,7 @@ async function fetchAndCacheByCoordinates({lat, lng, radius = 800, maxResults = 
   const restaurants = (await Promise.all(
       detailedPlaces
           .filter(Boolean)
+          .filter((place) => place.business_status !== "CLOSED_PERMANENTLY")
           .map(async (place) => {
             try {
               return await buildRestaurantDocument(place);
@@ -349,11 +352,13 @@ exports.markClosedRestaurants = onCall(
       logger.info(`Found ${snapshot.size} restaurants to check`);
 
       let checked = 0;
-      let markedClosed = 0;
+      let deletedPermanently = 0;
+      let markedTemporary = 0;
       let markedOpen = 0;
       let errors = 0;
       let batch = db.batch();
       let batchCount = 0;
+      const deletedList = [];
 
       for (const doc of snapshot.docs) {
         try {
@@ -376,30 +381,36 @@ exports.markClosedRestaurants = onCall(
           }
 
           const businessStatus = details.business_status || "OPERATIONAL";
-          const isClosed = businessStatus === "CLOSED_PERMANENTLY" ||
-                          businessStatus === "CLOSED_TEMPORARILY";
-
-          // Update the document
           const ref = db.collection("restaurants").doc(doc.id);
-          batch.update(ref, {
-            business_status: businessStatus,
-            last_status_check: admin.firestore.FieldValue.serverTimestamp(),
-          });
 
-          batchCount++;
-          if (isClosed) {
-            markedClosed++;
+          if (businessStatus === "CLOSED_PERMANENTLY") {
+            // Delete permanently closed restaurants — no need to keep them
+            batch.delete(ref);
+            batchCount++;
+            deletedPermanently++;
+            deletedList.push({name: restaurant.name, place_id: placeId});
+          } else if (businessStatus === "CLOSED_TEMPORARILY") {
+            batch.update(ref, {
+              business_status: businessStatus,
+              last_status_check: admin.firestore.FieldValue.serverTimestamp(),
+            });
+            batchCount++;
+            markedTemporary++;
           } else {
+            batch.update(ref, {
+              business_status: businessStatus,
+              last_status_check: admin.firestore.FieldValue.serverTimestamp(),
+            });
+            batchCount++;
             markedOpen++;
           }
 
           // Commit batch every batchSize updates
           if (batchCount >= batchSize) {
             await batch.commit();
-            logger.info(`Processed ${checked}/${snapshot.size} - Closed: ${markedClosed}, Open: ${markedOpen}`);
-            batch = db.batch(); // Create new batch
+            logger.info(`Processed ${checked}/${snapshot.size} - Deleted: ${deletedPermanently}, Temporary: ${markedTemporary}, Open: ${markedOpen}`);
+            batch = db.batch();
             batchCount = 0;
-            // Small delay to avoid rate limits
             await new Promise((resolve) => setTimeout(resolve, delayMs));
           }
         } catch (error) {
@@ -416,12 +427,14 @@ exports.markClosedRestaurants = onCall(
       const result = {
         total: snapshot.size,
         checked,
-        markedClosed,
+        deletedPermanently,
+        markedTemporary,
         markedOpen,
         errors,
+        deletedSample: deletedList.slice(0, 20),
       };
 
-      logger.info("Finished marking closed restaurants", result);
+      logger.info("Finished checking restaurants", result);
       return result;
     },
 );
@@ -634,12 +647,13 @@ exports.importManualScoresFromExcel = onCall(
             updateData.manual_scoring_date = admin.firestore.FieldValue.serverTimestamp();
           }
 
-          // Check if closed
+          // Check if closed — delete permanently closed restaurants instead of keeping them
           const closedValue = row["closed "] || row.closed; // Handle space in column name
           if (closedValue && (closedValue === "X" || closedValue === "x")) {
-            updateData.business_status = "CLOSED_PERMANENTLY";
-            updateData.is_manually_marked_closed = true;
+            batch.delete(doc.ref);
+            batchCount++;
             results.markedClosed++;
+            continue;
           }
 
           // Only update if there's something to update
@@ -825,6 +839,67 @@ exports.deleteLowRatingRestaurants = onCall(
           name: r.name,
           rating: r.rating,
           hadManualScoring: r.hasManualScoring,
+        })),
+      };
+    },
+);
+
+/**
+ * Delete all CLOSED_PERMANENTLY restaurants from Firestore
+ * One-time cleanup to remove restaurants that are permanently closed
+ */
+exports.deleteClosedPermanentlyRestaurants = onCall(
+    {
+      region: "europe-west1",
+      timeoutSeconds: 300,
+    },
+    async () => {
+      logger.info("Deleting all CLOSED_PERMANENTLY restaurants...");
+
+      const snapshot = await db.collection("restaurants")
+          .where("business_status", "==", "CLOSED_PERMANENTLY")
+          .get();
+
+      logger.info(`Found ${snapshot.size} permanently closed restaurants to delete`);
+
+      if (snapshot.size === 0) {
+        return {total: 0, deleted: 0, deletedList: []};
+      }
+
+      const BATCH_SIZE = 400;
+      let batch = db.batch();
+      let batchCount = 0;
+      let deleted = 0;
+      const deletedList = [];
+
+      for (const doc of snapshot.docs) {
+        const data = doc.data();
+        deletedList.push({name: data.name, place_id: data.place_id});
+
+        batch.delete(doc.ref);
+        batchCount++;
+        deleted++;
+
+        if (batchCount >= BATCH_SIZE) {
+          await batch.commit();
+          logger.info(`Deleted ${deleted}/${snapshot.size}`);
+          batch = db.batch();
+          batchCount = 0;
+        }
+      }
+
+      if (batchCount > 0) {
+        await batch.commit();
+      }
+
+      logger.info(`Deletion completed: ${deleted} restaurants removed`);
+
+      return {
+        total: snapshot.size,
+        deleted,
+        deletedSample: deletedList.slice(0, 30).map((r) => ({
+          name: r.name,
+          place_id: r.place_id,
         })),
       };
     },

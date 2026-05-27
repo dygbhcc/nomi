@@ -1,4 +1,9 @@
 function passesQualityFilters(place, filters) {
+  // Hard reject: permanently closed restaurants are never accepted
+  if (place.business_status === "CLOSED_PERMANENTLY") {
+    return false;
+  }
+
   // Must be operational
   if (place.business_status && place.business_status !== filters.businessStatus) {
     return false;
