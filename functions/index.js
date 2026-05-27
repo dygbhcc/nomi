@@ -956,6 +956,81 @@ exports.getRestaurantRatingStats = onCall(
 );
 
 /**
+ * Export all restaurants from Firestore to Excel
+ * Returns base64 encoded Excel file with all restaurant fields
+ */
+exports.exportAllRestaurants = onRequest(
+    {
+      region: "europe-west1",
+      timeoutSeconds: 300,
+      memory: "512MiB",
+    },
+    async (req, res) => {
+      const secret = req.headers["x-nomi-secret"];
+      if (secret !== process.env.MANUAL_TRIGGER_SECRET) {
+        return res.status(401).json({error: "Unauthorized"});
+      }
+
+      logger.info("Exporting all restaurants...");
+
+      const snapshot = await db.collection("restaurants").get();
+      logger.info(`Found ${snapshot.size} restaurants to export`);
+
+      const XLSX = require("xlsx");
+      const rows = [];
+
+      snapshot.docs.forEach((doc) => {
+        const d = doc.data();
+        rows.push({
+          place_id: d.place_id || "",
+          name: d.name || "",
+          address: d.address || "",
+          neighborhood: d.neighborhood || "",
+          lat: d.location?.lat || 0,
+          lng: d.location?.lng || 0,
+          google_rating: d.google_rating || 0,
+          review_count: d.review_count || 0,
+          budget_level: d.budget_level || "",
+          business_status: d.business_status || "",
+          phone: d.phone || "",
+          website: d.website || "",
+          noise_level: d.noise_level || "",
+          is_local_concept: d.is_local_concept ? "YES" : "NO",
+          is_open_monday: d.opening_hours?.is_open_monday ? "YES" : "NO",
+          mood_tags: (d.mood_tags || []).join(", "),
+          nlp_processed: d.nlp_processed ? "YES" : "NO",
+          has_manual_scoring: d.has_manual_scoring ? "YES" : "NO",
+          has_pmo_scoring: d.has_pmo_scoring ? "YES" : "NO",
+          is_pmo_verified: d.is_pmo_verified ? "YES" : "NO",
+          mood_score_romantic: d.nlp_scores?.romantic ?? d.mood_scores?.romantic ?? "",
+          mood_score_energetic: d.nlp_scores?.energetic ?? d.mood_scores?.energetic ?? "",
+          mood_score_chill: d.nlp_scores?.chill ?? d.mood_scores?.chill ?? "",
+          mood_score_explorer: d.nlp_scores?.explorer ?? d.mood_scores?.explorer ?? "",
+          mood_score_focus: d.nlp_scores?.focus ?? d.mood_scores?.focus ?? "",
+          mood_score_retreat: d.nlp_scores?.retreat ?? d.mood_scores?.retreat ?? "",
+          mood_score_hungry_quick: d.nlp_scores?.hungry_quick ?? d.mood_scores?.hungry_quick ?? "",
+          mood_score_celebrating: d.nlp_scores?.celebrating ?? d.mood_scores?.celebrating ?? "",
+          photo_count: (d.photos || []).length,
+        });
+      });
+
+      const worksheet = XLSX.utils.json_to_sheet(rows);
+      const workbook = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(workbook, worksheet, "Restaurants");
+      const buffer = XLSX.write(workbook, {type: "buffer", bookType: "xlsx"});
+      const base64 = buffer.toString("base64");
+
+      logger.info(`Export completed: ${rows.length} restaurants`);
+
+      return res.json({
+        count: rows.length,
+        fileData: base64,
+        filename: `all_restaurants_${Date.now()}.xlsx`,
+      });
+    },
+);
+
+/**
  * Generate Google Photo URLs for frontend
  * Creates URLs on backend to avoid exposing API key on client-side
  */
