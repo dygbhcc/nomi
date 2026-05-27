@@ -8,7 +8,7 @@ const {nearbySearch, placeDetails} = require("./services/googlePlacesService");
 const {calculateDemandForecast} = require("./services/demandScoringService");
 const {runFullPipeline} = require("./services/fullPipelineService");
 const {neighborhoods, filters} = require("./config/lisbonConfig");
-const {excelBufferToArray} = require("./services/excelService");
+const {excelBufferToArray, arrayToExcelBuffer} = require("./services/excelService");
 const {runGeminiNlpBatch} = require("./services/geminiNlpPipeline");
 
 admin.initializeApp();
@@ -965,6 +965,188 @@ exports.exportRestaurantsWithoutScoring = onCall(
     },
 );
 
+/**
+ * Export NLP-processed restaurants for PMO scoring
+ * Returns base64 encoded Excel with 8 mood tag columns (1-9 scale)
+ */
+exports.exportForPmoScoring = onRequest(
+    {
+      region: "europe-west1",
+      timeoutSeconds: 300,
+      memory: "512MiB",
+    },
+    async (req, res) => {
+      const secret = req.headers["x-nomi-secret"];
+      if (secret !== process.env.MANUAL_TRIGGER_SECRET) {
+        return res.status(401).json({error: "Unauthorized"});
+      }
+
+      logger.info("Exporting restaurants for PMO scoring...");
+
+      const snapshot = await db.collection("restaurants")
+          .where("nlp_processed", "==", true)
+          .get();
+
+      logger.info(`Found ${snapshot.size} NLP-processed restaurants`);
+
+      const rows = [];
+      snapshot.docs.forEach((doc) => {
+        const data = doc.data();
+        rows.push({
+          place_id: data.place_id || "",
+          name: data.name || "",
+          address: data.address || "",
+          neighborhood: data.neighborhood || "",
+          google_rating: data.google_rating || 0,
+          romantic: "",
+          energetic: "",
+          chill: "",
+          explorer: "",
+          focus: "",
+          retreat: "",
+          hungry_quick: "",
+          celebrating: "",
+          scored_by: "",
+          notes: "",
+        });
+      });
+
+      const buffer = arrayToExcelBuffer(rows);
+      const base64 = buffer.toString("base64");
+
+      return res.json({
+        count: rows.length,
+        fileData: base64,
+        filename: `pmo_scoring_${Date.now()}.xlsx`,
+      });
+    },
+);
+
+/**
+ * Import PMO scores from Excel into pmo_scores collection
+ * Expects base64 encoded Excel file in request body
+ */
+exports.importPmoScores = onRequest(
+    {
+      region: "europe-west1",
+      timeoutSeconds: 540,
+      memory: "1GiB",
+    },
+    async (req, res) => {
+      const secret = req.headers["x-nomi-secret"];
+      if (secret !== process.env.MANUAL_TRIGGER_SECRET) {
+        return res.status(401).json({error: "Unauthorized"});
+      }
+
+      const {fileData} = req.body || {};
+      if (!fileData) {
+        return res.status(400).json({error: "fileData is required"});
+      }
+
+      logger.info("Starting PMO scores import...");
+
+      const buffer = Buffer.from(fileData, "base64");
+      const excelData = excelBufferToArray(buffer);
+
+      logger.info(`Found ${excelData.length} rows in Excel`);
+
+      const MOOD_TAGS = ["romantic", "energetic", "chill", "explorer", "focus", "retreat", "hungry_quick", "celebrating"];
+      const results = {
+        total: excelData.length,
+        imported: 0,
+        notFound: 0,
+        skipped: 0,
+        errors: 0,
+        notFoundList: [],
+      };
+
+      const BATCH_SIZE = 400;
+      let batch = db.batch();
+      let batchCount = 0;
+
+      for (const row of excelData) {
+        try {
+          const placeId = row.place_id;
+          if (!placeId) {
+            results.errors++;
+            continue;
+          }
+
+          // Build scores object — skip row if no mood scores provided
+          const scores = {};
+          let hasAnyScore = false;
+          for (const tag of MOOD_TAGS) {
+            if (row[tag] !== undefined && row[tag] !== "" && row[tag] !== null) {
+              const val = Number(row[tag]);
+              if (val >= 1 && val <= 9) {
+                scores[tag] = val;
+                hasAnyScore = true;
+              }
+            }
+          }
+
+          if (!hasAnyScore) {
+            results.skipped++;
+            continue;
+          }
+
+          // Find restaurant by place_id to get doc ID
+          const snapshot = await db.collection("restaurants")
+              .where("place_id", "==", placeId)
+              .limit(1)
+              .get();
+
+          if (snapshot.empty) {
+            results.notFound++;
+            results.notFoundList.push({place_id: placeId, name: row.name || ""});
+            continue;
+          }
+
+          const restaurantDoc = snapshot.docs[0];
+
+          // Write to pmo_scores collection
+          const pmoRef = db.collection("pmo_scores").doc();
+          batch.set(pmoRef, {
+            restaurant_id: restaurantDoc.id,
+            place_id: placeId,
+            scored_by: row.scored_by || "excel_import",
+            scored_at: admin.firestore.FieldValue.serverTimestamp(),
+            scores,
+            notes: row.notes || "",
+          });
+          batchCount++;
+
+          // Set has_pmo_scoring flag on restaurant
+          batch.update(restaurantDoc.ref, {has_pmo_scoring: true});
+          batchCount++;
+
+          results.imported++;
+
+          if (batchCount >= BATCH_SIZE) {
+            await batch.commit();
+            logger.info(`Committed batch: ${results.imported}/${excelData.length}`);
+            batch = db.batch();
+            batchCount = 0;
+          }
+        } catch (error) {
+          logger.error("Error processing PMO row:", error.message);
+          results.errors++;
+        }
+      }
+
+      if (batchCount > 0) {
+        await batch.commit();
+      }
+
+      logger.info("PMO import completed", results);
+
+      return res.json({
+        ...results,
+        notFoundList: results.notFoundList.slice(0, 20),
+      });
+    },
+);
+
 exports.scheduledGeminiNlp = onSchedule(
     {
       schedule: "0 1 * * *",
@@ -1018,7 +1200,7 @@ exports.initNlpFlags = onRequest(
 
       for (const doc of snapshot.docs) {
         const data = doc.data();
-        if (data.nlp_processed === undefined || data.nlp_processed === null) {
+        if (data.nlp_processed !== false) {
           batch.update(doc.ref, {nlp_processed: false});
           batchCount++;
           updated++;

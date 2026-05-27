@@ -68,7 +68,14 @@ async function analyzeRestaurantWithGemini(ai, restaurant) {
 - Qualitative Summary: ${moodSummary}
 
 # Task
-Based on the provided verified customer sentiment metadata, restaurant details, cuisine type, and typical neighborhood context in Lisbon, score the restaurant for each mood from 0.0 to 1.0, map the specific metrics, and extract high-level qualitative insights.
+Search for this restaurant on Google, TripAdvisor, RestaurantGuru, Zomato, TheFork, and any other review platforms. Read at least 10-20 reviews if available. Also check Google Photos and Google Maps reviews for atmosphere clues.
+
+Use the reviews you find combined with any provided sentiment metadata to:
+1. Score the restaurant for each mood from 0.0 to 1.0
+2. Map specific metrics from review data
+3. Extract high-level qualitative insights
+
+If the "Verified Customer Sentiment & Metadata" above is "N/A", rely entirely on the reviews you find via search. If sentiment data IS provided, use it as the primary source and supplement with search results.
 
 # Mood Definitions & Scoring Criteria
 - romantic: Intimate atmosphere, dim lights, date night, couples.
@@ -86,9 +93,9 @@ Based on the provided verified customer sentiment metadata, restaurant details, 
 3. negative_aspects: Array of short keywords representing weaknesses (e.g., ["estacionamento", "espera", "barulho", "preco"]).
 
 # Strict Output Rules
-1. Rely heavily on the provided "Verified Customer Sentiment & Metadata" to determine the scores, metrics, and insights.
-2. Output MUST be a single, valid JSON object.
-3. Do NOT include any markdown formatting (like json ... ), no pre-text, and no post-text. Return ONLY the raw JSON string.
+1. Output MUST be a single, valid JSON object.
+2. Do NOT include any markdown formatting (like json ... ), no pre-text, and no post-text. Return ONLY the raw JSON string.
+3. Score 0.0 only if you truly have zero information. If you find any reviews or context, score accordingly.
 
 # Expected Output Format
 {
@@ -128,6 +135,7 @@ Based on the provided verified customer sentiment metadata, restaurant details, 
         temperature: 0.1,
         maxOutputTokens: 1024,
         thinkingConfig: {thinkingBudget: 0},
+        tools: [{googleSearch: {}}],
       },
     });
 
@@ -184,6 +192,43 @@ function calculateWeightedConfidence(tag, {pmoScores, nlpScores, validateData, s
 }
 
 /**
+ * Fetches PMO scores from the pmo_scores collection for a given restaurant.
+ * If multiple scorers exist, averages their scores per tag.
+ * @param {object} db - Firestore instance
+ * @param {string} restaurantId - Restaurant document ID
+ * @return {object} Averaged PMO scores keyed by tag, or empty object
+ */
+async function fetchPmoScores(db, restaurantId) {
+  const pmoSnapshot = await db.collection("pmo_scores")
+      .where("restaurant_id", "==", restaurantId)
+      .get();
+
+  if (pmoSnapshot.empty) return {};
+
+  // Accumulate scores per tag across all scorers
+  const tagTotals = {};
+  const tagCounts = {};
+
+  for (const pmoDoc of pmoSnapshot.docs) {
+    const scores = pmoDoc.data().scores || {};
+    for (const tag of MOOD_TAGS) {
+      if (scores[tag] != null && scores[tag] >= 1 && scores[tag] <= 9) {
+        tagTotals[tag] = (tagTotals[tag] || 0) + scores[tag];
+        tagCounts[tag] = (tagCounts[tag] || 0) + 1;
+      }
+    }
+  }
+
+  // Average
+  const averaged = {};
+  for (const tag of Object.keys(tagTotals)) {
+    averaged[tag] = Math.round(tagTotals[tag] / tagCounts[tag]);
+  }
+
+  return averaged;
+}
+
+/**
  * Main pipeline — fetches a batch from Firestore, runs Gemini, writes results.
  * @param {number} batchSize - Number of restaurants to process
  * @return {object} Result with processed and errors counts
@@ -234,9 +279,11 @@ async function runGeminiNlpBatch(batchSize = 50) {
         continue;
       }
 
-      // Existing confidence scores (from human validation) and PMO scores (from Excel import)
+      // Existing confidence scores (from human validation)
       const existingConfidences = restaurant.confidence_scores || {};
-      const pmoScores = restaurant.pmo_scores || {};
+
+      // Fetch PMO scores from separate collection (averaged if multiple scorers)
+      const pmoScores = await fetchPmoScores(db, doc.id);
 
       const newConfidenceScores = {};
       const newMoodTags = [];
@@ -258,6 +305,9 @@ async function runGeminiNlpBatch(batchSize = 50) {
       await doc.ref.update({
         mood_tags: newMoodTags,
         confidence_scores: newConfidenceScores,
+        nlp_scores: geminiResult.scores || {},
+        nlp_metrics: geminiResult.metrics || {},
+        nlp_insights: geminiResult.insights || {},
         nlp_processed: true,
         nlp_processed_at: admin.firestore.FieldValue.serverTimestamp(),
         nlp_review_count: geminiResult.review_count || 0,
