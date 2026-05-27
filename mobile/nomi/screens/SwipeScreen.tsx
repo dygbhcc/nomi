@@ -362,7 +362,10 @@ export default function SwipeScreen({ selectedMoods, budgetLevel, selectedDistan
             </View>
 
             <View style={styles.moodRow}>
-              {restaurant.mood_tags && restaurant.mood_tags.slice(0, 3).map((mood) => (
+              {restaurant.mood_tags && restaurant.mood_tags
+                .filter((mood) => selectedMoods.includes(mood))
+                .slice(0, 3)
+                .map((mood) => (
                 <View key={mood} style={styles.moodBadge}>
                   <Text style={styles.moodBadgeText}>{mood}</Text>
                 </View>
