@@ -1297,6 +1297,281 @@ exports.importPmoScores = onRequest(
     },
 );
 
+/**
+ * Smart 6 Recommendation Algorithm
+ * Returns 6 personalized restaurant recommendations based on mood, budget,
+ * swipe history, and diversity rules.
+ *
+ * Input: { userId, moods[], budgetLevel }
+ * Output: { restaurants[6], meta: { algorithm, candidateCount, fallback, secondChance } }
+ */
+exports.getSmartRecommendations = onCall(
+    {
+      region: "europe-west1",
+      timeoutSeconds: 30,
+    },
+    async (request) => {
+      const {userId, moods = [], budgetLevel} = request.data || {};
+
+      // Normalize moods: "hungry&quick" → "hungry_quick"
+      const normalizedMoods = moods.map((m) =>
+        m.replace(/&/g, "_").replace(/\s+/g, "_").toLowerCase(),
+      );
+
+      const meta = {
+        algorithm: "smart6_v1",
+        candidateCount: 0,
+        fallback: false,
+        secondChance: false,
+      };
+
+      try {
+        // --- 1. Build candidate pool ---
+        let candidates = [];
+
+        // Primary query: mood_tags + business_status OPERATIONAL
+        if (normalizedMoods.length > 0) {
+          const moodQuery = db.collection("restaurants")
+              .where("mood_tags", "array-contains-any", normalizedMoods)
+              .where("business_status", "==", "OPERATIONAL")
+              .limit(100);
+          const moodSnap = await moodQuery.get();
+          candidates = moodSnap.docs.map((doc) => ({id: doc.id, ...doc.data()}));
+        }
+
+        // Fallback tier 1: mood only (no business_status filter)
+        if (candidates.length < 10 && normalizedMoods.length > 0) {
+          const moodOnlyQuery = db.collection("restaurants")
+              .where("mood_tags", "array-contains-any", normalizedMoods)
+              .limit(100);
+          const moodOnlySnap = await moodOnlyQuery.get();
+          const existingIds = new Set(candidates.map((c) => c.id));
+          moodOnlySnap.docs.forEach((doc) => {
+            if (!existingIds.has(doc.id)) {
+              candidates.push({id: doc.id, ...doc.data()});
+              existingIds.add(doc.id);
+            }
+          });
+        }
+
+        // Fallback tier 2: budget only
+        if (candidates.length < 10) {
+          const budgetQuery = db.collection("restaurants")
+              .where("budget_level", "==", budgetLevel)
+              .limit(100);
+          const budgetSnap = await budgetQuery.get();
+          const existingIds = new Set(candidates.map((c) => c.id));
+          budgetSnap.docs.forEach((doc) => {
+            if (!existingIds.has(doc.id)) {
+              candidates.push({id: doc.id, ...doc.data()});
+              existingIds.add(doc.id);
+            }
+          });
+        }
+
+        // Fallback tier 3: all restaurants
+        if (candidates.length < 10) {
+          const allQuery = db.collection("restaurants").limit(100);
+          const allSnap = await allQuery.get();
+          const existingIds = new Set(candidates.map((c) => c.id));
+          allSnap.docs.forEach((doc) => {
+            if (!existingIds.has(doc.id)) {
+              candidates.push({id: doc.id, ...doc.data()});
+              existingIds.add(doc.id);
+            }
+          });
+        }
+
+        meta.candidateCount = candidates.length;
+
+        // --- 2. Fetch ALL swipe history ---
+        const likedIds = new Set();
+        const passedIds = new Set();
+
+        if (userId) {
+          const swipeQuery = db.collection("swipes")
+              .where("user_id", "==", userId)
+              .orderBy("timestamp", "desc");
+          const swipeSnap = await swipeQuery.get();
+
+          swipeSnap.docs.forEach((doc) => {
+            const data = doc.data();
+            if (data.direction === "like") {
+              likedIds.add(data.restaurant_id);
+            } else {
+              passedIds.add(data.restaurant_id);
+            }
+          });
+        }
+
+        // --- 3. Filter candidates ---
+        // Always exclude liked (already saved)
+        let filtered = candidates.filter((c) => !likedIds.has(c.id));
+        // In normal mode, also exclude passed
+        const passedCandidates = filtered.filter((c) => passedIds.has(c.id));
+        filtered = filtered.filter((c) => !passedIds.has(c.id));
+
+        // --- 4. Second Chance ---
+        if (filtered.length < 6 && passedCandidates.length > 0) {
+          meta.secondChance = true;
+          // Add passed restaurants back with low freshness
+          passedCandidates.forEach((c) => {
+            c._secondChance = true;
+            filtered.push(c);
+          });
+        }
+
+        // If all restaurants were liked, return empty
+        if (filtered.length === 0) {
+          return {restaurants: [], meta};
+        }
+
+        // --- 5. Score each candidate ---
+        const scored = filtered.map((c) => {
+          // Mood match score (from confidence_scores)
+          let moodScore = 0;
+          if (normalizedMoods.length > 0 && c.confidence_scores) {
+            const scores = normalizedMoods
+                .map((m) => c.confidence_scores[m] || 0)
+                .filter((s) => s > 0);
+            moodScore = scores.length > 0 ?
+              scores.reduce((a, b) => a + b, 0) / scores.length : 0;
+          }
+          // Fallback: check if mood_tags match
+          if (moodScore === 0 && c.mood_tags && normalizedMoods.length > 0) {
+            const matchCount = normalizedMoods.filter(
+                (m) => c.mood_tags.includes(m),
+            ).length;
+            moodScore = matchCount > 0 ? (matchCount / normalizedMoods.length) * 70 : 0;
+          }
+
+          // Quality score
+          const qualityScore = ((c.google_rating || 0) / 5) * 100;
+
+          // Freshness
+          let freshness = 100; // never seen
+          if (c._secondChance) {
+            freshness = 20;
+          }
+
+          // Random factor
+          const randomFactor = Math.random() * 100;
+
+          const selectionScore =
+            moodScore * 0.55 +
+            qualityScore * 0.20 +
+            freshness * 0.15 +
+            randomFactor * 0.10;
+
+          return {...c, _selectionScore: selectionScore};
+        });
+
+        // Sort by score descending
+        scored.sort((a, b) => b._selectionScore - a._selectionScore);
+
+        // --- 6. Diversity enforcement ---
+        const selected = [];
+        const neighborhoodCount = {};
+        const budgetCount = {};
+
+        const pickIfDiverse = (candidate) => {
+          const hood = candidate.neighborhood || "unknown";
+          const bLevel = candidate.budget_level || 0;
+
+          if ((neighborhoodCount[hood] || 0) >= 2) return false;
+          if ((budgetCount[bLevel] || 0) >= 3) return false;
+
+          selected.push(candidate);
+          neighborhoodCount[hood] = (neighborhoodCount[hood] || 0) + 1;
+          budgetCount[bLevel] = (budgetCount[bLevel] || 0) + 1;
+          return true;
+        };
+
+        // --- 7. Slot allocation ---
+        const selectedIds = new Set();
+
+        // Slots 1-3: Top scoring
+        for (const c of scored) {
+          if (selected.length >= 3) break;
+          if (selectedIds.has(c.id)) continue;
+          if (pickIfDiverse(c)) {
+            selectedIds.add(c.id);
+          }
+        }
+
+        // Slots 4-5: Random from top 20%
+        const top20Cutoff = Math.max(1, Math.ceil(scored.length * 0.2));
+        const top20Pool = scored
+            .slice(0, top20Cutoff)
+            .filter((c) => !selectedIds.has(c.id));
+        // Shuffle top 20% pool
+        for (let i = top20Pool.length - 1; i > 0; i--) {
+          const j = Math.floor(Math.random() * (i + 1));
+          [top20Pool[i], top20Pool[j]] = [top20Pool[j], top20Pool[i]];
+        }
+        for (const c of top20Pool) {
+          if (selected.length >= 5) break;
+          if (selectedIds.has(c.id)) continue;
+          if (pickIfDiverse(c)) {
+            selectedIds.add(c.id);
+          }
+        }
+
+        // Slot 6: Discovery — confidence 40-70 range
+        const discoveryPool = scored.filter((c) => {
+          if (selectedIds.has(c.id)) return false;
+          // Check if any mood confidence is in 40-70 range
+          if (c.confidence_scores && normalizedMoods.length > 0) {
+            return normalizedMoods.some((m) => {
+              const score = c.confidence_scores[m] || 0;
+              return score >= 40 && score <= 70;
+            });
+          }
+          return false;
+        });
+
+        if (discoveryPool.length > 0) {
+          const pick = discoveryPool[Math.floor(Math.random() * discoveryPool.length)];
+          if (!selectedIds.has(pick.id)) {
+            if (pickIfDiverse(pick)) {
+              selectedIds.add(pick.id);
+            }
+          }
+        }
+
+        // Fill remaining slots from scored list
+        for (const c of scored) {
+          if (selected.length >= 6) break;
+          if (selectedIds.has(c.id)) continue;
+          if (pickIfDiverse(c)) {
+            selectedIds.add(c.id);
+          }
+        }
+
+        // If diversity rules prevented filling, relax and fill
+        if (selected.length < 6) {
+          for (const c of scored) {
+            if (selected.length >= 6) break;
+            if (selectedIds.has(c.id)) continue;
+            selected.push(c);
+            selectedIds.add(c.id);
+          }
+        }
+
+        // Clean internal fields before returning
+        const restaurants = selected.map((c) => {
+          const {_selectionScore, _secondChance, ...rest} = c;
+          return rest;
+        });
+
+        return {restaurants, meta};
+      } catch (error) {
+        logger.error("getSmartRecommendations error:", error);
+        throw new HttpsError("internal", "Failed to get recommendations");
+      }
+    },
+);
+
 exports.scheduledGeminiNlp = onSchedule(
     {
       schedule: "0 1 * * *",

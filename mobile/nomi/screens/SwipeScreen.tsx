@@ -15,7 +15,7 @@ import { StatusBar } from "expo-status-bar";
 import { useTranslation } from "react-i18next";
 import * as Haptics from "expo-haptics"; // FIX 3 - Haptic feedback
 import { Colors } from "../theme/colors";
-import { getRestaurantsByMood, buildReason, Restaurant } from '../services/restaurantService';
+import { getSmartRecommendations, buildReason, Restaurant } from '../services/restaurantService';
 import { recordSwipe } from '../services/swipeService';
 import { useAuth } from '../context/AuthContext';
 
@@ -63,8 +63,8 @@ export default function SwipeScreen({ selectedMoods, budgetLevel, onBack, onChan
       setLoading(true);
       setError(null);
       try {
-        const data = await getRestaurantsByMood(selectedMoods, budgetLevel, 6);
-        const withReasons = data.map(r => ({
+        const result = await getSmartRecommendations(user?.uid ?? null, selectedMoods, budgetLevel);
+        const withReasons = result.restaurants.map(r => ({
           ...r,
           reason: buildReason(r, selectedMoods),
         }));
@@ -187,8 +187,8 @@ export default function SwipeScreen({ selectedMoods, budgetLevel, onBack, onChan
     setLoading(true);
     setError(null);
     try {
-      const data = await getRestaurantsByMood(selectedMoods, budgetLevel, 6);
-      const withReasons = data.map(r => ({
+      const result = await getSmartRecommendations(user?.uid ?? null, selectedMoods, budgetLevel);
+      const withReasons = result.restaurants.map(r => ({
         ...r,
         reason: buildReason(r, selectedMoods),
       }));

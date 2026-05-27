@@ -11,7 +11,8 @@ import {
   updateDoc,
   Timestamp
 } from 'firebase/firestore';
-import { db } from './firebase';
+import { httpsCallable } from 'firebase/functions';
+import { db, functions } from './firebase';
 
 export type Restaurant = {
   id: string;
@@ -85,6 +86,50 @@ export const getRestaurantsByMood = async (
   } catch (error) {
     __DEV__ && console.error('getRestaurantsByMood error:', error);
     return [];
+  }
+};
+
+export type SmartRecommendationsMeta = {
+  algorithm: string;
+  candidateCount: number;
+  fallback: boolean;
+  secondChance: boolean;
+};
+
+export type SmartRecommendationsResult = {
+  restaurants: Restaurant[];
+  meta: SmartRecommendationsMeta;
+};
+
+export const getSmartRecommendations = async (
+  userId: string | null,
+  moods: string[],
+  budgetLevel: number
+): Promise<SmartRecommendationsResult> => {
+  try {
+    const callable = httpsCallable<
+      { userId: string | null; moods: string[]; budgetLevel: number },
+      { restaurants: Restaurant[]; meta: SmartRecommendationsMeta }
+    >(functions, 'getSmartRecommendations');
+
+    const result = await callable({ userId, moods, budgetLevel });
+    return {
+      restaurants: result.data.restaurants,
+      meta: result.data.meta,
+    };
+  } catch (error) {
+    __DEV__ && console.error('getSmartRecommendations error, falling back:', error);
+    // Fallback to direct Firestore query
+    const restaurants = await getRestaurantsByMood(moods, budgetLevel, 6);
+    return {
+      restaurants,
+      meta: {
+        algorithm: 'fallback_direct',
+        candidateCount: restaurants.length,
+        fallback: true,
+        secondChance: false,
+      },
+    };
   }
 };
 

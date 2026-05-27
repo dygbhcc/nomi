@@ -1,6 +1,6 @@
 import React, { createContext, useContext, useEffect, useState } from 'react';
 import { User } from 'firebase/auth';
-import { onAuthStateChanged, auth, signIn, signUp, signOut } from '../services/authService';
+import { onAuthStateChanged, auth, signIn, signUp, signOut, signInAnonymously } from '../services/authService';
 
 type AuthContextType = {
   user: User | null;
@@ -9,7 +9,7 @@ type AuthContextType = {
   signIn: (email: string, password: string) => Promise<void>;
   signUp: (email: string, password: string, displayName: string) => Promise<void>;
   signOut: () => Promise<void>;
-  continueAsGuest: () => void;
+  continueAsGuest: () => Promise<void>;
 };
 
 const AuthContext = createContext<AuthContextType | null>(null);
@@ -42,9 +42,16 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     await signOut();
   };
 
-  const continueAsGuest = () => {
-    setIsGuest(true);
-    setLoading(false);
+  const continueAsGuest = async () => {
+    try {
+      await signInAnonymously();
+      // onAuthStateChanged will pick up the anonymous user and set user.uid
+      setIsGuest(true);
+    } catch (error) {
+      // Fallback: still allow guest mode even if anonymous auth fails
+      setIsGuest(true);
+      setLoading(false);
+    }
   };
 
   return (

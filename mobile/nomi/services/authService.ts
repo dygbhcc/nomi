@@ -2,6 +2,7 @@ import {
   signInWithEmailAndPassword,
   createUserWithEmailAndPassword,
   signOut as firebaseSignOut,
+  signInAnonymously as firebaseSignInAnonymously,
   updateProfile,
   onAuthStateChanged,
   User
@@ -39,6 +40,11 @@ export const signUp = async (
 
 export const signOut = async (): Promise<void> => {
   await firebaseSignOut(auth);
+};
+
+export const signInAnonymously = async (): Promise<User> => {
+  const result = await firebaseSignInAnonymously(auth);
+  return result.user;
 };
 
 export { onAuthStateChanged, auth };
