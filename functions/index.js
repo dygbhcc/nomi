@@ -1469,7 +1469,7 @@ exports.getSmartRecommendations = onCall(
         filtered = filtered.filter((c) => !passedIds.has(c.id));
 
         // --- 4. Second Chance ---
-        if (filtered.length < 6 && passedCandidates.length > 0) {
+        if (filtered.length < 9 && passedCandidates.length > 0) {
           meta.secondChance = true;
           // Add passed restaurants back with low freshness
           passedCandidates.forEach((c) => {
@@ -1536,7 +1536,7 @@ exports.getSmartRecommendations = onCall(
           const bLevel = candidate.budget_level || 0;
 
           if ((neighborhoodCount[hood] || 0) >= 2) return false;
-          if ((budgetCount[bLevel] || 0) >= 3) return false;
+          if ((budgetCount[bLevel] || 0) >= 5) return false;
 
           selected.push(candidate);
           neighborhoodCount[hood] = (neighborhoodCount[hood] || 0) + 1;
@@ -1547,16 +1547,16 @@ exports.getSmartRecommendations = onCall(
         // --- 7. Slot allocation ---
         const selectedIds = new Set();
 
-        // Slots 1-3: Top scoring
+        // Slots 1-4: Top scoring
         for (const c of scored) {
-          if (selected.length >= 3) break;
+          if (selected.length >= 4) break;
           if (selectedIds.has(c.id)) continue;
           if (pickIfDiverse(c)) {
             selectedIds.add(c.id);
           }
         }
 
-        // Slots 4-5: Random from top 20%
+        // Slots 5-7: Random from top 20%
         const top20Cutoff = Math.max(1, Math.ceil(scored.length * 0.2));
         const top20Pool = scored
             .slice(0, top20Cutoff)
@@ -1567,14 +1567,14 @@ exports.getSmartRecommendations = onCall(
           [top20Pool[i], top20Pool[j]] = [top20Pool[j], top20Pool[i]];
         }
         for (const c of top20Pool) {
-          if (selected.length >= 5) break;
+          if (selected.length >= 7) break;
           if (selectedIds.has(c.id)) continue;
           if (pickIfDiverse(c)) {
             selectedIds.add(c.id);
           }
         }
 
-        // Slot 6: Discovery — confidence 40-70 range
+        // Slots 8-9: Discovery — confidence 40-70 range
         const discoveryPool = scored.filter((c) => {
           if (selectedIds.has(c.id)) return false;
           // Check if any mood confidence is in 40-70 range
@@ -1587,18 +1587,22 @@ exports.getSmartRecommendations = onCall(
           return false;
         });
 
-        if (discoveryPool.length > 0) {
-          const pick = discoveryPool[Math.floor(Math.random() * discoveryPool.length)];
-          if (!selectedIds.has(pick.id)) {
-            if (pickIfDiverse(pick)) {
-              selectedIds.add(pick.id);
-            }
+        // Shuffle discovery pool and pick up to 2
+        for (let i = discoveryPool.length - 1; i > 0; i--) {
+          const j = Math.floor(Math.random() * (i + 1));
+          [discoveryPool[i], discoveryPool[j]] = [discoveryPool[j], discoveryPool[i]];
+        }
+        for (const c of discoveryPool) {
+          if (selected.length >= 9) break;
+          if (selectedIds.has(c.id)) continue;
+          if (pickIfDiverse(c)) {
+            selectedIds.add(c.id);
           }
         }
 
         // Fill remaining slots from scored list
         for (const c of scored) {
-          if (selected.length >= 6) break;
+          if (selected.length >= 9) break;
           if (selectedIds.has(c.id)) continue;
           if (pickIfDiverse(c)) {
             selectedIds.add(c.id);
@@ -1606,9 +1610,9 @@ exports.getSmartRecommendations = onCall(
         }
 
         // If diversity rules prevented filling, relax and fill
-        if (selected.length < 6) {
+        if (selected.length < 9) {
           for (const c of scored) {
-            if (selected.length >= 6) break;
+            if (selected.length >= 9) break;
             if (selectedIds.has(c.id)) continue;
             selected.push(c);
             selectedIds.add(c.id);

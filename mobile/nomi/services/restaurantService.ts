@@ -40,10 +40,52 @@ export type Restaurant = {
   reason?: string;
 };
 
+function haversineDistance(lat1: number, lng1: number, lat2: number, lng2: number): number {
+  const R = 6371000;
+  const toRad = (d: number) => d * Math.PI / 180;
+  const dLat = toRad(lat2 - lat1);
+  const dLng = toRad(lng2 - lng1);
+  const a = Math.sin(dLat / 2) ** 2 +
+    Math.cos(toRad(lat1)) * Math.cos(toRad(lat2)) * Math.sin(dLng / 2) ** 2;
+  return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+}
+
+function addDistanceToRestaurants(
+  restaurants: Restaurant[],
+  userLat?: number | null,
+  userLng?: number | null,
+  maxDistance?: number | null
+): Restaurant[] {
+  if (userLat == null || userLng == null) return restaurants;
+
+  let results = restaurants.map(r => {
+    const lat = r.location?.lat;
+    const lng = r.location?.lng;
+    if (lat != null && lng != null) {
+      const dist = haversineDistance(userLat, userLng, lat, lng);
+      return {
+        ...r,
+        distance: dist < 1000 ? `${Math.round(dist)} m` : `${(dist / 1000).toFixed(1)} km`,
+        _distMetres: dist,
+      };
+    }
+    return r;
+  });
+
+  if (maxDistance) {
+    results = results.filter(r => (r as any)._distMetres == null || (r as any)._distMetres <= maxDistance);
+  }
+
+  return results.map(({ _distMetres, ...rest }: any) => rest as Restaurant);
+}
+
 export const getRestaurantsByMood = async (
   moods: string[],
   budgetLevel: number,
-  maxResults: number = 6
+  maxResults: number = 9,
+  userLat?: number | null,
+  userLng?: number | null,
+  maxDistance?: number | null
 ): Promise<Restaurant[]> => {
   try {
     let q;
@@ -53,35 +95,38 @@ export const getRestaurantsByMood = async (
         collection(db, 'restaurants'),
         where('mood_tags', 'array-contains-any', moods),
         where('budget_level', '==', budgetLevel),
-        limit(maxResults)
+        limit(maxResults * 3)
       );
     } else {
       q = query(
         collection(db, 'restaurants'),
         where('budget_level', '==', budgetLevel),
-        limit(maxResults)
+        limit(maxResults * 3)
       );
     }
 
     const snapshot = await getDocs(q);
 
+    let restaurants: Restaurant[];
     if (snapshot.empty) {
-      // Fallback — ignore budget filter if no results
       const fallbackQ = query(
         collection(db, 'restaurants'),
-        limit(maxResults)
+        limit(maxResults * 3)
       );
       const fallbackSnap = await getDocs(fallbackQ);
-      return fallbackSnap.docs.map(doc => ({
+      restaurants = fallbackSnap.docs.map(doc => ({
+        id: doc.id,
+        ...doc.data()
+      } as Restaurant));
+    } else {
+      restaurants = snapshot.docs.map(doc => ({
         id: doc.id,
         ...doc.data()
       } as Restaurant));
     }
 
-    return snapshot.docs.map(doc => ({
-      id: doc.id,
-      ...doc.data()
-    } as Restaurant));
+    restaurants = addDistanceToRestaurants(restaurants, userLat, userLng, maxDistance);
+    return restaurants.slice(0, maxResults);
 
   } catch (error) {
     __DEV__ && console.error('getRestaurantsByMood error:', error);
@@ -122,8 +167,8 @@ export const getSmartRecommendations = async (
     };
   } catch (error) {
     __DEV__ && console.error('getSmartRecommendations error, falling back:', error);
-    // Fallback to direct Firestore query
-    const restaurants = await getRestaurantsByMood(moods, budgetLevel, 6);
+    // Fallback to direct Firestore query with client-side distance
+    const restaurants = await getRestaurantsByMood(moods, budgetLevel, 9, userLat, userLng, distance);
     return {
       restaurants,
       meta: {

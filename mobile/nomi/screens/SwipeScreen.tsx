@@ -76,6 +76,8 @@ export default function SwipeScreen({ selectedMoods, budgetLevel, selectedDistan
           DEFAULT_LAT,
           DEFAULT_LNG
         );
+        __DEV__ && console.log('[SwipeScreen] CF params:', { selectedDistance, userLat: DEFAULT_LAT, userLng: DEFAULT_LNG });
+        __DEV__ && console.log('[SwipeScreen] CF response sample:', result.restaurants.slice(0, 2).map(r => ({ name: r.name, distance: r.distance, location: r.location })));
         const withReasons = result.restaurants.map(r => ({
           ...r,
           reason: buildReason(r, selectedMoods),

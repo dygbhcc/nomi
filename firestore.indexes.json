@@ -15,6 +15,15 @@
         { "fieldPath": "mood_tags", "arrayConfig": "CONTAINS" },
         { "fieldPath": "business_status", "order": "ASCENDING" }
       ]
+    },
+    {
+      "collectionGroup": "restaurants",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "mood_tags", "arrayConfig": "CONTAINS" },
+        { "fieldPath": "business_status", "order": "ASCENDING" },
+        { "fieldPath": "budget_level", "order": "ASCENDING" }
+      ]
     }
   ],
   "fieldOverrides": []
