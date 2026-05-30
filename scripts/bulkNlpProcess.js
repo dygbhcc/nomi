@@ -224,7 +224,7 @@ async function main() {
         });
         if (weighted !== null) {
           newConfidenceScores[tag] = weighted;
-          if (weighted >= 50) newMoodTags.push(tag);
+          if (weighted >= 40) newMoodTags.push(tag);
         }
       }
 

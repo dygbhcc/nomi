@@ -5,7 +5,7 @@
 URL="https://manualgemininlp-kzlp5cszdq-ew.a.run.app"
 SECRET="nomi-secret-2026"
 BATCH_SIZE=40
-MAX_ROUNDS=45
+MAX_ROUNDS=65
 
 echo "=== Bulk NLP via Cloud Function ==="
 echo "Batch size: $BATCH_SIZE | Max rounds: $MAX_ROUNDS"

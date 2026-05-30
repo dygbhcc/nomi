@@ -294,7 +294,7 @@ async function runGeminiNlpBatch(batchSize = 50) {
 
         if (weighted !== null) {
           newConfidenceScores[tag] = weighted;
-          if (weighted >= 50) newMoodTags.push(tag);
+          if (weighted >= 40) newMoodTags.push(tag);
         }
       }
 
