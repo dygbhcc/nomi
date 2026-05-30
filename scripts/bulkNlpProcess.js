@@ -1,14 +1,13 @@
 /**
- * Bulk NLP processing using Gemini AI Studio free tier.
+ * Bulk NLP processing using Vertex AI (Blaze credits).
  * Processes all restaurants with nlp_processed == false.
  *
- * Free tier limits: 500 req/day, 10 RPM → 6 sec delay between requests.
+ * Vertex AI: 15 RPM for Gemini 2.5 Flash → 4 sec delay between requests.
  * Usage: node scripts/bulkNlpProcess.js
  */
 
-require("dotenv").config({path: require("path").join(__dirname, "../functions/.env")});
-const admin = require("firebase-admin");
-const {GoogleGenAI} = require("@google/genai");
+const admin = require("../functions/node_modules/firebase-admin");
+const {GoogleGenAI} = require("../functions/node_modules/@google/genai");
 
 const serviceAccount = require("/Users/duygubahceci/Downloads/nomi-mvp-firebase-adminsdk-fbsvc-8247614e37.json");
 
@@ -18,16 +17,20 @@ admin.initializeApp({
 });
 const db = admin.firestore();
 
-// AI Studio free tier (NOT Vertex AI)
-const ai = new GoogleGenAI({apiKey: process.env.GEMINI_API_KEY});
+// Vertex AI (Blaze credits)
+const ai = new GoogleGenAI({
+  vertexai: true,
+  project: "nomi-mvp",
+  location: "us-central1",
+});
 
-const MOOD_TAGS = ["romantic", "energetic", "chill", "explorer", "focus", "retreat", "hungry_quick", "celebrating"];
+const MOOD_TAGS = ["romantic", "energetic", "chill", "explorer", "focus", "hungry_quick"];
 const WEIGHTS = {pmo: 0.41, nlp: 0.32, validate: 0.18, swipe: 0.09};
 
-// Free tier: 10 RPM → 6 sec between requests
-const DELAY_MS = 6500;
-// Max per run (free tier: 500/day)
-const MAX_PER_RUN = 490;
+// Vertex AI: 15 RPM → 4 sec between requests
+const DELAY_MS = 4000;
+// No daily limit on Vertex AI, process all
+const MAX_PER_RUN = 2000;
 
 function pmoToConfidence(score) {
   if (!score || score < 1 || score > 9) return null;
@@ -109,9 +112,7 @@ If the "Verified Customer Sentiment & Metadata" above is "N/A", rely entirely on
 - chill: Relaxed, no rush, laid-back, warm atmosphere, feels like eating at home.
 - explorer: Unique, hidden gem, unusual menu, off the beaten path.
 - focus: Quiet, calm, good for work or study, minimal distractions.
-- retreat: Peaceful, slow pace, sanctuary feel, recharge.
 - hungry_quick: Fast service, filling food, efficient, good for quick lunch menus.
-- celebrating: Special occasions, group celebrations, festive, birthdays, family gatherings.
 
 # Strict Constraints for "insights" Object
 1. general_summary: Must be a highly concise summary of ONLY 1 or 2 sentences maximum. Keep it direct and punchy.
@@ -131,9 +132,7 @@ If the "Verified Customer Sentiment & Metadata" above is "N/A", rely entirely on
     "chill": 0.0,
     "explorer": 0.0,
     "focus": 0.0,
-    "retreat": 0.0,
-    "hungry_quick": 0.0,
-    "celebrating": 0.0
+    "hungry_quick": 0.0
   },
   "metrics": {
     "rating": 0.0,

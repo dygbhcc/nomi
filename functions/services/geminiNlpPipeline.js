@@ -14,7 +14,7 @@ const {GoogleGenAI} = require("@google/genai");
 const admin = require("firebase-admin");
 
 // Nomi canonical mood tags
-const MOOD_TAGS = ["romantic", "energetic", "chill", "explorer", "focus", "retreat", "hungry_quick", "celebrating"];
+const MOOD_TAGS = ["romantic", "energetic", "chill", "explorer", "focus", "hungry_quick"];
 
 // Normalized weights (sum = 1.0)
 const WEIGHTS = {
@@ -83,9 +83,7 @@ If the "Verified Customer Sentiment & Metadata" above is "N/A", rely entirely on
 - chill: Relaxed, no rush, laid-back, warm atmosphere, feels like eating at home.
 - explorer: Unique, hidden gem, unusual menu, off the beaten path.
 - focus: Quiet, calm, good for work or study, minimal distractions.
-- retreat: Peaceful, slow pace, sanctuary feel, recharge.
 - hungry_quick: Fast service, filling food, efficient, good for quick lunch menus.
-- celebrating: Special occasions, group celebrations, festive, birthdays, family gatherings.
 
 # Strict Constraints for "insights" Object
 1. general_summary: Must be a highly concise summary of ONLY 1 or 2 sentences maximum. Keep it direct and punchy.
@@ -105,9 +103,7 @@ If the "Verified Customer Sentiment & Metadata" above is "N/A", rely entirely on
     "chill": 0.0,
     "explorer": 0.0,
     "focus": 0.0,
-    "retreat": 0.0,
-    "hungry_quick": 0.0,
-    "celebrating": 0.0
+    "hungry_quick": 0.0
   },
   "metrics": {
     "rating": 0.0,

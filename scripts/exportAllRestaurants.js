@@ -44,9 +44,7 @@ async function main() {
       mood_score_chill: d.nlp_scores?.chill ?? d.mood_scores?.chill ?? "",
       mood_score_explorer: d.nlp_scores?.explorer ?? d.mood_scores?.explorer ?? "",
       mood_score_focus: d.nlp_scores?.focus ?? d.mood_scores?.focus ?? "",
-      mood_score_retreat: d.nlp_scores?.retreat ?? d.mood_scores?.retreat ?? "",
       mood_score_hungry_quick: d.nlp_scores?.hungry_quick ?? d.mood_scores?.hungry_quick ?? "",
-      mood_score_celebrating: d.nlp_scores?.celebrating ?? d.mood_scores?.celebrating ?? "",
       photo_count: (d.photos || []).length,
     });
   });
