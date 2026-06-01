@@ -8,7 +8,7 @@ const {nearbySearch, placeDetails} = require("./services/googlePlacesService");
 const {calculateDemandForecast} = require("./services/demandScoringService");
 const {runFullPipeline} = require("./services/fullPipelineService");
 const {neighborhoods, filters} = require("./config/lisbonConfig");
-const {excelBufferToArray, arrayToExcelBuffer} = require("./services/excelService");
+const {excelBufferToArray} = require("./services/excelService");
 const {runGeminiNlpBatch} = require("./services/geminiNlpPipeline");
 
 admin.initializeApp();
