@@ -25,28 +25,20 @@ const ai = new GoogleGenAI({
 });
 
 const MOOD_TAGS = ["romantic", "energetic", "chill", "explorer", "focus", "hungry_quick"];
-const WEIGHTS = {pmo: 0.41, nlp: 0.32, validate: 0.18, swipe: 0.09};
+// PMO signal removed June 2026 — weights renormalized (NLP-heavy, Option A)
+const WEIGHTS = {nlp: 0.55, validate: 0.30, swipe: 0.15};
 
 // Vertex AI: 15 RPM → 4 sec between requests
 const DELAY_MS = 4000;
 // No daily limit on Vertex AI, process all
 const MAX_PER_RUN = 2000;
 
-function pmoToConfidence(score) {
-  if (!score || score < 1 || score > 9) return null;
-  return Math.round(((score - 1) / 8) * 100);
-}
-
 function nlpToConfidence(score) {
   return Math.round(score * 100);
 }
 
-function calculateWeightedConfidence(tag, {pmoScores, nlpScores, validateData}) {
+function calculateWeightedConfidence(tag, {nlpScores, validateData}) {
   const signals = [];
-  if (pmoScores && pmoScores[tag] != null) {
-    const conf = pmoToConfidence(pmoScores[tag]);
-    if (conf !== null) signals.push({weight: WEIGHTS.pmo, value: conf});
-  }
   if (nlpScores && nlpScores[tag] != null) {
     signals.push({weight: WEIGHTS.nlp, value: nlpToConfidence(nlpScores[tag])});
   }
@@ -56,27 +48,6 @@ function calculateWeightedConfidence(tag, {pmoScores, nlpScores, validateData}) 
   if (signals.length === 0) return null;
   const totalWeight = signals.reduce((sum, s) => sum + s.weight, 0);
   return Math.round(signals.reduce((sum, s) => sum + s.value * (s.weight / totalWeight), 0));
-}
-
-async function fetchPmoScores(restaurantId) {
-  const snap = await db.collection("pmo_scores").where("restaurant_id", "==", restaurantId).get();
-  if (snap.empty) return {};
-  const tagTotals = {};
-  const tagCounts = {};
-  for (const doc of snap.docs) {
-    const scores = doc.data().scores || {};
-    for (const tag of MOOD_TAGS) {
-      if (scores[tag] != null && scores[tag] >= 1 && scores[tag] <= 9) {
-        tagTotals[tag] = (tagTotals[tag] || 0) + scores[tag];
-        tagCounts[tag] = (tagCounts[tag] || 0) + 1;
-      }
-    }
-  }
-  const averaged = {};
-  for (const tag of Object.keys(tagTotals)) {
-    averaged[tag] = Math.round(tagTotals[tag] / tagCounts[tag]);
-  }
-  return averaged;
 }
 
 async function analyzeWithGemini(restaurant) {
@@ -211,14 +182,12 @@ async function main() {
       }
 
       const existingConfidences = restaurant.confidence_scores || {};
-      const pmoScores = await fetchPmoScores(doc.id);
 
       const newConfidenceScores = {};
       const newMoodTags = [];
 
       for (const tag of MOOD_TAGS) {
         const weighted = calculateWeightedConfidence(tag, {
-          pmoScores,
           nlpScores: geminiResult.scores,
           validateData: existingConfidences,
         });

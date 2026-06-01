@@ -5,8 +5,7 @@
  * analyzes them via Gemini 2.5 Flash using internal knowledge,
  * computes weighted confidence scores, and writes results back to Firestore.
  *
- * Weight system: PMO(0.41) > NLP(0.32) > validate(0.18) > swipe(0.09) [normalized to 1.0]
- * PMO scale: 1-9 mapped to confidence 0-100
+ * Weight system: NLP(0.55) > validate(0.30) > swipe(0.15) [normalized to 1.0]
  * Batch: 50 restaurants/day (free tier)
  */
 
@@ -16,23 +15,12 @@ const admin = require("firebase-admin");
 // Nomi canonical mood tags
 const MOOD_TAGS = ["romantic", "energetic", "chill", "explorer", "focus", "hungry_quick"];
 
-// Normalized weights (sum = 1.0)
+// PMO signal removed June 2026 — weights renormalized (NLP-heavy, Option A)
 const WEIGHTS = {
-  pmo: 0.41,
-  nlp: 0.32,
-  validate: 0.18,
-  swipe: 0.09,
+  nlp: 0.55,
+  validate: 0.30,
+  swipe: 0.15,
 };
-
-/**
- * Maps PMO score (1-9) to confidence (0-100).
- * @param {number} score - PMO score between 1 and 9
- * @return {number|null} Confidence value or null if invalid
- */
-function pmoToConfidence(score) {
-  if (!score || score < 1 || score > 9) return null;
-  return Math.round(((score - 1) / 8) * 100);
-}
 
 /**
  * Maps Gemini NLP score (0-1) to confidence (0-100).
@@ -148,20 +136,14 @@ If the "Verified Customer Sentiment & Metadata" above is "N/A", rely entirely on
 
 /**
  * Computes weighted confidence for a single tag
- * using all available signals (PMO, NLP, validate, swipe).
+ * using available signals (NLP, validate, swipe).
  * Missing signals are excluded from the weighted average.
  * @param {string} tag - Mood tag name
- * @param {object} signals - Object containing pmoScores, nlpScores, validateData, swipeData
+ * @param {object} signals - Object containing nlpScores, validateData, swipeData
  * @return {number|null} Weighted confidence score or null
  */
-function calculateWeightedConfidence(tag, {pmoScores, nlpScores, validateData, swipeData}) {
+function calculateWeightedConfidence(tag, {nlpScores, validateData, swipeData}) {
   const signals = [];
-
-  // PMO signal
-  if (pmoScores && pmoScores[tag] != null) {
-    const conf = pmoToConfidence(pmoScores[tag]);
-    if (conf !== null) signals.push({weight: WEIGHTS.pmo, value: conf});
-  }
 
   // NLP signal (Gemini output)
   if (nlpScores && nlpScores[tag] != null) {
@@ -185,43 +167,6 @@ function calculateWeightedConfidence(tag, {pmoScores, nlpScores, validateData, s
   const weighted = signals.reduce((sum, s) => sum + s.value * (s.weight / totalWeight), 0);
 
   return Math.round(weighted);
-}
-
-/**
- * Fetches PMO scores from the pmo_scores collection for a given restaurant.
- * If multiple scorers exist, averages their scores per tag.
- * @param {object} db - Firestore instance
- * @param {string} restaurantId - Restaurant document ID
- * @return {object} Averaged PMO scores keyed by tag, or empty object
- */
-async function fetchPmoScores(db, restaurantId) {
-  const pmoSnapshot = await db.collection("pmo_scores")
-      .where("restaurant_id", "==", restaurantId)
-      .get();
-
-  if (pmoSnapshot.empty) return {};
-
-  // Accumulate scores per tag across all scorers
-  const tagTotals = {};
-  const tagCounts = {};
-
-  for (const pmoDoc of pmoSnapshot.docs) {
-    const scores = pmoDoc.data().scores || {};
-    for (const tag of MOOD_TAGS) {
-      if (scores[tag] != null && scores[tag] >= 1 && scores[tag] <= 9) {
-        tagTotals[tag] = (tagTotals[tag] || 0) + scores[tag];
-        tagCounts[tag] = (tagCounts[tag] || 0) + 1;
-      }
-    }
-  }
-
-  // Average
-  const averaged = {};
-  for (const tag of Object.keys(tagTotals)) {
-    averaged[tag] = Math.round(tagTotals[tag] / tagCounts[tag]);
-  }
-
-  return averaged;
 }
 
 /**
@@ -278,15 +223,11 @@ async function runGeminiNlpBatch(batchSize = 50) {
       // Existing confidence scores (from human validation)
       const existingConfidences = restaurant.confidence_scores || {};
 
-      // Fetch PMO scores from separate collection (averaged if multiple scorers)
-      const pmoScores = await fetchPmoScores(db, doc.id);
-
       const newConfidenceScores = {};
       const newMoodTags = [];
 
       for (const tag of MOOD_TAGS) {
         const weighted = calculateWeightedConfidence(tag, {
-          pmoScores,
           nlpScores: geminiResult.scores,
           validateData: existingConfidences,
           swipeData: null,

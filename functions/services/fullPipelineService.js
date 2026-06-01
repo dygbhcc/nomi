@@ -81,7 +81,6 @@ async function fetchNeighborhoodRestaurants(neighborhood, filters, existingPlace
         neighborhood: name,
         cache_date: admin.firestore.FieldValue.serverTimestamp(),
         is_local_concept: false,
-        is_pmo_verified: false,
       };
 
       results.push(doc);

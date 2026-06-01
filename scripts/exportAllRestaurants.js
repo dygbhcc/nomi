@@ -37,8 +37,6 @@ async function main() {
       mood_tags: (d.mood_tags || []).join(", "),
       nlp_processed: d.nlp_processed ? "YES" : "NO",
       has_manual_scoring: d.has_manual_scoring ? "YES" : "NO",
-      has_pmo_scoring: d.has_pmo_scoring ? "YES" : "NO",
-      is_pmo_verified: d.is_pmo_verified ? "YES" : "NO",
       mood_score_romantic: d.nlp_scores?.romantic ?? d.mood_scores?.romantic ?? "",
       mood_score_energetic: d.nlp_scores?.energetic ?? d.mood_scores?.energetic ?? "",
       mood_score_chill: d.nlp_scores?.chill ?? d.mood_scores?.chill ?? "",

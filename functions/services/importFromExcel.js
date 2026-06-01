@@ -113,7 +113,6 @@ async function main() {
           height: details.photos[0].height,
         }] : [],
         cache_date: admin.firestore.FieldValue.serverTimestamp(),
-        is_pmo_verified: false,
         is_local_concept: false,
       };
 
