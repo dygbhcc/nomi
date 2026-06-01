@@ -147,23 +147,25 @@ function AppNavigator() {
           onNavigate={(s) => setScreen(s as Screen)}
         />
       )}
-      {screen === "swipe" && selectedBudget !== null && (
-        <SwipeScreen
-          selectedMoods={selectedMoods}
-          budgetLevel={selectedBudget}
-          selectedDistance={selectedDistance}
-          onBack={() => setScreen("budget")}
-          onChangePreferences={() => setScreen("mood")}
-          onDetail={(restaurant) => {
-            setDetailRestaurant(restaurant);
-            setPreviousScreen("swipe");
-            setScreen("detail");
-          }}
-          onShowLiked={(restaurants) => {
-            setLikedRestaurants(restaurants);
-            setScreen("liked");
-          }}
-        />
+      {(screen === "swipe" || (screen === "detail" && previousScreen === "swipe")) && selectedBudget !== null && (
+        <View style={screen === "swipe" ? { flex: 1 } : { display: 'none' }}>
+          <SwipeScreen
+            selectedMoods={selectedMoods}
+            budgetLevel={selectedBudget}
+            selectedDistance={selectedDistance}
+            onBack={() => setScreen("budget")}
+            onChangePreferences={() => setScreen("mood")}
+            onDetail={(restaurant) => {
+              setDetailRestaurant(restaurant);
+              setPreviousScreen("swipe");
+              setScreen("detail");
+            }}
+            onShowLiked={(restaurants) => {
+              setLikedRestaurants(restaurants);
+              setScreen("liked");
+            }}
+          />
+        </View>
       )}
       {screen === "liked" && (
         <LikedScreen
@@ -191,6 +193,7 @@ function AppNavigator() {
       {screen === "detail" && detailRestaurant && (
         <RestaurantDetailScreen
           restaurant={detailRestaurant}
+          selectedMoods={selectedMoods}
           previousScreen={previousScreen}
           onBack={() => {
             // Go back to previous screen (swipe, liked, groupLiked, etc.)

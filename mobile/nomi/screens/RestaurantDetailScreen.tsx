@@ -59,17 +59,26 @@ function getTodayIndex(): number {
 
 type Props = {
   restaurant: Restaurant;
+  selectedMoods: string[];
   previousScreen: string;
   onBack: () => void;
 };
 
-export default function RestaurantDetailScreen({ restaurant, onBack }: Props) {
+export default function RestaurantDetailScreen({ restaurant, selectedMoods, onBack }: Props) {
   const { t } = useTranslation();
   const { user } = useAuth();
   const [saved, setSaved] = useState(false);
   const [validated, setValidated] = useState(false);
   const [currentPhotoIndex, setCurrentPhotoIndex] = useState(0);
   const todayIndex = getTodayIndex();
+  const photos = (restaurant.photos || []).slice(0, 5);
+
+  const onViewRef = React.useRef(({ viewableItems }: any) => {
+    if (viewableItems.length > 0 && viewableItems[0].index != null) {
+      setCurrentPhotoIndex(viewableItems[0].index);
+    }
+  });
+  const viewConfigRef = React.useRef({ viewAreaCoveragePercentThreshold: 50 });
 
   const handleBookmark = async () => {
     if (!user) return;
@@ -90,33 +99,37 @@ export default function RestaurantDetailScreen({ restaurant, onBack }: Props) {
 
       {/* Hero image carousel */}
       <View style={styles.heroContainer}>
-        {restaurant.photos && restaurant.photos.length > 0 ? (
+        {photos.length > 0 ? (
           <>
-            <ScrollView
+            <FlatList
+              data={photos}
               horizontal
               pagingEnabled
               showsHorizontalScrollIndicator={false}
-              onMomentumScrollEnd={(event) => {
-                const index = Math.round(event.nativeEvent.contentOffset.x / SCREEN_WIDTH);
-                setCurrentPhotoIndex(index);
-              }}
-              style={styles.photoScroll}
-            >
-              {restaurant.photos.slice(0, 5).map((photo, index) => (
-                <View key={index} style={{ width: SCREEN_WIDTH, height: SCREEN_HEIGHT * 0.32 }}>
+              keyExtractor={(_, index) => index.toString()}
+              getItemLayout={(_, index) => ({
+                length: SCREEN_WIDTH,
+                offset: SCREEN_WIDTH * index,
+                index,
+              })}
+              onViewableItemsChanged={onViewRef.current}
+              viewabilityConfig={viewConfigRef.current}
+              renderItem={({ item: photo }) => (
+                <View style={{ width: SCREEN_WIDTH, height: SCREEN_HEIGHT * 0.32 }}>
                   <Image
                     source={{ uri: `https://maps.googleapis.com/maps/api/place/photo?maxwidth=800&photo_reference=${photo.photo_reference}&key=${process.env.EXPO_PUBLIC_GOOGLE_PLACES_API_KEY}` }}
                     style={styles.heroImage}
                   />
                 </View>
-              ))}
-            </ScrollView>
+              )}
+              style={styles.photoScroll}
+            />
             <View style={styles.photoAttribution}>
               <Text style={styles.photoAttributionText}>Photo from Google</Text>
             </View>
-            {restaurant.photos.length > 1 && (
+            {photos.length > 1 && (
               <View style={styles.photoPagination}>
-                {restaurant.photos.slice(0, 5).map((_, index) => (
+                {photos.map((_, index) => (
                   <View
                     key={index}
                     style={[
@@ -228,54 +241,39 @@ export default function RestaurantDetailScreen({ restaurant, onBack }: Props) {
           </View>
         )}
 
-        {/* Why for you */}
-        <View style={styles.reasonBox}>
-          <Text style={styles.reasonLabel}>WHY FOR YOU?</Text>
-          <Text style={styles.reasonText}>{restaurant.reason}</Text>
-          <View style={styles.badgeRow}>
-            {restaurant.mood_tags && restaurant.mood_tags.slice(0, 3).map((mood: string) => (
-              <View key={mood} style={styles.moodBadge}>
-                <Text style={styles.moodBadgeText}>{mood}</Text>
-              </View>
-            ))}
-            <View style={styles.moodBadge}>
-              <Text style={styles.moodBadgeText}>{budgetSymbol(restaurant.budget_level)}</Text>
-            </View>
-            {restaurant.distance && (
-              <View style={styles.moodBadge}>
-                <Text style={styles.moodBadgeText}>{restaurant.distance}</Text>
-              </View>
-            )}
-          </View>
-        </View>
-
         {/* What People Love — food admiration pills */}
-        {restaurant.nlp_insights?.food_admiration && restaurant.nlp_insights.food_admiration.length > 0 && (
-          <View style={styles.nlpSection}>
-            <Text style={styles.nlpSectionLabel}>{t('restaurantDetail.nlp.whatPeopleLove')}</Text>
-            <View style={styles.nlpPillRow}>
-              {restaurant.nlp_insights.food_admiration.map((item: string) => (
-                <View key={item} style={styles.foodPill}>
-                  <Text style={styles.foodPillText}>{item}</Text>
-                </View>
-              ))}
+        {(() => {
+          const items = restaurant.nlp_insights?.food_admiration?.filter((s: string) => s && s.trim() && !['N/A', 'n/a', 'null', 'None'].includes(s.trim())) || [];
+          return items.length > 0 ? (
+            <View style={styles.nlpSection}>
+              <Text style={styles.nlpSectionLabel}>{t('restaurantDetail.nlp.whatPeopleLove')}</Text>
+              <View style={styles.nlpPillRow}>
+                {items.map((item: string) => (
+                  <View key={item} style={styles.foodPill}>
+                    <Text style={styles.foodPillText}>{item}</Text>
+                  </View>
+                ))}
+              </View>
             </View>
-          </View>
-        )}
+          ) : null;
+        })()}
 
         {/* Heads Up — negative aspects pills */}
-        {restaurant.nlp_insights?.negative_aspects && restaurant.nlp_insights.negative_aspects.length > 0 && (
-          <View style={styles.nlpSection}>
-            <Text style={styles.nlpSectionLabelNeutral}>{t('restaurantDetail.nlp.headsUp')}</Text>
-            <View style={styles.nlpPillRow}>
-              {restaurant.nlp_insights.negative_aspects.map((item: string) => (
-                <View key={item} style={styles.headsUpPill}>
-                  <Text style={styles.headsUpPillText}>{item}</Text>
-                </View>
-              ))}
+        {(() => {
+          const items = restaurant.nlp_insights?.negative_aspects?.filter((s: string) => s && s.trim() && !['N/A', 'n/a', 'null', 'None'].includes(s.trim())) || [];
+          return items.length > 0 ? (
+            <View style={styles.nlpSection}>
+              <Text style={styles.nlpSectionLabelNeutral}>{t('restaurantDetail.nlp.headsUp')}</Text>
+              <View style={styles.nlpPillRow}>
+                {items.map((item: string) => (
+                  <View key={item} style={styles.headsUpPill}>
+                    <Text style={styles.headsUpPillText}>{item}</Text>
+                  </View>
+                ))}
+              </View>
             </View>
-          </View>
-        )}
+          ) : null;
+        })()}
 
         {/* Opening hours */}
         <View style={styles.hoursContainer}>
@@ -767,7 +765,7 @@ const styles = StyleSheet.create({
     marginBottom: 12,
   },
   nlpSectionLabel: {
-    color: ACCENT,
+    color: TEXT_SECONDARY,
     fontSize: 10,
     fontWeight: "700",
     letterSpacing: 0.5,
@@ -786,24 +784,24 @@ const styles = StyleSheet.create({
     gap: 6,
   },
   foodPill: {
-    backgroundColor: "rgba(224, 106, 79, 0.12)",
+    backgroundColor: "rgba(0, 0, 0, 0.05)",
     paddingHorizontal: 10,
     paddingVertical: 4,
     borderRadius: 20,
   },
   foodPillText: {
-    color: ACCENT,
+    color: TEXT_SECONDARY,
     fontSize: 11,
     fontWeight: "600",
   },
   headsUpPill: {
-    backgroundColor: "rgba(136, 136, 136, 0.12)",
+    backgroundColor: "rgba(231, 76, 60, 0.08)",
     paddingHorizontal: 10,
     paddingVertical: 4,
     borderRadius: 20,
   },
   headsUpPillText: {
-    color: TEXT_SECONDARY,
+    color: "#C0392B",
     fontSize: 11,
     fontWeight: "600",
   },

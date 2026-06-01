@@ -65,35 +65,6 @@ function haversineDistance(lat1: number, lng1: number, lat2: number, lng2: numbe
   return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
 }
 
-function addDistanceToRestaurants(
-  restaurants: Restaurant[],
-  userLat?: number | null,
-  userLng?: number | null,
-  maxDistance?: number | null
-): Restaurant[] {
-  if (userLat == null || userLng == null) return restaurants;
-
-  let results = restaurants.map(r => {
-    const lat = r.location?.lat;
-    const lng = r.location?.lng;
-    if (lat != null && lng != null) {
-      const dist = haversineDistance(userLat, userLng, lat, lng);
-      return {
-        ...r,
-        distance: dist < 1000 ? `${Math.round(dist)} m` : `${(dist / 1000).toFixed(1)} km`,
-        _distMetres: dist,
-      };
-    }
-    return r;
-  });
-
-  if (maxDistance) {
-    results = results.filter(r => (r as any)._distMetres == null || (r as any)._distMetres <= maxDistance);
-  }
-
-  return results.map(({ _distMetres, ...rest }: any) => rest as Restaurant);
-}
-
 export const getRestaurantsByMood = async (
   moods: string[],
   budgetLevel: number,
@@ -102,51 +73,95 @@ export const getRestaurantsByMood = async (
   userLng?: number | null,
   maxDistance?: number | null
 ): Promise<Restaurant[]> => {
-  try {
-    let q;
+  const seen = new Set<string>();
+  let restaurants: Restaurant[] = [];
 
+  const addDocs = (snap: any) => {
+    for (const d of snap.docs) {
+      if (!seen.has(d.id)) {
+        seen.add(d.id);
+        restaurants.push({ id: d.id, ...d.data() } as Restaurant);
+      }
+    }
+  };
+
+  const pool = maxResults * 3;
+
+  // Tier 1: mood + budget
+  try {
     if (moods.length > 0) {
-      q = query(
+      const snap = await getDocs(query(
         collection(db, 'restaurants'),
         where('mood_tags', 'array-contains-any', moods),
         where('budget_level', '==', budgetLevel),
-        limit(maxResults * 3)
-      );
-    } else {
-      q = query(
+        limit(pool)
+      ));
+      addDocs(snap);
+    }
+  } catch (_) { /* index missing, skip */ }
+
+  // Tier 2: mood only
+  if (restaurants.length < pool && moods.length > 0) {
+    try {
+      const snap = await getDocs(query(
+        collection(db, 'restaurants'),
+        where('mood_tags', 'array-contains-any', moods),
+        limit(pool)
+      ));
+      addDocs(snap);
+    } catch (_) { /* skip */ }
+  }
+
+  // Tier 3: budget only
+  if (restaurants.length < pool) {
+    try {
+      const snap = await getDocs(query(
         collection(db, 'restaurants'),
         where('budget_level', '==', budgetLevel),
-        limit(maxResults * 3)
-      );
-    }
-
-    const snapshot = await getDocs(q);
-
-    let restaurants: Restaurant[];
-    if (snapshot.empty) {
-      const fallbackQ = query(
-        collection(db, 'restaurants'),
-        limit(maxResults * 3)
-      );
-      const fallbackSnap = await getDocs(fallbackQ);
-      restaurants = fallbackSnap.docs.map(doc => ({
-        id: doc.id,
-        ...doc.data()
-      } as Restaurant));
-    } else {
-      restaurants = snapshot.docs.map(doc => ({
-        id: doc.id,
-        ...doc.data()
-      } as Restaurant));
-    }
-
-    restaurants = addDistanceToRestaurants(restaurants, userLat, userLng, maxDistance);
-    return restaurants.slice(0, maxResults);
-
-  } catch (error) {
-    __DEV__ && console.error('getRestaurantsByMood error:', error);
-    return [];
+        limit(pool)
+      ));
+      addDocs(snap);
+    } catch (_) { /* skip */ }
   }
+
+  // Tier 4: all restaurants
+  if (restaurants.length < maxResults) {
+    try {
+      const snap = await getDocs(query(
+        collection(db, 'restaurants'),
+        limit(pool)
+      ));
+      addDocs(snap);
+    } catch (_) { /* skip */ }
+  }
+
+  // Compute metre distances for sorting & filtering
+  if (userLat != null && userLng != null) {
+    for (const r of restaurants) {
+      const lat = r.location?.lat;
+      const lng = r.location?.lng;
+      if (lat != null && lng != null) {
+        const dist = haversineDistance(userLat, userLng, lat, lng);
+        (r as any)._m = dist;
+        r.distance = dist < 1000 ? `${Math.round(dist)} m` : `${(dist / 1000).toFixed(1)} km`;
+      }
+    }
+
+    // Sort closest first
+    restaurants.sort((a, b) => ((a as any)._m ?? Infinity) - ((b as any)._m ?? Infinity));
+
+    // Prefer within maxDistance, fill if not enough
+    if (maxDistance) {
+      const inside = restaurants.filter(r => (r as any)._m == null || (r as any)._m <= maxDistance);
+      const outside = restaurants.filter(r => (r as any)._m != null && (r as any)._m > maxDistance);
+      restaurants = [...inside, ...outside];
+    }
+
+    // Clean up temp field
+    for (const r of restaurants) delete (r as any)._m;
+  }
+
+  return restaurants.slice(0, maxResults);
 };
 
 export type SmartRecommendationsMeta = {
