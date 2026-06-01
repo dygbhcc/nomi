@@ -38,6 +38,21 @@ export type Restaurant = {
   is_local_concept: boolean;
   distance?: string;
   reason?: string;
+  nlp_insights?: {
+    general_summary?: string;
+    food_admiration?: string[];
+    negative_aspects?: string[];
+  };
+  nlp_metrics?: {
+    rating?: number;
+    rating_source?: string;
+    positive_comment_rate?: number;
+    most_frequent_emotion?: string;
+    primary_sentiment_nuances?: string[];
+  };
+  nlp_review_count?: number;
+  nlp_confidence_level?: 'low' | 'medium' | 'high';
+  place_id?: string;
 };
 
 function haversineDistance(lat1: number, lng1: number, lat2: number, lng2: number): number {
@@ -208,6 +223,10 @@ export const unsaveRestaurant = async (userId: string, restaurantId: string): Pr
 };
 
 export const buildReason = (restaurant: Restaurant, selectedMoods: string[]): string => {
+  // Use NLP summary when available and confidence is not low
+  if (restaurant.nlp_insights?.general_summary && restaurant.nlp_confidence_level !== 'low') {
+    return restaurant.nlp_insights.general_summary;
+  }
   const matchingMoods = restaurant.mood_tags?.filter(tag => selectedMoods.includes(tag)) || [];
   if (matchingMoods.length > 0) {
     return `Matches your ${matchingMoods.join(' + ')} mood`;

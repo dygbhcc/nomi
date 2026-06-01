@@ -199,6 +199,35 @@ export default function RestaurantDetailScreen({ restaurant, onBack }: Props) {
           </Text>
         </View>
 
+        {/* What Guests Say — NLP summary + sentiment nuances */}
+        {restaurant.nlp_insights?.general_summary && (
+          <View style={styles.nlpCard}>
+            <View style={styles.nlpCardHeader}>
+              <Text style={styles.nlpCardLabel}>{t('restaurantDetail.nlp.whatGuestsSay')}</Text>
+              {restaurant.nlp_review_count != null && (
+                <Text style={styles.nlpReviewCount}>
+                  {t('restaurantDetail.nlp.basedOnReviews', { count: restaurant.nlp_review_count })}
+                </Text>
+              )}
+            </View>
+            <Text style={styles.nlpSummary}>"{restaurant.nlp_insights.general_summary}"</Text>
+            {restaurant.nlp_metrics?.primary_sentiment_nuances && restaurant.nlp_metrics.primary_sentiment_nuances.length > 0 && (
+              <View style={styles.nlpSentimentRow}>
+                {restaurant.nlp_metrics.primary_sentiment_nuances.map((nuance: string) => (
+                  <View key={nuance} style={styles.sentimentPill}>
+                    <Text style={styles.sentimentPillText}>{nuance}</Text>
+                  </View>
+                ))}
+              </View>
+            )}
+            {restaurant.nlp_metrics?.most_frequent_emotion && (
+              <Text style={styles.nlpEmotion}>
+                {t('restaurantDetail.nlp.overallFeel', { emotion: restaurant.nlp_metrics.most_frequent_emotion })}
+              </Text>
+            )}
+          </View>
+        )}
+
         {/* Why for you */}
         <View style={styles.reasonBox}>
           <Text style={styles.reasonLabel}>WHY FOR YOU?</Text>
@@ -219,6 +248,34 @@ export default function RestaurantDetailScreen({ restaurant, onBack }: Props) {
             )}
           </View>
         </View>
+
+        {/* What People Love — food admiration pills */}
+        {restaurant.nlp_insights?.food_admiration && restaurant.nlp_insights.food_admiration.length > 0 && (
+          <View style={styles.nlpSection}>
+            <Text style={styles.nlpSectionLabel}>{t('restaurantDetail.nlp.whatPeopleLove')}</Text>
+            <View style={styles.nlpPillRow}>
+              {restaurant.nlp_insights.food_admiration.map((item: string) => (
+                <View key={item} style={styles.foodPill}>
+                  <Text style={styles.foodPillText}>{item}</Text>
+                </View>
+              ))}
+            </View>
+          </View>
+        )}
+
+        {/* Heads Up — negative aspects pills */}
+        {restaurant.nlp_insights?.negative_aspects && restaurant.nlp_insights.negative_aspects.length > 0 && (
+          <View style={styles.nlpSection}>
+            <Text style={styles.nlpSectionLabelNeutral}>{t('restaurantDetail.nlp.headsUp')}</Text>
+            <View style={styles.nlpPillRow}>
+              {restaurant.nlp_insights.negative_aspects.map((item: string) => (
+                <View key={item} style={styles.headsUpPill}>
+                  <Text style={styles.headsUpPillText}>{item}</Text>
+                </View>
+              ))}
+            </View>
+          </View>
+        )}
 
         {/* Opening hours */}
         <View style={styles.hoursContainer}>
@@ -652,5 +709,102 @@ const styles = StyleSheet.create({
     fontWeight: "600",
     textAlign: "center",
     flex: 1,
+  },
+  nlpCard: {
+    backgroundColor: CARD_BG,
+    borderRadius: 12,
+    padding: 14,
+    marginBottom: 12,
+    borderWidth: 0.5,
+    borderColor: "#F0F0F0",
+  },
+  nlpCardHeader: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    marginBottom: 8,
+  },
+  nlpCardLabel: {
+    color: ACCENT,
+    fontSize: 10,
+    fontWeight: "700",
+    letterSpacing: 0.5,
+  },
+  nlpReviewCount: {
+    color: TEXT_SECONDARY,
+    fontSize: 11,
+  },
+  nlpSummary: {
+    color: TEXT_PRIMARY,
+    fontSize: 14,
+    fontStyle: "italic",
+    lineHeight: 20,
+    marginBottom: 10,
+  },
+  nlpSentimentRow: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: 6,
+    marginBottom: 6,
+  },
+  sentimentPill: {
+    backgroundColor: "rgba(76, 175, 80, 0.10)",
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 20,
+  },
+  sentimentPillText: {
+    color: "#4CAF50",
+    fontSize: 11,
+    fontWeight: "600",
+  },
+  nlpEmotion: {
+    color: TEXT_SECONDARY,
+    fontSize: 11,
+    textAlign: "right",
+  },
+  nlpSection: {
+    marginBottom: 12,
+  },
+  nlpSectionLabel: {
+    color: ACCENT,
+    fontSize: 10,
+    fontWeight: "700",
+    letterSpacing: 0.5,
+    marginBottom: 8,
+  },
+  nlpSectionLabelNeutral: {
+    color: TEXT_SECONDARY,
+    fontSize: 10,
+    fontWeight: "700",
+    letterSpacing: 0.5,
+    marginBottom: 8,
+  },
+  nlpPillRow: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: 6,
+  },
+  foodPill: {
+    backgroundColor: "rgba(224, 106, 79, 0.12)",
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 20,
+  },
+  foodPillText: {
+    color: ACCENT,
+    fontSize: 11,
+    fontWeight: "600",
+  },
+  headsUpPill: {
+    backgroundColor: "rgba(136, 136, 136, 0.12)",
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 20,
+  },
+  headsUpPillText: {
+    color: TEXT_SECONDARY,
+    fontSize: 11,
+    fontWeight: "600",
   },
 });

@@ -372,6 +372,16 @@ export default function SwipeScreen({ selectedMoods, budgetLevel, selectedDistan
               ))}
             </View>
 
+            {restaurant.nlp_metrics?.primary_sentiment_nuances && restaurant.nlp_metrics.primary_sentiment_nuances.length > 0 && (
+              <View style={styles.sentimentRow}>
+                {restaurant.nlp_metrics.primary_sentiment_nuances.slice(0, 3).map((nuance: string) => (
+                  <View key={nuance} style={styles.sentimentPill}>
+                    <Text style={styles.sentimentPillText}>{nuance}</Text>
+                  </View>
+                ))}
+              </View>
+            )}
+
             <View style={styles.reasonBox}>
               <Text style={styles.reasonLabel}>{t('swipe.whyForYou')}</Text>
               <Text style={styles.reasonText}>{restaurant.reason}</Text>
@@ -523,7 +533,23 @@ const styles = StyleSheet.create({
   moodRow: {
     flexDirection: "row",
     gap: 6,
+    marginBottom: 6,
+  },
+  sentimentRow: {
+    flexDirection: "row",
+    gap: 6,
     marginBottom: 10,
+  },
+  sentimentPill: {
+    backgroundColor: "rgba(76, 175, 80, 0.10)",
+    paddingHorizontal: 8,
+    paddingVertical: 2,
+    borderRadius: 12,
+  },
+  sentimentPillText: {
+    color: "#4CAF50",
+    fontSize: 10,
+    fontWeight: "600",
   },
   moodBadge: {
     backgroundColor: "rgba(224, 106, 79, 0.15)",

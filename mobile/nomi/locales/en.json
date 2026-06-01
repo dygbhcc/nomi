@@ -211,7 +211,14 @@
       "sunday": "Sunday"
     },
     "validatePrompt": "Been here? Validate & earn points!",
-    "validateButton": "Validate Visit"
+    "validateButton": "Validate Visit",
+    "nlp": {
+      "whatGuestsSay": "WHAT GUESTS SAY",
+      "basedOnReviews": "Based on {{count}} reviews",
+      "overallFeel": "Overall feel: {{emotion}}",
+      "whatPeopleLove": "WHAT PEOPLE LOVE",
+      "headsUp": "HEADS UP"
+    }
   },
   "group": {
     "title": "Group Rooms",

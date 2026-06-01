@@ -211,7 +211,14 @@
       "sunday": "Domingo"
     },
     "validatePrompt": "Já estiveste aqui? Valida e ganha pontos!",
-    "validateButton": "Validar Visita"
+    "validateButton": "Validar Visita",
+    "nlp": {
+      "whatGuestsSay": "O QUE OS CLIENTES DIZEM",
+      "basedOnReviews": "Com base em {{count}} avaliacoes",
+      "overallFeel": "Sensacao geral: {{emotion}}",
+      "whatPeopleLove": "O QUE AS PESSOAS ADORAM",
+      "headsUp": "BOM SABER"
+    }
   },
   "group": {
     "title": "Salas de Grupo",
