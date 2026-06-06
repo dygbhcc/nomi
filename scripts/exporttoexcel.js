@@ -7,12 +7,14 @@
  *   node scripts/exporttoexcel.js --fresh    # force re-fetch from Google Places API
  */
 
+require("dotenv").config({path: __dirname + "/../functions/.env"});
 const admin = require("firebase-admin");
 const axios = require("axios");
 const XLSX = require("xlsx");
 const path = require("path");
 
-const serviceAccount = require("/Users/duygubahceci/Downloads/nomi-mvp-firebase-adminsdk-fbsvc-8247614e37.json");
+const saPath = process.env.GOOGLE_APPLICATION_CREDENTIALS || "./service-account.json";
+const serviceAccount = require(saPath);
 
 admin.initializeApp({
   credential: admin.credential.cert(serviceAccount),
@@ -20,7 +22,8 @@ admin.initializeApp({
 });
 const db = admin.firestore();
 
-const GOOGLE_PLACES_API_KEY = "AIzaSyDKrlkf5rUemQK46mj25RA3_ab0Z0UW_s8";
+// key loaded from .env — never hardcode
+const GOOGLE_PLACES_API_KEY = process.env.GOOGLE_PLACES_API_KEY;
 const PLACES_BASE_URL = "https://maps.googleapis.com/maps/api/place";
 const lisbonAndSurroundings = [
   // ── Lisbon Central ─────────────────────────────────────

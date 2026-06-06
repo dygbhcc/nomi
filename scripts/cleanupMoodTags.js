@@ -1,5 +1,8 @@
+require("dotenv").config({path: __dirname + "/../functions/.env"});
 const admin = require("../functions/node_modules/firebase-admin");
-const sa = require("/Users/duygubahceci/Downloads/nomi-mvp-firebase-adminsdk-fbsvc-8247614e37.json");
+
+const saPath = process.env.GOOGLE_APPLICATION_CREDENTIALS || "./service-account.json";
+const sa = require(saPath);
 
 admin.initializeApp({
   credential: admin.credential.cert(sa),
