@@ -1,54 +1,58 @@
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
+
+    // ── Helper functions ──────────────────────────────────────────────
     function isAuthenticated() {
       return request.auth != null;
     }
 
-    function isAdmin() {
-      return isAuthenticated() && request.auth.token.admin == true;
+    function isOwner(userId) {
+      return isAuthenticated() && request.auth.uid == userId;
     }
 
-    function isRoomParticipant(roomData) {
-      return isAuthenticated() && roomData.participants[request.auth.uid] != null;
-    }
-
-    match /users/{userId} {
-      allow read, create, update, delete: if isAuthenticated() && request.auth.uid == userId;
-    }
-
+    // ── restaurants (public read, Cloud Functions–only write) ─────────
     match /restaurants/{restaurantId} {
       allow read: if true;
-      allow create, update, delete: if isAdmin();
+      allow write: if false;
     }
 
+    // ── users (private, owner-only read/write) ───────────────────────
+    match /users/{userId} {
+      allow read, write: if isOwner(userId);
+    }
+
+    // ── rooms (authenticated read, creator-only mutate) ──────────────
     match /rooms/{roomId} {
-      allow create: if isAuthenticated() && request.resource.data.participants[request.auth.uid] != null;
-      allow read, update, delete: if isRoomParticipant(resource.data);
-    }
-
-    match /rooms/{roomId}/preferences/{userId} {
       allow read: if isAuthenticated();
-      allow create, update, delete: if isAuthenticated() && request.auth.uid == userId;
+      allow create: if isAuthenticated()
+                    && request.resource.data.createdBy == request.auth.uid;
+      allow update, delete: if isAuthenticated()
+                            && resource.data.createdBy == request.auth.uid;
     }
 
-    match /votes/{roomId}/{userId} {
-      allow read: if isAuthenticated();
-      allow create, update, delete: if isAuthenticated() && request.auth.uid == userId;
-    }
-
-    match /swipes/{swipeId} {
-      allow create: if isAuthenticated() && request.resource.data.user_id == request.auth.uid;
-      allow read: if isAuthenticated() && resource.data.user_id == request.auth.uid;
-      allow update, delete: if false;
-    }
-
+    // ── votes (immutable after creation) ─────────────────────────────
     match /votes/{voteId} {
-      allow create: if isAuthenticated() && request.resource.data.user_id == request.auth.uid;
-      allow read: if isAuthenticated() && resource.data.user_id == request.auth.uid;
+      allow create: if isAuthenticated()
+                    && request.resource.data.user_id == request.auth.uid;
+      allow read: if isAuthenticated();
       allow update, delete: if false;
     }
 
+    // ── validation_votes (create-only, no client reads) ──────────────
+    match /validation_votes/{voteId} {
+      allow create: if isAuthenticated()
+                    && request.resource.data.user_id == request.auth.uid;
+      allow read, update, delete: if false;
+    }
+
+    // ── leaderboard (public read, Cloud Functions–only write) ────────
+    match /leaderboard/{userId} {
+      allow read: if true;
+      allow write: if false;
+    }
+
+    // ── Deny everything else ─────────────────────────────────────────
     match /{document=**} {
       allow read, write: if false;
     }

@@ -1,21 +1,33 @@
 {
   "rules": {
-    ".read": "auth != null",
-    "votes": {
+    "active_votes": {
       "$roomId": {
+        ".read": "auth != null && auth.provider !== 'anonymous'",
         "$userId": {
-          ".read": "auth != null",
+          ".write": "auth != null && auth.provider !== 'anonymous' && auth.uid === $userId"
+        }
+      }
+    },
+
+    "room_state": {
+      "$roomId": {
+        ".read": "auth != null",
+        ".write": false
+      }
+    },
+
+    "typing_indicators": {
+      "$roomId": {
+        ".read": "auth != null",
+        "$userId": {
           ".write": "auth != null && auth.uid === $userId"
         }
       }
     },
-    "occupancy": {
-      "$restaurantId": {
-        "live": {
-          ".read": true,
-          ".write": "auth != null"
-        }
-      }
+
+    "$other": {
+      ".read": false,
+      ".write": false
     }
   }
 }
