@@ -7,10 +7,15 @@
  *
  * Weight system: NLP(0.55) > validate(0.30) > swipe(0.15) [normalized to 1.0]
  * Batch: 50 restaurants/day (free tier)
+ *
+ * Set DRY_RUN=true to run Gemini analysis without writing to Firestore.
+ * Useful for validating prompts and output quality before committing results.
  */
 
 const {GoogleGenAI} = require("@google/genai");
 const admin = require("firebase-admin");
+
+const DRY_RUN = process.env.DRY_RUN === "true";
 
 // Nomi canonical mood tags
 const MOOD_TAGS = ["romantic", "energetic", "chill", "explorer", "focus", "hungry_quick"];
@@ -175,14 +180,16 @@ function calculateWeightedConfidence(tag, {nlpScores, validateData, swipeData}) 
  * @return {object} Result with processed and errors counts
  */
 async function runGeminiNlpBatch(batchSize = 50) {
+  if (!process.env.GEMINI_API_KEY) {
+    throw new Error("GEMINI_API_KEY is not set");
+  }
+
   const db = admin.firestore();
   const ai = new GoogleGenAI({
-    vertexai: true,
-    project: "nomi-mvp",
-    location: "us-central1",
+    apiKey: process.env.GEMINI_API_KEY,
   });
 
-  console.log(`[Gemini Pipeline] Starting. Batch size: ${batchSize}`);
+  console.log(`[Gemini Pipeline] Starting. Batch size: ${batchSize}${DRY_RUN ? " (DRY RUN)" : ""}`);
 
   const snapshot = await db.collection("restaurants")
       .where("nlp_processed", "==", false)
@@ -211,10 +218,13 @@ async function runGeminiNlpBatch(batchSize = 50) {
       const geminiResult = await analyzeRestaurantWithGemini(ai, restaurant);
 
       if (!geminiResult) {
-        await doc.ref.update({
-          nlp_error: true,
-          nlp_error_at: admin.firestore.FieldValue.serverTimestamp(),
-        });
+        if (!DRY_RUN) {
+          await doc.ref.update({
+            nlp_error: true,
+            nlp_error_at: admin.firestore.FieldValue.serverTimestamp(),
+          });
+        }
+        console.log(`[Gemini] FAIL ${restaurant.name}${DRY_RUN ? " (dry run, skip write)" : ""}`);
         errors++;
         await new Promise((resolve) => setTimeout(resolve, DELAY_MS));
         continue;
@@ -239,46 +249,53 @@ async function runGeminiNlpBatch(batchSize = 50) {
         }
       }
 
-      await doc.ref.update({
-        mood_tags: newMoodTags,
-        confidence_scores: newConfidenceScores,
-        nlp_scores: geminiResult.scores || {},
-        nlp_metrics: geminiResult.metrics || {},
-        nlp_insights: geminiResult.insights || {},
-        nlp_processed: true,
-        nlp_processed_at: admin.firestore.FieldValue.serverTimestamp(),
-        nlp_review_count: geminiResult.review_count || 0,
-        nlp_review_sources: geminiResult.review_sources || [],
-        nlp_top_keywords: geminiResult.top_keywords || [],
-        nlp_confidence_level: geminiResult.confidence || "low",
-      });
-
-      console.log(`[Gemini] OK ${restaurant.name}: tags=[${newMoodTags.join(", ")}]`);
+      if (DRY_RUN) {
+        console.log(`[Gemini] DRY RUN ${restaurant.name}: tags=[${newMoodTags.join(", ")}] scores=${JSON.stringify(newConfidenceScores)}`);
+      } else {
+        await doc.ref.update({
+          mood_tags: newMoodTags,
+          confidence_scores: newConfidenceScores,
+          nlp_scores: geminiResult.scores || {},
+          nlp_metrics: geminiResult.metrics || {},
+          nlp_insights: geminiResult.insights || {},
+          nlp_processed: true,
+          nlp_processed_at: admin.firestore.FieldValue.serverTimestamp(),
+          nlp_review_count: geminiResult.review_count || 0,
+          nlp_review_sources: geminiResult.review_sources || [],
+          nlp_top_keywords: geminiResult.top_keywords || [],
+          nlp_confidence_level: geminiResult.confidence || "low",
+        });
+        console.log(`[Gemini] OK ${restaurant.name}: tags=[${newMoodTags.join(", ")}]`);
+      }
       processed++;
     } catch (err) {
       console.error(`[Gemini] Error processing "${restaurant.name}":`, err.message);
       errors++;
 
-      await doc.ref.update({
-        nlp_error: true,
-        nlp_error_message: err.message,
-        nlp_error_at: admin.firestore.FieldValue.serverTimestamp(),
-      }).catch(() => {});
+      if (!DRY_RUN) {
+        await doc.ref.update({
+          nlp_error: true,
+          nlp_error_message: err.message,
+          nlp_error_at: admin.firestore.FieldValue.serverTimestamp(),
+        }).catch(() => {});
+      }
     }
 
     await new Promise((resolve) => setTimeout(resolve, DELAY_MS));
   }
 
-  await db.collection("pipeline_logs").add({
-    type: "gemini_nlp",
-    processed,
-    errors,
-    batch_size: batchSize,
-    ran_at: admin.firestore.FieldValue.serverTimestamp(),
-  });
+  if (!DRY_RUN) {
+    await db.collection("pipeline_logs").add({
+      type: "gemini_nlp",
+      processed,
+      errors,
+      batch_size: batchSize,
+      ran_at: admin.firestore.FieldValue.serverTimestamp(),
+    });
+  }
 
-  console.log(`[Gemini Pipeline] Done. OK: ${processed}  Errors: ${errors}`);
-  return {processed, errors};
+  console.log(`[Gemini Pipeline] Done.${DRY_RUN ? " (DRY RUN)" : ""} OK: ${processed}  Errors: ${errors}`);
+  return {processed, errors, dryRun: DRY_RUN};
 }
 
 module.exports = {runGeminiNlpBatch};
