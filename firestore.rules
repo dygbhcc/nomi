@@ -1,44 +1,45 @@
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
-    function isAuthenticated() {
+    function isSignedIn() {
       return request.auth != null;
     }
 
     function isAdmin() {
-      return isAuthenticated() && request.auth.token.admin == true;
+      return isSignedIn() && request.auth.token.admin == true;
     }
 
-    function isRoomParticipant(roomData) {
-      return isAuthenticated() && roomData.participants[request.auth.uid] != null;
-    }
-
-    match /users/{userId} {
-      allow read, create, update, delete: if isAuthenticated() && request.auth.uid == userId;
-    }
-
+    // Public read, admin-only writes
     match /restaurants/{restaurantId} {
       allow read: if true;
-      allow create, update, delete: if isAdmin();
+      allow write: if isAdmin();
     }
 
+    // Users can only write their own profile
+    match /users/{userId} {
+      allow read: if isSignedIn();
+      allow create, update, delete: if isSignedIn() && request.auth.uid == userId;
+    }
+
+    // Base room docs are readable by signed-in users, mutable by organizer/admin
     match /rooms/{roomId} {
-      allow create: if isAuthenticated() && request.resource.data.participants[request.auth.uid] != null;
-      allow read, update, delete: if isRoomParticipant(resource.data);
+      allow read: if isSignedIn();
+      allow create: if isSignedIn();
+      allow update, delete: if isSignedIn() && (
+        request.auth.uid == resource.data.organizer_uid || isAdmin()
+      );
     }
 
+    // Users can only write their own room preferences
     match /rooms/{roomId}/preferences/{userId} {
-      allow read: if isAuthenticated();
-      allow create, update, delete: if isAuthenticated() && request.auth.uid == userId;
+      allow read: if isSignedIn();
+      allow create, update, delete: if isSignedIn() && request.auth.uid == userId;
     }
 
-    match /votes/{roomId}/{userId} {
-      allow read: if isAuthenticated();
-      allow create, update, delete: if isAuthenticated() && request.auth.uid == userId;
-    }
-
-    match /{document=**} {
-      allow read, write: if false;
+    // Cache metadata for region queries (Cloud Functions/admin only write)
+    match /restaurant_cache_regions/{regionId} {
+      allow read: if isSignedIn();
+      allow write: if isAdmin();
     }
   }
 }

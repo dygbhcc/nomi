@@ -1,12 +1,13 @@
-node_modules/
 .env
 .env.local
-firebase-debug.log
+node_modules/
+functions/node_modules/
+scripts/node_modules/
+mobile/node_modules/
 .DS_Store
 *.log
-functions/node_modules/
+firebase-debug.log
 functions/.env
 functions/.env.local
 functions/firebase-debug.log
 functions/.DS_Store
-functions/*.log

@@ -1,6 +1,5 @@
 {
   "rules": {
-    ".read": "auth != null",
     "votes": {
       "$roomId": {
         "$userId": {

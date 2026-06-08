@@ -1,0 +1,11 @@
+{
+  "name": "wswe-scripts",
+  "private": true,
+  "scripts": {
+    "import": "node import.js",
+    "seed:lisbon": "node seedLisbon.js"
+  },
+  "dependencies": {
+    "firebase-admin": "^12.7.0"
+  }
+}
