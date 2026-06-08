@@ -180,13 +180,11 @@ function calculateWeightedConfidence(tag, {nlpScores, validateData, swipeData}) 
  * @return {object} Result with processed and errors counts
  */
 async function runGeminiNlpBatch(batchSize = 50) {
-  if (!process.env.GEMINI_API_KEY) {
-    throw new Error("GEMINI_API_KEY is not set");
-  }
-
   const db = admin.firestore();
   const ai = new GoogleGenAI({
-    apiKey: process.env.GEMINI_API_KEY,
+    vertexai: true,
+    project: process.env.GCLOUD_PROJECT || "nomi-mvp",
+    location: "us-central1",
   });
 
   console.log(`[Gemini Pipeline] Starting. Batch size: ${batchSize}${DRY_RUN ? " (DRY RUN)" : ""}`);
