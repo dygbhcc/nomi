@@ -312,8 +312,6 @@
     "shareTitle": "Nova Pesquisa?",
     "shareMessage": "Vais perder as tuas escolhas atuais.",
     "voteSummary": "{{likedBy}} de {{totalVoters}} pessoas gostaram disto",
-    "badgeTitle": "O Decisor",
-    "badgeSubtitle": "Decidiste pelo grupo! 👑",
     "points": "+100 pts"
   },
   "profile": {
@@ -345,14 +343,6 @@
       "hidden_gem_hunter": {
         "name": "Caçador de Joias Escondidas",
         "condition": "Encontra 3 joias escondidas"
-      },
-      "pet_hero": {
-        "name": "Herói dos Animais",
-        "condition": "Visita 3 sítios que aceitam animais"
-      },
-      "the_decider": {
-        "name": "O Decisor",
-        "condition": "Ganha 5 votações de grupo"
       },
       "connector": {
         "name": "Conector",

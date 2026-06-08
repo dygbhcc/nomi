@@ -22,8 +22,6 @@ const BG = Colors.background;
 const CARD_BG = Colors.cardBackground;
 const TEXT_PRIMARY = Colors.textPrimary;
 const TEXT_SECONDARY = Colors.textSecondary;
-const GOLD = "#FFD700";
-const GREEN = "#2ECC71";
 
 const { width: SCREEN_WIDTH } = Dimensions.get("window");
 
@@ -41,7 +39,6 @@ type Props = {
   restaurant: Restaurant;
   totalVoters: number;
   likedBy: number;
-  isCurrentUserWinner: boolean;
   roomCode: string;
   onStartOver: () => void;
   onNavigate: (screen: string) => void;
@@ -139,7 +136,6 @@ export default function ResultScreen({
   restaurant,
   totalVoters,
   likedBy,
-  isCurrentUserWinner,
   roomCode,
   onStartOver,
   onNavigate,
@@ -147,12 +143,6 @@ export default function ResultScreen({
   const { t } = useTranslation();
   // Trophy scale-in animation
   const trophyScale = useRef(new Animated.Value(0)).current;
-  // Badge slide-up animation
-  const badgeTranslateY = useRef(new Animated.Value(100)).current;
-  const badgeOpacity = useRef(new Animated.Value(0)).current;
-  // Points animation
-  const ptsOpacity = useRef(new Animated.Value(0)).current;
-  const ptsTranslateY = useRef(new Animated.Value(0)).current;
 
   useEffect(() => {
     // Trophy bounce in
@@ -164,38 +154,6 @@ export default function ResultScreen({
       delay: 300,
     }).start();
 
-    // Badge slide up after delay
-    if (isCurrentUserWinner) {
-      Animated.sequence([
-        Animated.delay(1500),
-        Animated.parallel([
-          Animated.spring(badgeTranslateY, {
-            toValue: 0,
-            tension: 60,
-            friction: 8,
-            useNativeDriver: true,
-          }),
-          Animated.timing(badgeOpacity, {
-            toValue: 1,
-            duration: 400,
-            useNativeDriver: true,
-          }),
-        ]),
-        Animated.delay(400),
-        Animated.parallel([
-          Animated.timing(ptsOpacity, {
-            toValue: 1,
-            duration: 300,
-            useNativeDriver: true,
-          }),
-          Animated.timing(ptsTranslateY, {
-            toValue: -20,
-            duration: 600,
-            useNativeDriver: true,
-          }),
-        ]),
-      ]).start();
-    }
   }, []);
 
   // Voter avatar dots
@@ -349,36 +307,6 @@ export default function ResultScreen({
           <Text style={styles.textButtonText}>{t('common.back')}</Text>
         </TouchableOpacity>
 
-        {/* --- The Decider Badge --- */}
-        {isCurrentUserWinner && (
-          <Animated.View
-            style={[
-              styles.badgeContainer,
-              {
-                opacity: badgeOpacity,
-                transform: [{ translateY: badgeTranslateY }],
-              },
-            ]}
-          >
-            <View style={styles.badgeCard}>
-              <Text style={styles.badgeIcon}>{"\u{1F3C6}"}</Text>
-              <View style={styles.badgeTextContainer}>
-                <Text style={styles.badgeTitle}>{t('result.badgeTitle')}</Text>
-                <Text style={styles.badgeSubtitle}>
-                  {t('result.badgeSubtitle')}
-                </Text>
-              </View>
-              <Animated.View
-                style={{
-                  opacity: ptsOpacity,
-                  transform: [{ translateY: ptsTranslateY }],
-                }}
-              >
-                <Text style={styles.badgePts}>{t('result.points')}</Text>
-              </Animated.View>
-            </View>
-          </Animated.View>
-        )}
 
         <View style={{ height: 40 }} />
       </ScrollView>
@@ -567,39 +495,4 @@ const styles = StyleSheet.create({
     fontSize: 15,
   },
 
-  // --- The Decider Badge ---
-  badgeContainer: {
-    width: "100%",
-  },
-  badgeCard: {
-    backgroundColor: "#1A1800",
-    borderRadius: 16,
-    borderWidth: 2,
-    borderColor: GOLD,
-    padding: 16,
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 12,
-  },
-  badgeIcon: {
-    fontSize: 36,
-  },
-  badgeTextContainer: {
-    flex: 1,
-  },
-  badgeTitle: {
-    color: GOLD,
-    fontSize: 17,
-    fontWeight: "800",
-  },
-  badgeSubtitle: {
-    color: TEXT_SECONDARY,
-    fontSize: 13,
-    marginTop: 2,
-  },
-  badgePts: {
-    color: GREEN,
-    fontSize: 18,
-    fontWeight: "800",
-  },
 });

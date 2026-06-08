@@ -44,6 +44,16 @@ function getLevelInfo(points: number) {
   return { ...level, progress };
 }
 
+// --- Badge Images ---
+const BADGE_IMAGES: Record<string, ImageSourcePropType> = {
+  romantic_scout: require("../assets/badges/romantic.png"),
+  hidden_gem_hunter: require("../assets/badges/hidden_gem.png"),
+  connector: require("../assets/badges/connector.png"),
+  local_expert: require("../assets/badges/local_expert.png"),
+  night_owl: require("../assets/badges/night_owl.png"),
+  trendsetter: require("../assets/badges/trendsetter.png"),
+};
+
 // --- Badges ---
 type Badge = {
   id: string;
@@ -64,8 +74,6 @@ type SavedRestaurant = {
 const ALL_BADGES: Badge[] = [
   { id: "romantic_scout", name: "Romantic Scout", emoji: "\u{1F490}", condition: "Pick 5 romantic spots" },
   { id: "hidden_gem_hunter", name: "Hidden Gem Hunter", emoji: "\u{1F48E}", condition: "Find 3 hidden gems" },
-  { id: "pet_hero", name: "Pet Hero", emoji: "\u{1F43E}", condition: "Visit 3 pet-friendly places" },
-  { id: "the_decider", name: "The Decider", emoji: "\u{1F451}", condition: "Win 5 group votes" },
   { id: "connector", name: "Connector", emoji: "\u{1F91D}", condition: "Create 3 group sessions" },
   { id: "local_expert", name: "Local Expert", emoji: "\u{1F4CD}", condition: "Rate 10 restaurants" },
   { id: "night_owl", name: "Night Owl", emoji: "\u{1F989}", condition: "Dine after 10pm 3 times" },
@@ -240,14 +248,23 @@ export default function ProfileScreen({ onNavigate }: Props) {
         <View style={styles.badgeGrid}>
           {ALL_BADGES.map((badge) => {
             const earned = user.badges.includes(badge.id);
+            const badgeImage = BADGE_IMAGES[badge.id];
             return (
               <View
                 key={badge.id}
                 style={[styles.badgeCard, !earned && styles.badgeCardLocked]}
               >
-                <Text style={[styles.badgeEmoji, !earned && styles.grayscale]}>
-                  {earned ? badge.emoji : "\u{1F512}"}
-                </Text>
+                {badgeImage ? (
+                  <Image
+                    source={badgeImage}
+                    style={[styles.badgeImage, !earned && styles.badgeImageLocked]}
+                    resizeMode="contain"
+                  />
+                ) : (
+                  <Text style={[styles.badgeEmoji, !earned && styles.grayscale]}>
+                    {earned ? badge.emoji : "\u{1F512}"}
+                  </Text>
+                )}
                 <Text
                   style={[
                     styles.badgeName,
@@ -463,6 +480,14 @@ const styles = StyleSheet.create({
   },
   badgeCardLocked: {
     opacity: 0.45,
+  },
+  badgeImage: {
+    width: 64,
+    height: 64,
+    marginBottom: 4,
+  },
+  badgeImageLocked: {
+    opacity: 0.4,
   },
   badgeEmoji: {
     fontSize: 24,

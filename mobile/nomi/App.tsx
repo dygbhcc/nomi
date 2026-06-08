@@ -364,7 +364,6 @@ function AppNavigator() {
           }}
           totalVoters={votingResult?.totalVoters || 4}
           likedBy={votingResult?.likedBy || 3}
-          isCurrentUserWinner={true}
           roomCode={votingResult?.roomCode || "TEST123"}
           onStartOver={() => {
             setVotingResult(null);

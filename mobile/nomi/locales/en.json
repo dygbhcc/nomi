@@ -312,8 +312,6 @@
     "shareTitle": "Start New Search?",
     "shareMessage": "You'll lose your current picks.",
     "voteSummary": "{{likedBy}} out of {{totalVoters}} people liked this",
-    "badgeTitle": "The Decider",
-    "badgeSubtitle": "You decided for the group! 👑",
     "points": "+100 pts"
   },
   "profile": {
@@ -345,14 +343,6 @@
       "hidden_gem_hunter": {
         "name": "Hidden Gem Hunter",
         "condition": "Find 3 hidden gems"
-      },
-      "pet_hero": {
-        "name": "Pet Hero",
-        "condition": "Visit 3 pet-friendly places"
-      },
-      "the_decider": {
-        "name": "The Decider",
-        "condition": "Win 5 group votes"
       },
       "connector": {
         "name": "Connector",
