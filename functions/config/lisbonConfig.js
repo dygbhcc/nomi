@@ -26,7 +26,6 @@ module.exports = {
     {name: "Roma", lat: 38.7440, lng: -9.1384, radius: 700},
     {name: "Arroios", lat: 38.7254, lng: -9.1348, radius: 700},
     {name: "Anjos", lat: 38.7228, lng: -9.1388, radius: 600},
-    {name: "Intendente", lat: 38.7195, lng: -9.1359, radius: 600},
     {name: "Penha de França", lat: 38.7285, lng: -9.1273, radius: 700},
     {name: "Beato", lat: 38.7228, lng: -9.1148, radius: 700},
     {name: "Marvila", lat: 38.7299, lng: -9.1048, radius: 800},
