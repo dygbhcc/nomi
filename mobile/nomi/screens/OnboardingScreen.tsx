@@ -90,7 +90,7 @@ function SplashSlide({ t }: { t: any }) {
       <FloatingFood />
       <View style={splashStyles.content}>
         <Image
-          source={require("../assets/nomi-logo.png")}
+          source={require("../assets/logo.png")}
           style={splashStyles.logo}
           resizeMode="contain"
         />

@@ -33,7 +33,7 @@ export type Restaurant = {
   phone: string;
   website: string;
   google_rating: number;
-  photos: { photo_reference: string; width: number; height: number }[];
+  photos: { photo_reference?: string; url?: string; source?: string; width: number; height: number }[];
   cache_date: Timestamp | Date | null;
   is_local_concept: boolean;
   distance?: string;
@@ -68,7 +68,7 @@ function haversineDistance(lat1: number, lng1: number, lat2: number, lng2: numbe
 export const getRestaurantsByMood = async (
   moods: string[],
   budgetLevel: number,
-  maxResults: number = 9,
+  maxResults: number = 6,
   userLat?: number | null,
   userLng?: number | null,
   maxDistance?: number | null
@@ -198,7 +198,7 @@ export const getSmartRecommendations = async (
   } catch (error) {
     __DEV__ && console.error('getSmartRecommendations error, falling back:', error);
     // Fallback to direct Firestore query with client-side distance
-    const restaurants = await getRestaurantsByMood(moods, budgetLevel, 9, userLat, userLng, distance);
+    const restaurants = await getRestaurantsByMood(moods, budgetLevel, 6, userLat, userLng, distance);
     return {
       restaurants,
       meta: {
@@ -251,9 +251,12 @@ export const buildReason = (restaurant: Restaurant, selectedMoods: string[]): st
   return 'Great spot near you';
 };
 
-export const getPhotoUrl = (restaurant: Restaurant): string | null => {
-  if (!restaurant.photos || restaurant.photos.length === 0) return null;
-  const photo = restaurant.photos[0];
+export const getPhotoUrl = (restaurant: Restaurant, photoIndex = 0): string | null => {
+  if (!restaurant.photos || restaurant.photos.length <= photoIndex) return null;
+  const photo = restaurant.photos[photoIndex];
+  if (photo.url) {
+    return photo.url;
+  }
   if (photo.photo_reference) {
     return `https://maps.googleapis.com/maps/api/place/photo?maxwidth=800&photo_reference=${photo.photo_reference}&key=${process.env.EXPO_PUBLIC_GOOGLE_PLACES_API_KEY}`;
   }

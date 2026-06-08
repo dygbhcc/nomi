@@ -1,5 +1,5 @@
 import { useTranslation } from "react-i18next";
-import React, { useState, useRef, useEffect } from "react";
+import React, { useState, useRef, useEffect, useMemo } from "react";
 import {
   View,
   Text,
@@ -53,7 +53,7 @@ const MOCK_VALIDATE_QUEUE: ValidateItem[] = [
     id: "2",
     name: "ZeroZero",
     address: "Rua do Passadi\u00E7o 35",
-    mood: "fresh",
+    mood: "focus",
     photoColor: "#0D1A0D",
     photo: require("../assets/images/restaurants/zerozero.jpg")
   },
@@ -69,7 +69,7 @@ const MOCK_VALIDATE_QUEUE: ValidateItem[] = [
     id: "4",
     name: "Cantinho do Avillez",
     address: "Rua dos Duques de Bragan\u00E7a 7",
-    mood: "hidden_gem",
+    mood: "explorer",
     photoColor: "#1A1A0D",
     photo: require("../assets/images/restaurants/catinho.jpg")
   },
@@ -77,7 +77,7 @@ const MOCK_VALIDATE_QUEUE: ValidateItem[] = [
     id: "5",
     name: "Solar dos Presuntos",
     address: "Rua Portas de Santo Ant\u00E3o 150",
-    mood: "cozy",
+    mood: "chill",
     photoColor: "#0D0D1A",
     photo: require("../assets/images/restaurants/solar.jpg")
   },
@@ -226,6 +226,15 @@ export default function ValidateScreen({ onDone, onSkip, onNavigate }: Props) {
   const item = MOCK_VALIDATE_QUEUE[currentIndex % MOCK_VALIDATE_QUEUE.length];
   const progress = validated / DAILY_LIMIT;
 
+  // Pick one random question from the mood's question pool per card
+  const currentQuestion = useMemo(() => {
+    const questions = t(`validate.questions.${item.mood}`, { returnObjects: true }) as string[];
+    if (Array.isArray(questions) && questions.length > 0) {
+      return questions[Math.floor(Math.random() * questions.length)];
+    }
+    return t(`validate.moods.${item.mood}`) + '?';
+  }, [currentIndex, t, item.mood]);
+
   const cardScale = slideIn.interpolate({
     inputRange: [0, 1],
     outputRange: [0.92, 1],
@@ -246,7 +255,7 @@ export default function ValidateScreen({ onDone, onSkip, onNavigate }: Props) {
       </View>
 
       <Text style={styles.subtitle}>
-        {t('validate.swipePrompt', { mood: t(`validate.moods.${item.mood}`).toLowerCase() })}
+        {t(`validate.moods.${item.mood}`)}
       </Text>
 
       {/* --- Card --- */}
@@ -284,7 +293,7 @@ export default function ValidateScreen({ onDone, onSkip, onNavigate }: Props) {
 
       {/* --- Mood Question --- */}
       <Text style={styles.moodQuestion}>
-        {t('validate.isThis')} <Text style={styles.moodHighlight}>{t(`validate.moods.${item.mood}`)}</Text>?
+        {currentQuestion}
       </Text>
 
       {/* --- Buttons --- */}

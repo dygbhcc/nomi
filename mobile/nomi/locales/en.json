@@ -407,8 +407,50 @@
     "confirmButton": "Yes, I visited",
     "skipButton": "Skip",
     "helpImprove": "Help us improve!",
-    "swipePrompt": "Is this place {{mood}}? Swipe to validate and earn points",
-    "isThis": "Is this",
+    "questions": {
+      "romantic": [
+        "Would you bring a first date here?",
+        "Good for deep talks?",
+        "Is this a place for long conversations?",
+        "Good first date spot?",
+        "Would you dress up for this place?"
+      ],
+      "focus": [
+        "Coffee and focus here?",
+        "Is this place good for deep work?",
+        "Would you come here to clear your mind?",
+        "Would you come here on a slow Sunday?",
+        "Could you relax here alone?"
+      ],
+      "energetic": [
+        "Would your loudest friend love this spot?",
+        "Would you celebrate good news here?",
+        "Would you come here with a big group of friends?",
+        "Perfect for \"one more drink\"?",
+        "Would you start your night here?"
+      ],
+      "chill": [
+        "Would you come here to relax after work?",
+        "Would you sit here for hours talking?",
+        "Perfect for \"one more drink\"?",
+        "Is this a place for long conversations?",
+        "Does this place feel social?"
+      ],
+      "hungryQuick": [
+        "Does this place feel good for a quick meal?",
+        "Would you come here when you are really hungry?",
+        "Is this place good for a fast meal?",
+        "Would you come here just for the food?",
+        "Would you stop here for lunch between meetings?"
+      ],
+      "explorer": [
+        "Would you bring someone visiting your city here?",
+        "Would you go out of your way to visit this place?",
+        "Does this place feel different from the usual spots?",
+        "Would you come here just for the experience?",
+        "Is this place worth discovering?"
+      ]
+    },
     "moods": {
       "romantic": "Romantic",
       "fresh": "Fresh",

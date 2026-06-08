@@ -10,6 +10,7 @@ import {
   Platform,
   ScrollView,
   AccessibilityInfo,
+  Image,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { StatusBar } from "expo-status-bar";
@@ -115,7 +116,11 @@ export default function AuthScreen() {
           keyboardShouldPersistTaps="handled"
         >
           {/* Logo */}
-          <Text style={styles.logo}>nomi</Text>
+          <Image
+            source={require("../assets/logo.png")}
+            style={styles.logo}
+            resizeMode="contain"
+          />
 
           {/* Tab Toggle */}
           <View style={styles.tabContainer}>
@@ -278,10 +283,9 @@ const styles = StyleSheet.create({
     paddingBottom: Spacing.xxl,
   },
   logo: {
-    fontSize: 40,
-    fontWeight: Typography.bold,
-    color: Colors.accent,
-    textAlign: "center",
+    width: 160,
+    height: 56,
+    alignSelf: "center",
     marginBottom: 48,
   },
   tabContainer: {

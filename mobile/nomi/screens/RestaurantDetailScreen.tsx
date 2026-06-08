@@ -17,7 +17,7 @@ import { StatusBar } from "expo-status-bar";
 import { useTranslation } from "react-i18next";
 import * as Haptics from "expo-haptics";
 import { Colors } from "../theme/colors";
-import { Restaurant } from "../services/restaurantService";
+import { Restaurant, getPhotoUrl } from "../services/restaurantService";
 import { saveRestaurant, unsaveRestaurant } from "../services/swipeService";
 import { useAuth } from "../context/AuthContext";
 
@@ -114,14 +114,19 @@ export default function RestaurantDetailScreen({ restaurant, selectedMoods, onBa
               })}
               onViewableItemsChanged={onViewRef.current}
               viewabilityConfig={viewConfigRef.current}
-              renderItem={({ item: photo }) => (
-                <View style={{ width: SCREEN_WIDTH, height: SCREEN_HEIGHT * 0.32 }}>
-                  <Image
-                    source={{ uri: `https://maps.googleapis.com/maps/api/place/photo?maxwidth=800&photo_reference=${photo.photo_reference}&key=${process.env.EXPO_PUBLIC_GOOGLE_PLACES_API_KEY}` }}
-                    style={styles.heroImage}
-                  />
-                </View>
-              )}
+              renderItem={({ item: photo, index }) => {
+                const photoUrl = getPhotoUrl(restaurant, index);
+                return (
+                  <View style={{ width: SCREEN_WIDTH, height: SCREEN_HEIGHT * 0.32 }}>
+                    {photoUrl && (
+                      <Image
+                        source={{ uri: photoUrl }}
+                        style={styles.heroImage}
+                      />
+                    )}
+                  </View>
+                );
+              }}
               style={styles.photoScroll}
             />
             <View style={styles.photoAttribution}>

@@ -15,7 +15,7 @@ import { StatusBar } from "expo-status-bar";
 import { useTranslation } from "react-i18next";
 import * as Haptics from "expo-haptics"; // FIX 3 - Haptic feedback
 import { Colors } from "../theme/colors";
-import { getSmartRecommendations, buildReason, Restaurant } from '../services/restaurantService';
+import { getSmartRecommendations, buildReason, Restaurant, getPhotoUrl } from '../services/restaurantService';
 import { recordSwipe } from '../services/swipeService';
 import { useAuth } from '../context/AuthContext';
 
@@ -76,7 +76,7 @@ export default function SwipeScreen({ selectedMoods, budgetLevel, selectedDistan
           DEFAULT_LAT,
           DEFAULT_LNG
         );
-        const withReasons = result.restaurants.map(r => ({
+        const withReasons = result.restaurants.slice(0, 6).map(r => ({
           ...r,
           reason: buildReason(r, selectedMoods),
         }));
@@ -207,7 +207,7 @@ export default function SwipeScreen({ selectedMoods, budgetLevel, selectedDistan
         DEFAULT_LAT,
         DEFAULT_LNG
       );
-      const withReasons = result.restaurants.map(r => ({
+      const withReasons = result.restaurants.slice(0, 6).map(r => ({
         ...r,
         reason: buildReason(r, selectedMoods),
       }));
@@ -337,15 +337,12 @@ export default function SwipeScreen({ selectedMoods, budgetLevel, selectedDistan
           </Animated.View>
 
           {/* Photo */}
-          {restaurant.photos && restaurant.photos.length > 0 ? (
+          {getPhotoUrl(restaurant) ? (
             <View>
               <Image
-                source={{ uri: `https://maps.googleapis.com/maps/api/place/photo?maxwidth=800&photo_reference=${restaurant.photos[0].photo_reference}&key=${process.env.EXPO_PUBLIC_GOOGLE_PLACES_API_KEY}` }}
+                source={{ uri: getPhotoUrl(restaurant)! }}
                 style={styles.photoSection}
               />
-              <View style={styles.photoAttribution}>
-                <Text style={styles.photoAttributionText}>Photo from Google</Text>
-              </View>
             </View>
           ) : (
             <View style={[styles.photoSection, { backgroundColor: '#E8E8E8' }]} />
@@ -372,6 +369,11 @@ export default function SwipeScreen({ selectedMoods, budgetLevel, selectedDistan
               ))}
             </View>
 
+            <View style={styles.reasonBox}>
+              <Text style={styles.reasonLabel}>{t('swipe.whyForYou')}</Text>
+              <Text style={styles.reasonText}>{restaurant.reason}</Text>
+            </View>
+
             {restaurant.nlp_metrics?.primary_sentiment_nuances && restaurant.nlp_metrics.primary_sentiment_nuances.length > 0 && (
               <View style={styles.sentimentRow}>
                 {restaurant.nlp_metrics.primary_sentiment_nuances.slice(0, 3).map((nuance: string) => (
@@ -381,11 +383,6 @@ export default function SwipeScreen({ selectedMoods, budgetLevel, selectedDistan
                 ))}
               </View>
             )}
-
-            <View style={styles.reasonBox}>
-              <Text style={styles.reasonLabel}>{t('swipe.whyForYou')}</Text>
-              <Text style={styles.reasonText}>{restaurant.reason}</Text>
-            </View>
           </View>
         </Animated.View>
       </View>
@@ -538,7 +535,7 @@ const styles = StyleSheet.create({
   sentimentRow: {
     flexDirection: "row",
     gap: 6,
-    marginBottom: 10,
+    marginTop: 10,
   },
   sentimentPill: {
     backgroundColor: "rgba(76, 175, 80, 0.10)",

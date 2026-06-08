@@ -13,7 +13,7 @@ import { StatusBar } from 'expo-status-bar';
 import { useTranslation } from 'react-i18next';
 import * as Haptics from 'expo-haptics';
 import { Colors } from '../theme/colors';
-import { Restaurant } from '../services/restaurantService';
+import { Restaurant, getPhotoUrl } from '../services/restaurantService';
 
 type Props = {
   likedRestaurants: Restaurant[];
@@ -39,15 +39,6 @@ export default function LikedScreen({ likedRestaurants, onSelect, onStartOver }:
   const handleCancel = () => {
     console.log('🟡 User cancelled');
     setShowConfirmModal(false);
-  };
-
-  const getPhotoUrl = (restaurant: Restaurant): string | null => {
-    if (!restaurant.photos || restaurant.photos.length === 0) return null;
-    const photo = restaurant.photos[0];
-    if (photo.photo_reference) {
-      return `https://maps.googleapis.com/maps/api/place/photo?maxwidth=800&photo_reference=${photo.photo_reference}&key=${process.env.EXPO_PUBLIC_GOOGLE_PLACES_API_KEY}`;
-    }
-    return null;
   };
 
   const renderCard = ({ item }: { item: Restaurant }) => {

@@ -407,8 +407,50 @@
     "confirmButton": "Sim, visitei",
     "skipButton": "Saltar",
     "helpImprove": "Ajuda-nos a melhorar!",
-    "swipePrompt": "Este lugar é {{mood}}? Desliza para validar e ganhar pontos",
-    "isThis": "Este lugar é",
+    "questions": {
+      "romantic": [
+        "Trazias um primeiro encontro aqui?",
+        "Bom para conversas profundas?",
+        "Este é um lugar para conversas longas?",
+        "Bom sítio para um primeiro encontro?",
+        "Vestias-te bem para vir aqui?"
+      ],
+      "focus": [
+        "Café e foco aqui?",
+        "Este lugar é bom para trabalho focado?",
+        "Vinhas aqui para limpar a mente?",
+        "Vinhas aqui num domingo calmo?",
+        "Conseguias relaxar aqui sozinho/a?"
+      ],
+      "energetic": [
+        "O teu amigo mais barulhento ia adorar este sítio?",
+        "Celebravas boas notícias aqui?",
+        "Vinhas aqui com um grande grupo de amigos?",
+        "Perfeito para \"mais uma bebida\"?",
+        "Começavas a tua noite aqui?"
+      ],
+      "chill": [
+        "Vinhas aqui relaxar depois do trabalho?",
+        "Ficavas aqui sentado/a horas a conversar?",
+        "Perfeito para \"mais uma bebida\"?",
+        "Este é um lugar para conversas longas?",
+        "Este lugar parece social?"
+      ],
+      "hungryQuick": [
+        "Este lugar parece bom para uma refeição rápida?",
+        "Vinhas aqui quando tens muita fome?",
+        "Este lugar é bom para uma refeição rápida?",
+        "Vinhas aqui só pela comida?",
+        "Paravas aqui para almoçar entre reuniões?"
+      ],
+      "explorer": [
+        "Trazias alguém que está a visitar a tua cidade aqui?",
+        "Fazias um desvio para visitar este lugar?",
+        "Este lugar parece diferente dos sítios habituais?",
+        "Vinhas aqui só pela experiência?",
+        "Este lugar vale a pena descobrir?"
+      ]
+    },
     "moods": {
       "romantic": "Romântico",
       "fresh": "Fresco",

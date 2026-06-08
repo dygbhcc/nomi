@@ -16,7 +16,7 @@ import * as Haptics from "expo-haptics";
 import { Colors } from "../theme/colors";
 import SwipeVoteCard from "../components/SwipeVoteCard";
 import { recordVote, calculateWinner, declareWinner, listenToRoom, Room } from '../services/roomService';
-import { getRestaurantsByMood, Restaurant, buildReason } from '../services/restaurantService';
+import { getRestaurantsByMood, Restaurant, buildReason, getPhotoUrl } from '../services/restaurantService';
 import { useAuth } from '../context/AuthContext';
 
 export { type Restaurant };
@@ -443,8 +443,8 @@ export default function VotingScreen({ roomCode, selectedMoods, budgetLevel, onV
       <View style={styles.cardWrapper}>
         <SwipeVoteCard
           name={restaurant.name}
-          photo={restaurant.photos?.[0]?.photo_reference
-            ? { uri: `https://maps.googleapis.com/maps/api/place/photo?maxwidth=800&photo_reference=${restaurant.photos[0].photo_reference}&key=${process.env.EXPO_PUBLIC_GOOGLE_PLACES_API_KEY}` }
+          photo={getPhotoUrl(restaurant)
+            ? { uri: getPhotoUrl(restaurant)! }
             : undefined
           }
           distance={restaurant.distance || 'Nearby'}

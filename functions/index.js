@@ -1372,7 +1372,7 @@ exports.getSmartRecommendations = onCall(
           }
         }
 
-        // Slots 5-7: Random from top 20%
+        // Slots 5-6: Random from top 20%
         const top20Cutoff = Math.max(1, Math.ceil(scored.length * 0.2));
         const top20Pool = scored
             .slice(0, top20Cutoff)
@@ -1383,33 +1383,7 @@ exports.getSmartRecommendations = onCall(
           [top20Pool[i], top20Pool[j]] = [top20Pool[j], top20Pool[i]];
         }
         for (const c of top20Pool) {
-          if (selected.length >= 7) break;
-          if (selectedIds.has(c.id)) continue;
-          if (pickIfDiverse(c)) {
-            selectedIds.add(c.id);
-          }
-        }
-
-        // Slots 8-9: Discovery — confidence 40-70 range
-        const discoveryPool = scored.filter((c) => {
-          if (selectedIds.has(c.id)) return false;
-          // Check if any mood confidence is in 40-70 range
-          if (c.confidence_scores && normalizedMoods.length > 0) {
-            return normalizedMoods.some((m) => {
-              const score = c.confidence_scores[m] || 0;
-              return score >= 40 && score <= 70;
-            });
-          }
-          return false;
-        });
-
-        // Shuffle discovery pool and pick up to 2
-        for (let i = discoveryPool.length - 1; i > 0; i--) {
-          const j = Math.floor(Math.random() * (i + 1));
-          [discoveryPool[i], discoveryPool[j]] = [discoveryPool[j], discoveryPool[i]];
-        }
-        for (const c of discoveryPool) {
-          if (selected.length >= 9) break;
+          if (selected.length >= 6) break;
           if (selectedIds.has(c.id)) continue;
           if (pickIfDiverse(c)) {
             selectedIds.add(c.id);
@@ -1418,7 +1392,7 @@ exports.getSmartRecommendations = onCall(
 
         // Fill remaining slots from scored list
         for (const c of scored) {
-          if (selected.length >= 9) break;
+          if (selected.length >= 6) break;
           if (selectedIds.has(c.id)) continue;
           if (pickIfDiverse(c)) {
             selectedIds.add(c.id);
@@ -1426,9 +1400,9 @@ exports.getSmartRecommendations = onCall(
         }
 
         // If diversity rules prevented filling, relax and fill
-        if (selected.length < 9) {
+        if (selected.length < 6) {
           for (const c of scored) {
-            if (selected.length >= 9) break;
+            if (selected.length >= 6) break;
             if (selectedIds.has(c.id)) continue;
             selected.push(c);
             selectedIds.add(c.id);

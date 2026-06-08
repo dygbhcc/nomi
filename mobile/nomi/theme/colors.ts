@@ -1,9 +1,9 @@
-// Terracotta & Orange Theme
+// Orange Theme — matched to nomi logo (#F25D0D)
 export const Colors = {
   // Primary
-  accent: '#E06A4F',           // Terracotta — primary buttons, CTA
-  accentSecondary: '#FF8A3D',  // Orange — secondary accent
-  accentLight: '#FFC98A',      // Light orange — vurgu
+  accent: '#F25D0D',           // Logo orange — primary buttons, CTA
+  accentSecondary: '#FF7A2E',  // Lighter orange — secondary accent
+  accentLight: '#FFBD73',      // Pale orange — vurgu
 
   // Backgrounds
   background: '#FFFFFF',       // Pure white — main background
@@ -17,17 +17,17 @@ export const Colors = {
 
   // States
   border: '#F0F0F0',           // Neutral border
-  borderActive: '#E06A4F',
+  borderActive: '#F25D0D',
   shadow: '#000000',
 
   // Progress & Indicators
-  stepActive: '#E06A4F',
+  stepActive: '#F25D0D',
   stepInactive: '#E8E8E8',     // Neutral inactive
 
   // Selected States
-  selectedBackground: 'rgba(224, 106, 79, 0.06)',
-  selectedText: '#E06A4F',
-  selectedHint: '#C25A41',
+  selectedBackground: 'rgba(242, 93, 13, 0.06)',
+  selectedText: '#F25D0D',
+  selectedHint: '#D4500A',
 
   // Overlays
   overlay: 'rgba(0, 0, 0, 0.5)',
@@ -37,12 +37,12 @@ export const Colors = {
   error: '#E74C3C',
 
   // Mood badge
-  badgeBackground: 'rgba(224, 106, 79, 0.10)',
-  badgeText: '#E06A4F',
+  badgeBackground: 'rgba(242, 93, 13, 0.10)',
+  badgeText: '#F25D0D',
 
   // Why for you box
-  reasonBackground: 'rgba(224, 106, 79, 0.08)',
-  reasonBorder: 'rgba(224, 106, 79, 0.2)',
+  reasonBackground: 'rgba(242, 93, 13, 0.08)',
+  reasonBorder: 'rgba(242, 93, 13, 0.2)',
 };
 
 export const Shadows = {
