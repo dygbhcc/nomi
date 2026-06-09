@@ -79,9 +79,10 @@ If the "Verified Customer Sentiment & Metadata" above is "N/A", rely entirely on
 - hungry_quick: Fast service, filling food, efficient, good for quick lunch menus.
 
 # Strict Constraints for "insights" Object
-1. general_summary: Must be a highly concise summary of ONLY 1 or 2 sentences maximum. Keep it direct and punchy.
-2. food_admiration: Array of short keywords representing praised dishes or food qualities (e.g., ["bochechas", "lagartos", "farófias", "migas", "cozido à portuguesa", "bacalhau"]).
-3. negative_aspects: Array of short keywords representing weaknesses (e.g., ["estacionamento", "espera", "barulho", "preco"]).
+All insight fields MUST be bilingual objects with "en" (English) and the restaurant's local language key. For Portugal use "pt". This ensures the app can display insights in the user's chosen language.
+1. general_summary: Object with language keys. Each value is a highly concise summary of ONLY 1 or 2 sentences maximum. Keep it direct and punchy. Example: { "en": "Cozy traditional tavern...", "pt": "Taberna tradicional acolhedora..." }
+2. food_admiration: Object with language keys. Each value is an array of short keywords representing praised dishes or food qualities. Keep local dish names unchanged across languages. Example: { "en": ["pork cheeks", "octopus", "bacalhau"], "pt": ["bochechas de porco", "polvo", "bacalhau"] }
+3. negative_aspects: Object with language keys. Each value is an array of short keywords representing weaknesses. Example: { "en": ["parking", "wait time", "noise"], "pt": ["estacionamento", "espera", "barulho"] }
 
 # Strict Output Rules
 1. Output MUST be a single, valid JSON object.
@@ -106,9 +107,9 @@ If the "Verified Customer Sentiment & Metadata" above is "N/A", rely entirely on
     "primary_sentiment_nuances": ["String", "String"]
   },
   "insights": {
-    "general_summary": "1-2 sentences maximum summary text.",
-    "food_admiration": ["bochechas", "lagartos"],
-    "negative_aspects": ["estacionamento", "espera"]
+    "general_summary": { "en": "English summary text.", "pt": "Portuguese summary text." },
+    "food_admiration": { "en": ["pork cheeks", "octopus"], "pt": ["bochechas de porco", "polvo"] },
+    "negative_aspects": { "en": ["parking", "wait time"], "pt": ["estacionamento", "espera"] }
   },
   "review_count": 0,
   "review_sources": [],
@@ -122,7 +123,7 @@ If the "Verified Customer Sentiment & Metadata" above is "N/A", rely entirely on
       contents: [{role: "user", parts: [{text: prompt}]}],
       config: {
         temperature: 0.1,
-        maxOutputTokens: 1024,
+        maxOutputTokens: 2048,
         thinkingConfig: {thinkingBudget: 0},
         tools: [{googleSearch: {}}],
       },

@@ -13,6 +13,21 @@ import {
 } from 'firebase/firestore';
 import { httpsCallable } from 'firebase/functions';
 import { db, functions } from './firebase';
+import i18n from '../i18n';
+
+/**
+ * Resolves a bilingual field value based on current app language.
+ * Handles both old format (plain string/array) and new format ({ en: ..., pt: ... }).
+ */
+export function resolveLocalized<T>(value: T | Record<string, T> | undefined): T | undefined {
+  if (value == null) return undefined;
+  if (typeof value === 'object' && !Array.isArray(value)) {
+    const langMap = value as Record<string, T>;
+    const lang = i18n.language || 'en';
+    return langMap[lang] ?? langMap['en'] ?? Object.values(langMap)[0];
+  }
+  return value as T;
+}
 
 export type Restaurant = {
   id: string;
@@ -39,9 +54,9 @@ export type Restaurant = {
   distance?: string;
   reason?: string;
   nlp_insights?: {
-    general_summary?: string;
-    food_admiration?: string[];
-    negative_aspects?: string[];
+    general_summary?: string | Record<string, string>;
+    food_admiration?: string[] | Record<string, string[]>;
+    negative_aspects?: string[] | Record<string, string[]>;
   };
   nlp_metrics?: {
     rating?: number;
@@ -239,8 +254,9 @@ export const unsaveRestaurant = async (userId: string, restaurantId: string): Pr
 
 export const buildReason = (restaurant: Restaurant, selectedMoods: string[]): string => {
   // Use NLP summary when available and confidence is not low
-  if (restaurant.nlp_insights?.general_summary && restaurant.nlp_confidence_level !== 'low') {
-    return restaurant.nlp_insights.general_summary;
+  const summary = resolveLocalized(restaurant.nlp_insights?.general_summary);
+  if (summary && restaurant.nlp_confidence_level !== 'low') {
+    return summary;
   }
   const matchingMoods = restaurant.mood_tags?.filter(tag => selectedMoods.includes(tag)) || [];
   if (matchingMoods.length > 0) {

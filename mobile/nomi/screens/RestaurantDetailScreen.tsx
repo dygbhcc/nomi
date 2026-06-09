@@ -17,7 +17,7 @@ import { StatusBar } from "expo-status-bar";
 import { useTranslation } from "react-i18next";
 import * as Haptics from "expo-haptics";
 import { Colors } from "../theme/colors";
-import { Restaurant, getPhotoUrl } from "../services/restaurantService";
+import { Restaurant, getPhotoUrl, resolveLocalized } from "../services/restaurantService";
 import { saveRestaurant, unsaveRestaurant } from "../services/swipeService";
 import { useAuth } from "../context/AuthContext";
 
@@ -218,7 +218,7 @@ export default function RestaurantDetailScreen({ restaurant, selectedMoods, onBa
         </View>
 
         {/* What Guests Say — NLP summary + sentiment nuances */}
-        {restaurant.nlp_insights?.general_summary && (
+        {resolveLocalized(restaurant.nlp_insights?.general_summary) && (
           <View style={styles.nlpCard}>
             <View style={styles.nlpCardHeader}>
               <Text style={styles.nlpCardLabel}>{t('restaurantDetail.nlp.whatGuestsSay')}</Text>
@@ -228,7 +228,7 @@ export default function RestaurantDetailScreen({ restaurant, selectedMoods, onBa
                 </Text>
               )}
             </View>
-            <Text style={styles.nlpSummary}>"{restaurant.nlp_insights.general_summary}"</Text>
+            <Text style={styles.nlpSummary}>"{resolveLocalized(restaurant.nlp_insights?.general_summary)}"</Text>
             {restaurant.nlp_metrics?.primary_sentiment_nuances && restaurant.nlp_metrics.primary_sentiment_nuances.length > 0 && (
               <View style={styles.nlpSentimentRow}>
                 {restaurant.nlp_metrics.primary_sentiment_nuances.map((nuance: string) => (
@@ -248,7 +248,8 @@ export default function RestaurantDetailScreen({ restaurant, selectedMoods, onBa
 
         {/* What People Love — food admiration pills */}
         {(() => {
-          const items = restaurant.nlp_insights?.food_admiration?.filter((s: string) => s && s.trim() && !['N/A', 'n/a', 'null', 'None'].includes(s.trim())) || [];
+          const raw = resolveLocalized<string[]>(restaurant.nlp_insights?.food_admiration) || [];
+          const items = raw.filter((s: string) => s && s.trim() && !['N/A', 'n/a', 'null', 'None'].includes(s.trim()));
           return items.length > 0 ? (
             <View style={styles.nlpSection}>
               <Text style={styles.nlpSectionLabel}>{t('restaurantDetail.nlp.whatPeopleLove')}</Text>
@@ -265,7 +266,8 @@ export default function RestaurantDetailScreen({ restaurant, selectedMoods, onBa
 
         {/* Heads Up — negative aspects pills */}
         {(() => {
-          const items = restaurant.nlp_insights?.negative_aspects?.filter((s: string) => s && s.trim() && !['N/A', 'n/a', 'null', 'None'].includes(s.trim())) || [];
+          const raw = resolveLocalized<string[]>(restaurant.nlp_insights?.negative_aspects) || [];
+          const items = raw.filter((s: string) => s && s.trim() && !['N/A', 'n/a', 'null', 'None'].includes(s.trim()));
           return items.length > 0 ? (
             <View style={styles.nlpSection}>
               <Text style={styles.nlpSectionLabelNeutral}>{t('restaurantDetail.nlp.headsUp')}</Text>
