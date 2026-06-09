@@ -42,74 +42,67 @@ function nlpToConfidence(score) {
  * @param {object} restaurant - Restaurant document from Firestore
  * @return {object|null} Parsed Gemini result or null on failure
  */
-async function analyzeRestaurantWithGemini(ai, restaurant) {
+const MOOD_KEYS = ["romantic", "energetic", "chill", "explorer", "focus", "hungry_quick"];
+
+// Clamp/normalize before the output reaches the confidence-scoring pipeline.
+// This is the ONLY guarantee we have when grounding blocks responseSchema.
+function validateAnalysis(data) {
+  if (!data || typeof data !== "object" || !data.scores) return null;
+  const scores = {};
+  for (const key of MOOD_KEYS) {
+    const raw = Number(data.scores[key]);
+    scores[key] = Number.isFinite(raw) ? Math.min(1, Math.max(0, raw)) : 0;
+  }
+  return {...data, scores};
+}
+
+function sleep(ms) {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+async function analyzeRestaurantWithGemini(ai, restaurant, localeKey = "pt") {
   const {name, address, place_id: placeId} = restaurant;
 
-  const sentimentJson = restaurant.sentiment_breakdown ? JSON.stringify(restaurant.sentiment_breakdown) : "N/A";
+  const sentimentJson = restaurant.sentiment_breakdown
+    ? JSON.stringify(restaurant.sentiment_breakdown)
+    : "N/A";
   const moodSummary = restaurant.general_mood_summary || "N/A";
 
-  const prompt = `You are a restaurant mood classifier for Nomi, a restaurant discovery app in Lisbon, Portugal.
+  const prompt = `You are a restaurant mood classifier for Nomi, a venue discovery app in Lisbon, Portugal.
 
 # Input Data
-## Restaurant Details
 - Name: ${name}
 - Address: ${address || "Lisbon, Portugal"}
 - Google Place ID: ${placeId || "unknown"}
-
-## Verified Customer Sentiment & Metadata (Context)
-- Quantitative Data: ${sentimentJson}
-- Qualitative Summary: ${moodSummary}
+- Quantitative sentiment: ${sentimentJson}
+- Qualitative summary: ${moodSummary}
 
 # Task
-Search for this restaurant on Google, TripAdvisor, RestaurantGuru, Zomato, TheFork, and any other review platforms. Read at least 10-20 reviews if available. Also check Google Photos and Google Maps reviews for atmosphere clues.
+Search Google, TripAdvisor, RestaurantGuru, Zomato and TheFork for this venue and read the available reviews and photos. Combine what you find with any provided sentiment metadata to score each mood 0.0-1.0, map metrics, and extract insights. If sentiment metadata is "N/A", rely on the reviews you find.
 
-Use the reviews you find combined with any provided sentiment metadata to:
-1. Score the restaurant for each mood from 0.0 to 1.0
-2. Map specific metrics from review data
-3. Extract high-level qualitative insights
+# Mood Definitions
+- romantic: Intimate, dim-lit spaces for couples and date nights. Quiet enough to talk closely; cozy, candlelit. NOT loud or crowded.
+- energetic: Loud, buzzing venues with a high-energy crowd — party vibes, music, DJ sets, dancing, celebrations and big group nights. Includes bars, music venues and entertainment-forward spots, not only restaurants. The atmosphere is the main draw.
+- chill: Relaxed, laid-back, no rush. Warm and welcoming, feels like eating at home. Good for unwinding with friends. NOT a work/study spot and NOT high-energy.
+- explorer: Unique, off the beaten path. Hidden gems, unusual or unexpected menus, places most people don't know about.
+- focus: Quiet and calm with minimal distractions — good wifi, good for working or studying solo. Functional rather than social.
+- hungry_quick: Fast, efficient, filling. Counter service, quick lunch menus, grab-and-go; no wait, no reservation needed.
 
-If the "Verified Customer Sentiment & Metadata" above is "N/A", rely entirely on the reviews you find via search. If sentiment data IS provided, use it as the primary source and supplement with search results.
+# Insight Rules
+All insight fields are bilingual objects with "en" and "${localeKey}" keys. Summaries: 1-2 sentences max, direct. Keep local dish names unchanged across languages.
 
-# Mood Definitions & Scoring Criteria
-- romantic: Intimate atmosphere, dim lights, date night, couples.
-- energetic: Loud, buzzing, lively crowd, high energy, fun, busy traditional tasca environment.
-- chill: Relaxed, no rush, laid-back, warm atmosphere, feels like eating at home.
-- explorer: Unique, hidden gem, unusual menu, off the beaten path.
-- focus: Quiet, calm, good for work or study, minimal distractions.
-- hungry_quick: Fast service, filling food, efficient, good for quick lunch menus.
+# Output Rules
+1. Output MUST be a single valid JSON object. No markdown, no pre/post text.
+2. Score 0.0 for a mood ONLY if it clearly does not apply. A venue can score high on multiple moods.
 
-# Strict Constraints for "insights" Object
-All insight fields MUST be bilingual objects with "en" (English) and the restaurant's local language key. For Portugal use "pt". This ensures the app can display insights in the user's chosen language.
-1. general_summary: Object with language keys. Each value is a highly concise summary of ONLY 1 or 2 sentences maximum. Keep it direct and punchy. Example: { "en": "Cozy traditional tavern...", "pt": "Taberna tradicional acolhedora..." }
-2. food_admiration: Object with language keys. Each value is an array of short keywords representing praised dishes or food qualities. Keep local dish names unchanged across languages. Example: { "en": ["pork cheeks", "octopus", "bacalhau"], "pt": ["bochechas de porco", "polvo", "bacalhau"] }
-3. negative_aspects: Object with language keys. Each value is an array of short keywords representing weaknesses. Example: { "en": ["parking", "wait time", "noise"], "pt": ["estacionamento", "espera", "barulho"] }
-
-# Strict Output Rules
-1. Output MUST be a single, valid JSON object.
-2. Do NOT include any markdown formatting (like json ... ), no pre-text, and no post-text. Return ONLY the raw JSON string.
-3. Score 0.0 only if you truly have zero information. If you find any reviews or context, score accordingly.
-
-# Expected Output Format
+# Expected Format
 {
-  "scores": {
-    "romantic": 0.0,
-    "energetic": 0.0,
-    "chill": 0.0,
-    "explorer": 0.0,
-    "focus": 0.0,
-    "hungry_quick": 0.0
-  },
-  "metrics": {
-    "rating": 0.0,
-    "rating_source": "String",
-    "positive_comment_rate": 0,
-    "most_frequent_emotion": "String",
-    "primary_sentiment_nuances": ["String", "String"]
-  },
+  "scores": { "romantic": 0.0, "energetic": 0.0, "chill": 0.0, "explorer": 0.0, "focus": 0.0, "hungry_quick": 0.0 },
+  "metrics": { "rating": 0.0, "rating_source": "String", "most_frequent_emotion": "String", "primary_sentiment_nuances": ["String"] },
   "insights": {
-    "general_summary": { "en": "English summary text.", "pt": "Portuguese summary text." },
-    "food_admiration": { "en": ["pork cheeks", "octopus"], "pt": ["bochechas de porco", "polvo"] },
-    "negative_aspects": { "en": ["parking", "wait time"], "pt": ["estacionamento", "espera"] }
+    "general_summary": { "en": "...", "${localeKey}": "..." },
+    "food_admiration": { "en": ["..."], "${localeKey}": ["..."] },
+    "negative_aspects": { "en": ["..."], "${localeKey}": ["..."] }
   },
   "review_count": 0,
   "review_sources": [],
@@ -117,27 +110,48 @@ All insight fields MUST be bilingual objects with "en" (English) and the restaur
   "confidence": "low|medium|high"
 }`;
 
-  try {
-    const result = await ai.models.generateContent({
-      model: "gemini-2.5-flash",
-      contents: [{role: "user", parts: [{text: prompt}]}],
-      config: {
-        temperature: 0.1,
-        maxOutputTokens: 2048,
-        thinkingConfig: {thinkingBudget: 0},
-        tools: [{googleSearch: {}}],
-      },
-    });
+  const maxAttempts = 3;
+  for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+    try {
+      const result = await ai.models.generateContent({
+        model: "gemini-2.5-flash",
+        contents: [{role: "user", parts: [{text: prompt}]}],
+        config: {
+          temperature: 0.1,
+          maxOutputTokens: 4096, // was 2048 — bilingual payload truncates and silently nulls
+          thinkingConfig: {thinkingBudget: 0},
+          tools: [{googleSearch: {}}],
+        },
+      });
 
-    const response = result.text;
+      const finishReason = result.candidates?.[0]?.finishReason;
+      if (finishReason === "MAX_TOKENS") {
+        console.error(`[Gemini] Truncated output for "${name}" — raise maxOutputTokens`);
+        return null;
+      }
 
-    // Strip markdown code fences Gemini sometimes adds
-    const cleaned = response.replace(/```json\n?/g, "").replace(/```\n?/g, "").trim();
-    return JSON.parse(cleaned);
-  } catch (err) {
-    console.error(`[Gemini] Analysis failed for "${name}":`, err.message);
-    return null;
+      const text = result.text;
+      if (!text) {
+        console.error(`[Gemini] Empty response for "${name}" (finishReason: ${finishReason})`);
+        return null;
+      }
+
+      const cleaned = text.replace(/```json\n?/g, "").replace(/```\n?/g, "").trim();
+      return validateAnalysis(JSON.parse(cleaned));
+    } catch (err) {
+      const status = err?.status;
+      const transient = status === 429 || status === 503 || status === 500;
+      if (transient && attempt < maxAttempts) {
+        const backoff = 1000 * 2 ** (attempt - 1) + Math.random() * 500;
+        console.warn(`[Gemini] Transient error for "${name}" (attempt ${attempt}), retrying in ${Math.round(backoff)}ms`);
+        await sleep(backoff);
+        continue;
+      }
+      console.error(`[Gemini] Analysis failed for "${name}":`, err.message);
+      return null;
+    }
   }
+  return null;
 }
 
 /**

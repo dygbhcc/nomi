@@ -7,13 +7,15 @@
  * 2. Calls Gemini to translate to English
  * 3. Writes back as { en: ..., pt: ... }
  *
- * Usage:
+ * Usage (run from functions/ directory):
  *   DRY_RUN=true node scripts/migrateNlpInsightsBilingual.js   # preview
  *   node scripts/migrateNlpInsightsBilingual.js                  # run
- *
- * Requires GOOGLE_APPLICATION_CREDENTIALS or GCLOUD_PROJECT env var.
  */
 
+require("dotenv").config();
+const fs = require("fs");
+const os = require("os");
+const path = require("path");
 const admin = require("firebase-admin");
 const {GoogleGenAI} = require("@google/genai");
 
@@ -21,12 +23,35 @@ const DRY_RUN = process.env.DRY_RUN === "true";
 const BATCH_SIZE = 400;
 const DELAY_MS = 4000; // Gemini rate limit: 15 req/min
 
-admin.initializeApp();
+// Initialize with service account from env
+const projectId = process.env.SERVICE_ACCOUNT_PROJECT_ID || "nomi-mvp";
+const clientEmail = process.env.SERVICE_ACCOUNT_EMAIL;
+const privateKey = process.env.SERVICE_ACCOUNT_KEY?.replace(/\\n/g, "\n");
+
+if (clientEmail && privateKey) {
+  admin.initializeApp({
+    credential: admin.credential.cert({projectId, clientEmail, privateKey}),
+  });
+
+  // Write temp service account JSON for Vertex AI / GoogleGenAI auth
+  if (!process.env.GOOGLE_APPLICATION_CREDENTIALS) {
+    const tmpSaPath = path.join(os.tmpdir(), "nomi-sa-tmp.json");
+    fs.writeFileSync(tmpSaPath, JSON.stringify({
+      type: "service_account",
+      project_id: projectId,
+      client_email: clientEmail,
+      private_key: privateKey,
+    }));
+    process.env.GOOGLE_APPLICATION_CREDENTIALS = tmpSaPath;
+  }
+} else {
+  admin.initializeApp({projectId});
+}
 const db = admin.firestore();
 
 const ai = new GoogleGenAI({
   vertexai: true,
-  project: process.env.GCLOUD_PROJECT || "nomi-mvp",
+  project: projectId,
   location: "us-central1",
 });
 
