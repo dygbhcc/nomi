@@ -3,8 +3,11 @@
  * upload first photo to Cloudinary, and update Firestore.
  *
  * Usage:
- *   1. Add CLOUDINARY_CLOUD_NAME, CLOUDINARY_API_KEY, CLOUDINARY_API_SECRET to functions/.env
- *   2. node scripts/migratePhotosToCloudinary.js [--dry-run]
+ *   node scripts/migratePhotosToCloudinary.js [--dry-run] [--batch=200]
+ *
+ * Options:
+ *   --dry-run       Don't actually upload or update, just show what would happen
+ *   --batch=N       Process N restaurants per run (default: 200)
  */
 
 const path = require("path");
@@ -14,14 +17,17 @@ const admin = require("../functions/node_modules/firebase-admin");
 const axios = require("../functions/node_modules/axios");
 const { v2: cloudinary } = require("../functions/node_modules/cloudinary");
 
-// --- Config checks ---
+// --- Config ---
 const PLACES_KEY = process.env.GOOGLE_PLACES_API_KEY;
 const CLOUDINARY_CLOUD = process.env.CLOUDINARY_CLOUD_NAME;
 const CLOUDINARY_KEY = process.env.CLOUDINARY_API_KEY;
 const CLOUDINARY_SECRET = process.env.CLOUDINARY_API_SECRET;
 
 const DRY_RUN = process.argv.includes("--dry-run");
-const MAX_PHOTOS = 5; // store up to 5 photos per restaurant
+const MAX_PHOTOS = 5;
+const BATCH_SIZE = parseInt(
+  (process.argv.find((a) => a.startsWith("--batch=")) || "--batch=200").split("=")[1]
+);
 
 function checkEnv() {
   const missing = [];
@@ -113,36 +119,40 @@ async function migrate() {
   initCloudinary();
 
   console.log(DRY_RUN ? "=== DRY RUN ===" : "=== LIVE MIGRATION ===");
-  console.log(`Max photos per restaurant: ${MAX_PHOTOS}\n`);
+  console.log(`Batch size: ${BATCH_SIZE} | Max photos per restaurant: ${MAX_PHOTOS}\n`);
 
   const snapshot = await db.collection("restaurants").get();
-  console.log(`Found ${snapshot.size} restaurants\n`);
+  console.log(`Found ${snapshot.size} restaurants total`);
 
+  // Filter to only restaurants that need migration
+  const pending = snapshot.docs.filter((doc) => {
+    const data = doc.data();
+    if (!data.place_id) return false;
+    const hasCloudinary = data.photos?.some((p) => p.source === "cloudinary" && p.url);
+    return !hasCloudinary;
+  });
+
+  const alreadyDone = snapshot.size - pending.length;
+  console.log(`Already migrated: ${alreadyDone}`);
+  console.log(`Pending: ${pending.length}`);
+  console.log(`Processing this batch: ${Math.min(BATCH_SIZE, pending.length)}\n`);
+
+  if (pending.length === 0) {
+    console.log("Nothing to do - all restaurants are migrated!");
+    return;
+  }
+
+  const batch = pending.slice(0, BATCH_SIZE);
   let success = 0;
   let skipped = 0;
   let failed = 0;
 
-  for (const doc of snapshot.docs) {
+  for (const doc of batch) {
     const data = doc.data();
     const placeId = data.place_id;
     const name = data.name || doc.id;
 
-    if (!placeId) {
-      console.log(`[SKIP] ${name} - no place_id`);
-      skipped++;
-      continue;
-    }
-
-    // Check if already migrated (has cloudinary URLs)
-    const hasCloudinary = data.photos?.some((p) => p.source === "cloudinary" && p.url);
-    if (hasCloudinary) {
-      console.log(`[SKIP] ${name} - already has Cloudinary photos`);
-      skipped++;
-      continue;
-    }
-
     try {
-      // 1. Get fresh photos from Google
       const freshPhotos = await fetchFreshPhotos(placeId);
       if (freshPhotos.length === 0) {
         console.log(`[SKIP] ${name} - no photos from Google`);
@@ -157,7 +167,6 @@ async function migrate() {
         const publicId = `restaurants/${placeId}/${i}`;
 
         if (DRY_RUN) {
-          console.log(`  [DRY] Would upload photo ${i} for ${name}`);
           updatedPhotos.push({
             url: `https://res.cloudinary.com/${CLOUDINARY_CLOUD}/image/upload/${publicId}`,
             source: "cloudinary",
@@ -190,31 +199,30 @@ async function migrate() {
           height: photo.height,
         });
 
-        // Rate limiting: 100ms between uploads
-        await new Promise((r) => setTimeout(r, 100));
+        // Rate limiting between uploads
+        await new Promise((r) => setTimeout(r, 150));
       }
 
-      // 2. Update Firestore
       if (!DRY_RUN) {
         await doc.ref.update({ photos: updatedPhotos });
       }
 
-      console.log(`[OK] ${name} - ${updatedPhotos.length} photos migrated`);
+      console.log(`[OK] ${name} - ${updatedPhotos.length} photos`);
       success++;
 
-      // Rate limiting: 200ms between restaurants (Places API quota)
-      await new Promise((r) => setTimeout(r, 200));
+      // Rate limiting between restaurants
+      await new Promise((r) => setTimeout(r, 250));
     } catch (error) {
       console.error(`[FAIL] ${name} - ${error.message}`);
       failed++;
     }
   }
 
-  console.log(`\n=== DONE ===`);
+  console.log(`\n=== BATCH DONE ===`);
   console.log(`Success: ${success}`);
   console.log(`Skipped: ${skipped}`);
   console.log(`Failed: ${failed}`);
-  console.log(`Total: ${snapshot.size}`);
+  console.log(`Remaining: ${pending.length - batch.length}`);
 }
 
 migrate().then(() => process.exit(0)).catch((err) => {

@@ -4,6 +4,12 @@ const admin = require("firebase-admin");
 const logger = require("firebase-functions/logger");
 const {onCall, onRequest, HttpsError} = require("firebase-functions/v2/https");
 const {onSchedule} = require("firebase-functions/v2/scheduler");
+const {defineSecret} = require("firebase-functions/params");
+
+// Cloudinary credentials from Secret Manager (not .env)
+const cloudinaryCloudName = defineSecret("CLOUDINARY_CLOUD_NAME");
+const cloudinaryApiKey = defineSecret("CLOUDINARY_API_KEY");
+const cloudinaryApiSecret = defineSecret("CLOUDINARY_API_SECRET");
 const {nearbySearch, placeDetails} = require("./services/googlePlacesService");
 const {calculateDemandForecast} = require("./services/demandScoringService");
 const {runFullPipeline} = require("./services/fullPipelineService");
@@ -326,6 +332,7 @@ exports.runFullLisbonPipeline = onCall(
       region: "europe-west1",
       timeoutSeconds: 540,
       memory: "1GiB",
+      secrets: [cloudinaryCloudName, cloudinaryApiKey, cloudinaryApiSecret],
     },
     async () => {
       return await runFullPipeline(neighborhoods, filters);
