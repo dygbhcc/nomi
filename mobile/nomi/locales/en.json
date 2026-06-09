@@ -162,6 +162,14 @@
   },
   "swipe": {
     "loading": "Finding your perfect spot...",
+    "loadingMessages": [
+      "Reading all the reviews for you...",
+      "Catching your mood...",
+      "Scanning the best menus in town...",
+      "Asking locals for their secrets...",
+      "Matching vibes with venues...",
+      "Almost there, good things take a second..."
+    ],
     "errorLoading": "Failed to load restaurants",
     "noResults": "No restaurants found. Try adjusting your preferences.",
     "noMore": "That's all for now! Check back later for more.",

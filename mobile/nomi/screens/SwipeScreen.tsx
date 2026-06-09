@@ -8,13 +8,13 @@ import {
   Animated,
   PanResponder,
   Image,
-  ActivityIndicator,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { StatusBar } from "expo-status-bar";
 import { useTranslation } from "react-i18next";
 import * as Haptics from "expo-haptics"; // FIX 3 - Haptic feedback
 import { Colors } from "../theme/colors";
+import LoadingOverlay from "../components/LoadingOverlay";
 import { getSmartRecommendations, buildReason, Restaurant, getPhotoUrl } from '../services/restaurantService';
 import { recordSwipe } from '../services/swipeService';
 import { useAuth } from '../context/AuthContext';
@@ -222,7 +222,7 @@ export default function SwipeScreen({ selectedMoods, budgetLevel, selectedDistan
   if (loading) {
     return (
       <SafeAreaView style={styles.container}>
-        <ActivityIndicator size="large" color={Colors.accent} style={{ flex: 1 }} />
+        <LoadingOverlay />
       </SafeAreaView>
     );
   }

@@ -162,6 +162,14 @@
   },
   "swipe": {
     "loading": "A encontrar o teu sítio perfeito...",
+    "loadingMessages": [
+      "A ler todas as avaliações por si...",
+      "A captar o seu mood...",
+      "A explorar os melhores menus da cidade...",
+      "A perguntar segredos aos locais...",
+      "A combinar vibes com restaurantes...",
+      "Quase lá, as coisas boas levam um momento..."
+    ],
     "errorLoading": "Falha ao carregar restaurantes",
     "noResults": "Nenhum restaurante encontrado. Tenta ajustar as tuas preferências.",
     "noMore": "É tudo por agora! Volta mais tarde para mais.",
