@@ -63,9 +63,9 @@ function sleep(ms) {
 async function analyzeRestaurantWithGemini(ai, restaurant, localeKey = "pt") {
   const {name, address, place_id: placeId} = restaurant;
 
-  const sentimentJson = restaurant.sentiment_breakdown
-    ? JSON.stringify(restaurant.sentiment_breakdown)
-    : "N/A";
+  const sentimentJson = restaurant.sentiment_breakdown ?
+    JSON.stringify(restaurant.sentiment_breakdown) :
+    "N/A";
   const moodSummary = restaurant.general_mood_summary || "N/A";
 
   const prompt = `You are a restaurant mood classifier for Nomi, a venue discovery app in Lisbon, Portugal.
@@ -91,9 +91,11 @@ Search Google, TripAdvisor, RestaurantGuru, Zomato and TheFork for this venue an
 # Insight Rules
 All insight fields are bilingual objects with "en" and "${localeKey}" keys. Summaries: 1-2 sentences max, direct. Keep local dish names unchanged across languages.
 
-# Output Rules
-1. Output MUST be a single valid JSON object. No markdown, no pre/post text.
-2. Score 0.0 for a mood ONLY if it clearly does not apply. A venue can score high on multiple moods.
+# Output Rules — CRITICAL
+1. Your ENTIRE response must be a single valid JSON object. Start with { and end with }.
+2. Do NOT write any text before or after the JSON. No explanations, no commentary, no markdown.
+3. If you cannot find information about this restaurant, still return the JSON with 0.0 scores and empty arrays.
+4. Score 0.0 for a mood ONLY if it clearly does not apply. A venue can score high on multiple moods.
 
 # Expected Format
 {
@@ -137,13 +139,26 @@ All insight fields are bilingual objects with "en" and "${localeKey}" keys. Summ
       }
 
       const cleaned = text.replace(/```json\n?/g, "").replace(/```\n?/g, "").trim();
-      return validateAnalysis(JSON.parse(cleaned));
+
+      // Try to extract JSON object if Gemini prefixed with plain text
+      let jsonStr = cleaned;
+      if (!jsonStr.startsWith("{")) {
+        const firstBrace = jsonStr.indexOf("{");
+        const lastBrace = jsonStr.lastIndexOf("}");
+        if (firstBrace !== -1 && lastBrace > firstBrace) {
+          jsonStr = jsonStr.substring(firstBrace, lastBrace + 1);
+        }
+      }
+
+      return validateAnalysis(JSON.parse(jsonStr));
     } catch (err) {
       const status = err?.status;
       const transient = status === 429 || status === 503 || status === 500;
-      if (transient && attempt < maxAttempts) {
+      const isJsonError = err instanceof SyntaxError;
+      const shouldRetry = (transient || isJsonError) && attempt < maxAttempts;
+      if (shouldRetry) {
         const backoff = 1000 * 2 ** (attempt - 1) + Math.random() * 500;
-        console.warn(`[Gemini] Transient error for "${name}" (attempt ${attempt}), retrying in ${Math.round(backoff)}ms`);
+        console.warn(`[Gemini] ${isJsonError ? "JSON parse" : "Transient"} error for "${name}" (attempt ${attempt}/${maxAttempts}), retrying in ${Math.round(backoff)}ms`);
         await sleep(backoff);
         continue;
       }
