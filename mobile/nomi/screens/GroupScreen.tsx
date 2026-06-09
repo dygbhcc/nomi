@@ -8,7 +8,7 @@ import { useTranslation } from 'react-i18next';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as Haptics from 'expo-haptics';
 import { Colors } from '../theme/colors';
-import { createRoom, joinRoom } from '../services/roomService';
+import { createRoom, joinRoom, notifyGroupJoin } from '../services/roomService';
 import { useAuth } from '../context/AuthContext';
 
 const MOODS = [
@@ -169,6 +169,7 @@ export default function GroupScreen({ onStartVoting, onJoinRoom, onBack, onNavig
     try {
       const success = await joinRoom(joinCode.toUpperCase(), user.uid, user.displayName || 'Guest');
       if (success) {
+        notifyGroupJoin(joinCode.toUpperCase(), user.displayName || 'Guest');
         onJoinRoom(joinCode.toUpperCase());
       } else {
         setErrorMessage(t('group.errors.joinFailed'));

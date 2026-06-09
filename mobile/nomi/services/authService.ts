@@ -32,6 +32,12 @@ export const signUp = async (
     segment: 'new',
     preference_history: { moods: [], budget: 2, dist: 1 },
     streak: 0,
+    notification_preferences: {
+      groupInvites: true,
+      leaderboard: true,
+      newRestaurants: false,
+      validateReminders: true,
+    },
     created_at: serverTimestamp(),
   });
 

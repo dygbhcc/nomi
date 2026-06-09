@@ -1,6 +1,7 @@
 import React, { createContext, useContext, useEffect, useState } from 'react';
 import { User } from 'firebase/auth';
 import { onAuthStateChanged, auth, signIn, signUp, signOut, signInAnonymously } from '../services/authService';
+import { removePushTokenFromFirestore } from '../services/notificationService';
 
 type AuthContextType = {
   user: User | null;
@@ -38,6 +39,9 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   };
 
   const handleSignOut = async () => {
+    if (user) {
+      await removePushTokenFromFirestore(user.uid).catch(() => {});
+    }
     setIsGuest(false);
     await signOut();
   };

@@ -9,8 +9,9 @@ import {
   Timestamp,
   Unsubscribe,
 } from 'firebase/firestore';
+import { httpsCallable } from 'firebase/functions';
 import { ref, set, update, onValue, off } from 'firebase/database';
-import { db, database } from './firebase';
+import { db, database, functions } from './firebase';
 
 export type Room = {
   code: string;
@@ -293,4 +294,27 @@ export const calculateConsensus = (
     budget: consensusBudget,
     distance: consensusDistance,
   };
+};
+
+// --- Push Notification Triggers (fire-and-forget) ---
+
+export const notifyGroupJoin = (roomCode: string, inviterName: string): void => {
+  const callable = httpsCallable(functions, 'notifyGroupInvite');
+  callable({ roomCode, inviterName }).catch((err) => {
+    __DEV__ && console.error('notifyGroupJoin error:', err);
+  });
+};
+
+export const notifyVotingStarted = (roomCode: string): void => {
+  const callable = httpsCallable(functions, 'notifyVotingStarted');
+  callable({ roomCode }).catch((err) => {
+    __DEV__ && console.error('notifyVotingStarted error:', err);
+  });
+};
+
+export const notifyResultReady = (roomCode: string, restaurantName?: string): void => {
+  const callable = httpsCallable(functions, 'notifyResultReady');
+  callable({ roomCode, restaurantName }).catch((err) => {
+    __DEV__ && console.error('notifyResultReady error:', err);
+  });
 };

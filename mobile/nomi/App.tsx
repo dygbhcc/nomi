@@ -3,6 +3,7 @@ import { View, ActivityIndicator, Text } from "react-native";
 import { SafeAreaProvider } from "react-native-safe-area-context";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { I18nextProvider, useTranslation } from "react-i18next";
+import * as Notifications from "expo-notifications";
 import { AuthProvider, useAuth } from "./context/AuthContext";
 import ErrorBoundary from "./components/ErrorBoundary";
 import i18n, { initI18n } from "./i18n";
@@ -26,6 +27,11 @@ import GroupVoteScreen from "./screens/GroupVoteScreen";
 import EventPlanScreen from "./screens/EventPlanScreen";
 import { Colors } from "./theme/colors";
 import { getRoomPreferences } from "./services/roomService";
+import { notifyVotingStarted, notifyResultReady } from "./services/roomService";
+import {
+  registerForPushNotificationsAsync,
+  savePushTokenToFirestore,
+} from "./services/notificationService";
 
 const ONBOARDED_KEY = "nomi_has_onboarded";
 
@@ -83,6 +89,56 @@ function AppNavigator() {
     });
   }, []);
 
+  // Register push notifications and set up listeners
+  useEffect(() => {
+    if (!user) return;
+
+    // Register and save token
+    registerForPushNotificationsAsync().then((token) => {
+      if (token) {
+        savePushTokenToFirestore(user.uid, token);
+      }
+    });
+
+    // Foreground notification listener
+    const receivedSub = Notifications.addNotificationReceivedListener((notification) => {
+      __DEV__ && console.log('Notification received:', notification.request.content);
+    });
+
+    // Tap-to-navigate listener
+    const responseSub = Notifications.addNotificationResponseReceivedListener((response) => {
+      const data = response.notification.request.content.data;
+      __DEV__ && console.log('Notification tapped:', data);
+
+      switch (data?.type) {
+        case 'group_invite':
+        case 'voting_started':
+          if (data.roomCode) {
+            setRoomCode(data.roomCode as string);
+            setIsGroupMode(true);
+            setScreen("waitingRoom");
+          }
+          break;
+        case 'result_ready':
+          if (data.roomCode) {
+            setRoomCode(data.roomCode as string);
+            setScreen("result");
+          }
+          break;
+        case 'validate_reminder':
+          setScreen("validate");
+          break;
+        case 'leaderboard':
+          setScreen("leaderboard");
+          break;
+      }
+    });
+
+    return () => {
+      receivedSub.remove();
+      responseSub.remove();
+    };
+  }, [user]);
 
   const handleOnboardingDone = async () => {
     await AsyncStorage.setItem(ONBOARDED_KEY, "true");
@@ -229,6 +285,11 @@ function AppNavigator() {
           onStartVoting={async (names) => {
             setParticipants(names);
 
+            // Notify participants that voting has started
+            if (roomCode) {
+              notifyVotingStarted(roomCode);
+            }
+
             // If in group mode, load host's preferences from room
             if (isGroupMode && roomCode) {
               try {
@@ -322,6 +383,7 @@ function AppNavigator() {
           totalParticipants={Object.keys(groupVotes).length}
           onWinner={(restaurant) => {
             setDetailRestaurant(restaurant);
+            notifyResultReady(roomCode, restaurant.name);
             setScreen("eventPlan");
           }}
           onStartOver={() => {

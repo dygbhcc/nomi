@@ -14,7 +14,10 @@
     },
     "ios": {
       "supportsTablet": true,
-      "bundleIdentifier": "com.anonymous.nomi"
+      "bundleIdentifier": "com.anonymous.nomi",
+      "infoPlist": {
+        "UIBackgroundModes": ["remote-notification"]
+      }
     },
     "android": {
       "adaptiveIcon": {
@@ -28,7 +31,14 @@
       "favicon": "./assets/logo.png"
     },
     "plugins": [
-      "expo-localization"
+      "expo-localization",
+      [
+        "expo-notifications",
+        {
+          "color": "#E06A4F",
+          "defaultChannel": "default"
+        }
+      ]
     ]
   }
 }

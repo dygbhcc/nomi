@@ -10,6 +10,7 @@ const {runFullPipeline} = require("./services/fullPipelineService");
 const {neighborhoods, filters} = require("./config/lisbonConfig");
 const {excelBufferToArray} = require("./services/excelService");
 const {runGeminiNlpBatch} = require("./services/geminiNlpPipeline");
+const {notifyRoomParticipants} = require("./services/notificationService");
 
 admin.initializeApp();
 const db = admin.firestore();
@@ -1169,6 +1170,7 @@ exports.getSmartRecommendations = onCall(
               .where("mood_tags", "array-contains-any", normalizedMoods)
               .where("business_status", "==", "OPERATIONAL")
               .where("budget_level", "==", budgetLevel)
+              .orderBy("google_rating", "desc")
               .limit(100);
           const primarySnap = await primaryQuery.get();
           candidates = primarySnap.docs.map((doc) => ({id: doc.id, ...doc.data()}));
@@ -1179,6 +1181,7 @@ exports.getSmartRecommendations = onCall(
           const moodStatusQuery = db.collection("restaurants")
               .where("mood_tags", "array-contains-any", normalizedMoods)
               .where("business_status", "==", "OPERATIONAL")
+              .orderBy("google_rating", "desc")
               .limit(100);
           const moodStatusSnap = await moodStatusQuery.get();
           const existingIds = new Set(candidates.map((c) => c.id));
@@ -1194,6 +1197,7 @@ exports.getSmartRecommendations = onCall(
         if (candidates.length < 10 && normalizedMoods.length > 0) {
           const moodOnlyQuery = db.collection("restaurants")
               .where("mood_tags", "array-contains-any", normalizedMoods)
+              .orderBy("google_rating", "desc")
               .limit(100);
           const moodOnlySnap = await moodOnlyQuery.get();
           const existingIds = new Set(candidates.map((c) => c.id));
@@ -1209,6 +1213,7 @@ exports.getSmartRecommendations = onCall(
         if (candidates.length < 10) {
           const budgetQuery = db.collection("restaurants")
               .where("budget_level", "==", budgetLevel)
+              .orderBy("google_rating", "desc")
               .limit(100);
           const budgetSnap = await budgetQuery.get();
           const existingIds = new Set(candidates.map((c) => c.id));
@@ -1222,7 +1227,9 @@ exports.getSmartRecommendations = onCall(
 
         // Fallback tier 3: all restaurants
         if (candidates.length < 10) {
-          const allQuery = db.collection("restaurants").limit(100);
+          const allQuery = db.collection("restaurants")
+              .orderBy("google_rating", "desc")
+              .limit(100);
           const allSnap = await allQuery.get();
           const existingIds = new Set(candidates.map((c) => c.id));
           allSnap.docs.forEach((doc) => {
@@ -1327,14 +1334,19 @@ exports.getSmartRecommendations = onCall(
             freshness = 20;
           }
 
+          // Photo bonus: restaurants with photos rank higher
+          const hasPhotos = Array.isArray(c.photos) && c.photos.length > 0;
+          const photoBonus = hasPhotos ? 100 : 0;
+
           // Random factor
           const randomFactor = Math.random() * 100;
 
           const selectionScore =
-            moodScore * 0.55 +
-            qualityScore * 0.20 +
-            freshness * 0.15 +
-            randomFactor * 0.10;
+            moodScore * 0.50 +
+            qualityScore * 0.18 +
+            freshness * 0.12 +
+            photoBonus * 0.12 +
+            randomFactor * 0.08;
 
           return {...c, _selectionScore: selectionScore};
         });
@@ -1497,5 +1509,89 @@ exports.initNlpFlags = onRequest(
 
       logger.info(`initNlpFlags: ${updated}/${snapshot.size} updated`);
       return res.json({total: snapshot.size, updated});
+    },
+);
+
+// ─── Push Notification Functions ───────────────────────────────────────────────
+
+/**
+ * Notify room participants when a new user joins a group room
+ */
+exports.notifyGroupInvite = onCall(
+    {
+      region: "europe-west1",
+    },
+    async (request) => {
+      const {roomCode, inviterName} = request.data || {};
+      const senderUid = request.auth?.uid;
+
+      if (!roomCode) {
+        throw new HttpsError("invalid-argument", "roomCode is required");
+      }
+
+      const result = await notifyRoomParticipants(roomCode, senderUid, "groupInvites", {
+        title: "Someone joined your room!",
+        body: `${inviterName || "A friend"} joined room ${roomCode}`,
+        data: {type: "group_invite", roomCode},
+      });
+
+      logger.info("notifyGroupInvite result", {roomCode, result});
+      return result;
+    },
+);
+
+/**
+ * Notify room participants when the host starts voting
+ */
+exports.notifyVotingStarted = onCall(
+    {
+      region: "europe-west1",
+    },
+    async (request) => {
+      const {roomCode} = request.data || {};
+      const senderUid = request.auth?.uid;
+
+      if (!roomCode) {
+        throw new HttpsError("invalid-argument", "roomCode is required");
+      }
+
+      const result = await notifyRoomParticipants(roomCode, senderUid, "groupInvites", {
+        title: "Voting has started!",
+        body: "Time to swipe and pick your favourites",
+        data: {type: "voting_started", roomCode},
+      });
+
+      logger.info("notifyVotingStarted result", {roomCode, result});
+      return result;
+    },
+);
+
+/**
+ * Notify room participants when the group vote result is ready
+ */
+exports.notifyResultReady = onCall(
+    {
+      region: "europe-west1",
+    },
+    async (request) => {
+      const {roomCode, restaurantName} = request.data || {};
+      const senderUid = request.auth?.uid;
+
+      if (!roomCode) {
+        throw new HttpsError("invalid-argument", "roomCode is required");
+      }
+
+      const body = restaurantName ?
+        `The group has decided: ${restaurantName}!` :
+        "The group has decided! Check the result.";
+
+      const result = await notifyRoomParticipants(roomCode, senderUid, "groupInvites", {
+        title: "Nomi has decided!",
+        body,
+        data: {type: "result_ready", roomCode},
+      });
+
+      logger.info("notifyResultReady result", {roomCode, result});
+      return result;
     },
 );

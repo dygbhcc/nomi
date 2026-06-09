@@ -15,6 +15,8 @@ import { useTranslation } from "react-i18next";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { Colors } from "../theme/colors";
 import i18n, { changeLanguage } from "../i18n";
+import { useAuth } from "../context/AuthContext";
+import { syncNotificationPreferences } from "../services/notificationService";
 
 const ACCENT = Colors.accent;
 const BG = Colors.background;
@@ -62,6 +64,7 @@ type Props = {
 
 export default function SettingsScreen({ onBack }: Props) {
   const { t } = useTranslation();
+  const { user } = useAuth();
   const [currentLanguage, setCurrentLanguage] = useState(i18n.language);
 
   // Account
@@ -115,6 +118,17 @@ export default function SettingsScreen({ onBack }: Props) {
   ) => {
     setter(value);
     AsyncStorage.setItem(key, String(value));
+
+    // Build current prefs with the new value applied
+    const updatedPrefs = {
+      groupInvites: key === KEYS.groupInvites ? value : groupInvites,
+      leaderboard: key === KEYS.leaderboard ? value : leaderboard,
+      newRestaurants: key === KEYS.newRestaurants ? value : newRestaurants,
+      validateReminders: key === KEYS.validateReminders ? value : validateReminders,
+    };
+    if (user) {
+      syncNotificationPreferences(user.uid, updatedPrefs);
+    }
   };
 
   const saveCityAndClose = (city: string) => {
@@ -217,25 +231,25 @@ export default function SettingsScreen({ onBack }: Props) {
         <Text style={styles.sectionLabel}>{t('settings.sections.notifications')}</Text>
         <View style={styles.section}>
           <ToggleRow
-            label="Group room invites"
+            label={t('settings.notifications.groupInvites')}
             value={groupInvites}
             onToggle={(v) => toggleAndSave(KEYS.groupInvites, v, setGroupInvites)}
           />
           <View style={styles.divider} />
           <ToggleRow
-            label="Weekly leaderboard results"
+            label={t('settings.notifications.leaderboardUpdates')}
             value={leaderboard}
             onToggle={(v) => toggleAndSave(KEYS.leaderboard, v, setLeaderboard)}
           />
           <View style={styles.divider} />
           <ToggleRow
-            label="New restaurants in your area"
+            label={t('settings.notifications.newRestaurants')}
             value={newRestaurants}
             onToggle={(v) => toggleAndSave(KEYS.newRestaurants, v, setNewRestaurants)}
           />
           <View style={styles.divider} />
           <ToggleRow
-            label="Validate reminders"
+            label={t('settings.notifications.validateReminders')}
             value={validateReminders}
             onToggle={(v) => toggleAndSave(KEYS.validateReminders, v, setValidateReminders)}
           />
