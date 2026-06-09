@@ -56,7 +56,9 @@ const ai = new GoogleGenAI({
 });
 
 /**
- * Checks if insights are already in bilingual format
+ * Checks if insights are already in bilingual format.
+ * @param {object} insights - The insights object to check
+ * @return {boolean} True if already bilingual
  */
 function isBilingual(insights) {
   if (!insights) return false;
@@ -66,7 +68,9 @@ function isBilingual(insights) {
 }
 
 /**
- * Calls Gemini to translate Portuguese insights to English
+ * Calls Gemini to translate Portuguese insights to English.
+ * @param {object} insights - The insights object to translate
+ * @return {Promise<object|null>} Translated insights or null on failure
  */
 async function translateToEnglish(insights) {
   const prompt = `Translate the following Portuguese restaurant review keywords and summary to English.
