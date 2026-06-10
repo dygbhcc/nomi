@@ -5,6 +5,9 @@ import {
 } from '@/lib/restaurantQueries';
 import { db } from '@/lib/firebase-admin';
 
+// Prevent build-time prerendering — this route must only query Firestore at request time
+export const dynamic = 'force-dynamic';
+
 export async function GET(req: NextRequest) {
   try {
     // Get first restaurant partner's restaurant_id

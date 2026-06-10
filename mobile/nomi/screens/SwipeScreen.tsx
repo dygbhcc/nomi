@@ -135,6 +135,13 @@ export default function SwipeScreen({ selectedMoods, budgetLevel, selectedDistan
 
   const restaurant = currentBatch[currentIndex];
 
+  // Reset card position after the next card has mounted. Resetting only inside
+  // the animation callback races with the native-driver state under Fabric and
+  // can leave the new card stuck off-screen.
+  useEffect(() => {
+    translateX.setValue(0);
+  }, [currentIndex, batchStart, translateX]);
+
   const animateOut = (direction: "left" | "right") => {
     // FIX 3 - Haptic feedback on swipe
     if (direction === "right") {
@@ -169,6 +176,12 @@ export default function SwipeScreen({ selectedMoods, budgetLevel, selectedDistan
     });
   };
 
+  // PanResponder is created once, so its handlers must not close over a single
+  // render's animateOut — otherwise gesture swipes on later cards record the
+  // first card's restaurant.
+  const animateOutRef = useRef(animateOut);
+  animateOutRef.current = animateOut;
+
   const panResponder = useRef(
     PanResponder.create({
       onMoveShouldSetPanResponder: (_, gesture) => Math.abs(gesture.dx) > 10,
@@ -177,9 +190,9 @@ export default function SwipeScreen({ selectedMoods, budgetLevel, selectedDistan
       },
       onPanResponderRelease: (_, gesture) => {
         if (gesture.dx > SWIPE_THRESHOLD) {
-          animateOut("right");
+          animateOutRef.current("right");
         } else if (gesture.dx < -SWIPE_THRESHOLD) {
-          animateOut("left");
+          animateOutRef.current("left");
         } else {
           Animated.spring(translateX, {
             toValue: 0,
@@ -324,7 +337,10 @@ export default function SwipeScreen({ selectedMoods, budgetLevel, selectedDistan
       </View>
 
       <View style={styles.cardWrapper}>
+        {/* Keyed per restaurant so each card mounts fresh native views — reused
+            native-driver nodes can keep a stale transform/opacity on Fabric */}
         <Animated.View
+          key={restaurant.id}
           style={[styles.card, { transform: [{ translateX }, { rotate }] }]}
           {...panResponder.panHandlers}
         >

@@ -2,20 +2,11 @@ import {
   collection,
   query,
   where,
-  orderBy,
-  limit,
   getDocs,
   doc,
   getDoc,
 } from 'firebase/firestore';
 import { db } from './firebase';
-
-export type LeaderboardEntry = {
-  userId: string;
-  displayName: string;
-  points: number;
-  badges: number;
-};
 
 export type UserProfile = {
   displayName: string;
@@ -26,62 +17,6 @@ export type UserProfile = {
   groupSessions: number;
   badges: string[];
   likedRestaurants: string[];
-};
-
-/**
- * Fetch top users by points for leaderboard
- */
-export const getLeaderboard = async (topN: number = 10): Promise<LeaderboardEntry[]> => {
-  try {
-    const usersRef = collection(db, 'users');
-    const q = query(
-      usersRef,
-      orderBy('points', 'desc'),
-      limit(topN)
-    );
-
-    const snapshot = await getDocs(q);
-    const leaderboard: LeaderboardEntry[] = [];
-
-    snapshot.forEach((doc) => {
-      const data = doc.data();
-      leaderboard.push({
-        userId: doc.id,
-        displayName: data.display_name || data.displayName || 'Anonymous',
-        points: data.points || 0,
-        badges: data.badges?.length || 0,
-      });
-    });
-
-    return leaderboard;
-  } catch (error) {
-    console.error('getLeaderboard error:', error);
-    return [];
-  }
-};
-
-/**
- * Get user's rank in leaderboard
- */
-export const getUserRank = async (userId: string): Promise<number> => {
-  try {
-    const userRef = doc(db, 'users', userId);
-    const userSnap = await getDoc(userRef);
-
-    if (!userSnap.exists()) return -1;
-
-    const userPoints = userSnap.data().points || 0;
-
-    // Count users with more points
-    const usersRef = collection(db, 'users');
-    const q = query(usersRef, where('points', '>', userPoints));
-    const snapshot = await getDocs(q);
-
-    return snapshot.size + 1; // Rank is number of users ahead + 1
-  } catch (error) {
-    console.error('getUserRank error:', error);
-    return -1;
-  }
 };
 
 /**

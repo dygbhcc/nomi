@@ -4,7 +4,6 @@ import {
   Text,
   TouchableOpacity,
   StyleSheet,
-  ScrollView,
   Animated,
   Image,
   ImageSourcePropType,
@@ -196,11 +195,7 @@ export default function MoodScreen({ onContinue, onSkip, onGroup, onProfile, onN
       </View>
 
       <View style={{ flex: 1 }}>
-        <ScrollView
-          style={{ flex: 1 }}
-          contentContainerStyle={styles.gridContainer}
-          showsVerticalScrollIndicator={false}
-        >
+        <View style={styles.gridContainer}>
           <Text style={styles.title}>{t('mood.title')}</Text>
 
           {(() => {
@@ -212,17 +207,23 @@ export default function MoodScreen({ onContinue, onSkip, onGroup, onProfile, onN
             }
             rows.push([MOODS[MOODS.length - 1]]); // surprise as own row
 
-            return rows.map((row, rowIndex) => (
-              <View key={rowIndex} style={styles.gridRow}>
-                {row.map((item) => (
-                  <React.Fragment key={item.id}>
-                    {renderMoodCard({ item, index: MOODS.indexOf(item) })}
-                  </React.Fragment>
-                ))}
-              </View>
-            ));
+            return rows.map((row, rowIndex) => {
+              const isSurpriseRow = rowIndex === rows.length - 1;
+              return (
+                <View
+                  key={rowIndex}
+                  style={[styles.gridRow, !isSurpriseRow && styles.gridRowFlex]}
+                >
+                  {row.map((item) => (
+                    <React.Fragment key={item.id}>
+                      {renderMoodCard({ item, index: MOODS.indexOf(item) })}
+                    </React.Fragment>
+                  ))}
+                </View>
+              );
+            });
           })()}
-        </ScrollView>
+        </View>
 
         <View style={styles.bottomContainer}>
           {/* TEST BUTTONS - Only visible in development */}
@@ -346,6 +347,7 @@ const styles = StyleSheet.create({
     marginBottom: 16,
   },
   gridContainer: {
+    flex: 1,
     paddingHorizontal: 16,
     paddingBottom: 8,
   },
@@ -354,8 +356,12 @@ const styles = StyleSheet.create({
     gap: 12,
     marginBottom: 12,
   },
+  gridRowFlex: {
+    flex: 1,
+  },
   card: {
-    width: CARD_WIDTH,
+    flex: 1,
+    justifyContent: "center",
     backgroundColor: '#FFFFFF',
     borderRadius: 16,
     overflow: "hidden",
@@ -387,8 +393,9 @@ const styles = StyleSheet.create({
     marginBottom: 0,
   },
   cardImage: {
+    flex: 1,
     width: "100%",
-    height: CARD_IMAGE_HEIGHT,
+    maxHeight: CARD_IMAGE_HEIGHT,
     resizeMode: "contain",
     paddingHorizontal: 8,
     paddingTop: 8,

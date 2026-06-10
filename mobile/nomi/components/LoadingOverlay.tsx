@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState } from "react";
-import { View, Text, StyleSheet, Animated } from "react-native";
+import { View, StyleSheet, Animated } from "react-native";
 import { useTranslation } from "react-i18next";
 import { Colors } from "../theme/colors";
 
@@ -30,7 +30,7 @@ export default function LoadingOverlay() {
     );
     pulse.start();
     return () => pulse.stop();
-  }, []);
+  }, [pulseAnim]);
 
   // Rotating messages with fade
   useEffect(() => {
@@ -52,7 +52,7 @@ export default function LoadingOverlay() {
     }, MESSAGE_INTERVAL);
 
     return () => clearInterval(timer);
-  }, [messages.length]);
+  }, [fadeAnim, messages.length]);
 
   return (
     <View style={styles.container}>

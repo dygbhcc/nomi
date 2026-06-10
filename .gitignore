@@ -10,3 +10,7 @@ functions/.env.local
 functions/firebase-debug.log
 functions/.DS_Store
 functions/*.log
+firestore.indexes.json
+scripts/migratePhotosToCloudinary.js
+mobile/nomi/eslint.config.js
+firestore.indexes.json

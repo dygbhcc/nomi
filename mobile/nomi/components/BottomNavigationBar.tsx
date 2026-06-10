@@ -6,7 +6,7 @@ import { Colors } from "../theme/colors";
 const ACCENT = Colors.accent;
 const TEXT_SECONDARY = Colors.textSecondary;
 
-type Tab = "home" | "validate" | "group" | "ranking" | "profile";
+type Tab = "home" | "validate" | "group" | "profile";
 
 type Props = {
   activeTab: Tab;
@@ -51,18 +51,6 @@ export default function BottomNavigationBar({ activeTab, onNavigate }: Props) {
         </Text>
         <Text style={[styles.tabLabel, activeTab === "group" && styles.tabActive]}>
           {t('tabs.group')}
-        </Text>
-      </TouchableOpacity>
-
-      <TouchableOpacity
-        style={styles.tab}
-        onPress={() => onNavigate("leaderboard")}
-      >
-        <Text style={[styles.tabIcon, activeTab === "ranking" && styles.tabActive]}>
-          {"\u{1F3C6}"}
-        </Text>
-        <Text style={[styles.tabLabel, activeTab === "ranking" && styles.tabActive]}>
-          {t('tabs.ranking')}
         </Text>
       </TouchableOpacity>
 

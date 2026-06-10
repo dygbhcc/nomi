@@ -1,6 +1,9 @@
 import { NextResponse } from 'next/server';
 import { db } from '@/lib/firebase-admin';
 
+// Prevent build-time prerendering — this route must only query Firestore at request time
+export const dynamic = 'force-dynamic';
+
 export async function GET() {
   try {
     // Fetch latest demand forecast from Firestore

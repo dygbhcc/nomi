@@ -28,7 +28,6 @@ const RED = "#E74C3C";
 // --- Storage Keys ---
 const KEYS = {
   groupInvites: "notifications_group_invites",
-  leaderboard: "notifications_leaderboard",
   newRestaurants: "notifications_new_restaurants",
   validateReminders: "notifications_validate",
   defaultCity: "default_city",
@@ -73,7 +72,6 @@ export default function SettingsScreen({ onBack }: Props) {
 
   // Notifications
   const [groupInvites, setGroupInvites] = useState(true);
-  const [leaderboard, setLeaderboard] = useState(true);
   const [newRestaurants, setNewRestaurants] = useState(false);
   const [validateReminders, setValidateReminders] = useState(true);
 
@@ -89,9 +87,8 @@ export default function SettingsScreen({ onBack }: Props) {
   // Load from AsyncStorage on mount
   useEffect(() => {
     (async () => {
-      const [gi, lb, nr, vr, city, budget, mood, distance] = await Promise.all([
+      const [gi, nr, vr, city, budget, mood, distance] = await Promise.all([
         AsyncStorage.getItem(KEYS.groupInvites),
-        AsyncStorage.getItem(KEYS.leaderboard),
         AsyncStorage.getItem(KEYS.newRestaurants),
         AsyncStorage.getItem(KEYS.validateReminders),
         AsyncStorage.getItem(KEYS.defaultCity),
@@ -100,7 +97,6 @@ export default function SettingsScreen({ onBack }: Props) {
         AsyncStorage.getItem(KEYS.defaultDistance),
       ]);
       if (gi !== null) setGroupInvites(gi === "true");
-      if (lb !== null) setLeaderboard(lb === "true");
       if (nr !== null) setNewRestaurants(nr === "true");
       if (vr !== null) setValidateReminders(vr === "true");
       if (city !== null) setDefaultCity(city);
@@ -122,7 +118,6 @@ export default function SettingsScreen({ onBack }: Props) {
     // Build current prefs with the new value applied
     const updatedPrefs = {
       groupInvites: key === KEYS.groupInvites ? value : groupInvites,
-      leaderboard: key === KEYS.leaderboard ? value : leaderboard,
       newRestaurants: key === KEYS.newRestaurants ? value : newRestaurants,
       validateReminders: key === KEYS.validateReminders ? value : validateReminders,
     };
@@ -234,12 +229,6 @@ export default function SettingsScreen({ onBack }: Props) {
             label={t('settings.notifications.groupInvites')}
             value={groupInvites}
             onToggle={(v) => toggleAndSave(KEYS.groupInvites, v, setGroupInvites)}
-          />
-          <View style={styles.divider} />
-          <ToggleRow
-            label={t('settings.notifications.leaderboardUpdates')}
-            value={leaderboard}
-            onToggle={(v) => toggleAndSave(KEYS.leaderboard, v, setLeaderboard)}
           />
           <View style={styles.divider} />
           <ToggleRow

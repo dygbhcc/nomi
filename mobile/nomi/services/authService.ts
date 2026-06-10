@@ -34,7 +34,6 @@ export const signUp = async (
     streak: 0,
     notification_preferences: {
       groupInvites: true,
-      leaderboard: true,
       newRestaurants: false,
       validateReminders: true,
     },

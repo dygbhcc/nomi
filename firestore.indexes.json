@@ -13,7 +13,9 @@
       "queryScope": "COLLECTION",
       "fields": [
         { "fieldPath": "mood_tags", "arrayConfig": "CONTAINS" },
-        { "fieldPath": "business_status", "order": "ASCENDING" }
+        { "fieldPath": "business_status", "order": "ASCENDING" },
+        { "fieldPath": "budget_level", "order": "ASCENDING" },
+        { "fieldPath": "google_rating", "order": "DESCENDING" }
       ]
     },
     {
@@ -22,7 +24,23 @@
       "fields": [
         { "fieldPath": "mood_tags", "arrayConfig": "CONTAINS" },
         { "fieldPath": "business_status", "order": "ASCENDING" },
-        { "fieldPath": "budget_level", "order": "ASCENDING" }
+        { "fieldPath": "google_rating", "order": "DESCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "restaurants",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "mood_tags", "arrayConfig": "CONTAINS" },
+        { "fieldPath": "google_rating", "order": "DESCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "restaurants",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "budget_level", "order": "ASCENDING" },
+        { "fieldPath": "google_rating", "order": "DESCENDING" }
       ]
     }
   ],

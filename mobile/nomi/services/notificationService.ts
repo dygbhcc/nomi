@@ -74,7 +74,6 @@ export async function removePushTokenFromFirestore(uid: string): Promise<void> {
 
 export type NotificationPreferences = {
   groupInvites: boolean;
-  leaderboard: boolean;
   newRestaurants: boolean;
   validateReminders: boolean;
 };

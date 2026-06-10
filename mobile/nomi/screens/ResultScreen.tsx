@@ -11,6 +11,7 @@ import {
   ImageSourcePropType,
   Linking,
   Alert,
+  Share,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { StatusBar } from "expo-status-bar";
@@ -33,6 +34,12 @@ type Restaurant = {
   moods: string[];
   reason: string;
   photo?: ImageSourcePropType;
+  phone?: string;
+  website?: string;
+  place_id?: string;
+  address?: string;
+  google_rating?: number;
+  location?: { lat: number; lng: number };
 };
 
 type Props = {
@@ -160,13 +167,82 @@ export default function ResultScreen({
   const voterDots = Array.from({ length: totalVoters }, (_, i) => i);
   const AVATAR_COLORS = ["#C25A41", "#E06A4F", "#B54F3A", "#FF8A3D"];
 
-  const openReserve = () => {
-    Linking.openURL(`https://www.thefork.com/search?q=${encodeURIComponent(restaurant.name)}`);
-  };
-
-  const openDirections = () => {
-    Linking.openURL(`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(restaurant.name)}`);
-  };
+  // Same actions as RestaurantDetailScreen so behavior stays consistent
+  const actions = [
+    {
+      id: 'call',
+      icon: '📞',
+      label: t('restaurantDetail.actions.call') ?? 'Call',
+      show: true,
+      onPress: () => {
+        if (restaurant.phone) {
+          Linking.openURL(`tel:${restaurant.phone}`);
+        } else {
+          Alert.alert(
+            t('common.error') ?? 'Error',
+            'No phone number available for this restaurant',
+            [{ text: t('common.ok') ?? 'OK' }]
+          );
+        }
+      },
+    },
+    {
+      id: 'directions',
+      icon: '🗺️',
+      label: t('restaurantDetail.actions.directions') ?? 'Directions',
+      show: true,
+      onPress: () => {
+        // Use place_id for accurate directions - format: destination with place_id
+        let url;
+        if (restaurant.place_id) {
+          // Use restaurant name as destination with place_id for accuracy
+          url = `https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(restaurant.name)}&destination_place_id=${restaurant.place_id}`;
+        } else if (restaurant.location?.lat && restaurant.location?.lng) {
+          url = `https://www.google.com/maps/dir/?api=1&destination=${restaurant.location.lat},${restaurant.location.lng}`;
+        } else {
+          // Fallback to search
+          url = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(restaurant.name)}`;
+        }
+        Linking.openURL(url);
+      },
+    },
+    {
+      id: 'website',
+      icon: restaurant.website ? '🌐' : '📋',
+      label: restaurant.website
+        ? (t('restaurantDetail.actions.website') ?? 'Website')
+        : (t('restaurantDetail.actions.menu') ?? 'Menu'),
+      show: true,
+      onPress: () => {
+        if (restaurant.website) {
+          Linking.openURL(restaurant.website);
+        } else {
+          // Search for menu on Google if no website
+          const menuUrl = `https://www.google.com/search?q=${encodeURIComponent(restaurant.name + ' menu')}`;
+          Linking.openURL(menuUrl);
+        }
+      },
+    },
+    {
+      id: 'share',
+      icon: '📤',
+      label: t('restaurantDetail.actions.share') ?? 'Share',
+      show: true,
+      onPress: async () => {
+        try {
+          await Share.share({
+            message: `${restaurant.name}\n📍 ${restaurant.address ?? ''}\n⭐ ${restaurant.google_rating ?? ''}\n\nFound on Nomi 🍽️`,
+            title: restaurant.name,
+          });
+        } catch (error: any) {
+          // Ignore "Share canceled" error - it's expected when user cancels
+          if (error.message !== 'Share canceled') {
+            __DEV__ && console.error('Share error:', error);
+          }
+        }
+      },
+    },
+  ];
 
   const handleStartOver = () => {
     Alert.alert(
@@ -264,43 +340,22 @@ export default function ResultScreen({
           </Text>
         </View>
 
-        {/* --- Action Buttons 2x2 grid --- */}
+        {/* --- Action Buttons 2x2 grid (same as RestaurantDetailScreen) --- */}
         <View style={styles.actionsGrid}>
-          <TouchableOpacity
-            style={styles.actionButton}
-            onPress={() => onNavigate("detail")}
-            accessibilityLabel="View restaurant details"
-            accessibilityRole="button"
-          >
-            <Text style={styles.actionIcon}>{"\u{1F4CB}"}</Text>
-            <Text style={styles.actionLabel}>{t('result.viewDetails')}</Text>
-          </TouchableOpacity>
-          <TouchableOpacity
-            style={styles.actionButton}
-            onPress={openReserve}
-            accessibilityLabel="Make a reservation"
-            accessibilityRole="button"
-          >
-            <Text style={styles.actionIcon}>{"\u{1F4C5}"}</Text>
-            <Text style={styles.actionLabel}>{t('result.reserve')}</Text>
-          </TouchableOpacity>
-          <TouchableOpacity
-            style={styles.actionButton}
-            onPress={openDirections}
-            accessibilityLabel="Get directions"
-            accessibilityRole="button"
-          >
-            <Text style={styles.actionIcon}>{"\u{1F5FA}"}</Text>
-            <Text style={styles.actionLabel}>{t('restaurantDetail.actions.directions')}</Text>
-          </TouchableOpacity>
-          <TouchableOpacity
-            style={styles.actionButton}
-            accessibilityLabel="Share with group"
-            accessibilityRole="button"
-          >
-            <Text style={styles.actionIcon}>{"\u{1F465}"}</Text>
-            <Text style={styles.actionLabel}>{t('common.share')}</Text>
-          </TouchableOpacity>
+          {actions
+            .filter(a => a.show)
+            .map(action => (
+              <TouchableOpacity
+                key={action.id}
+                style={styles.actionButton}
+                onPress={action.onPress}
+                accessibilityLabel={action.label}
+                accessibilityRole="button"
+              >
+                <Text style={styles.actionIcon}>{action.icon}</Text>
+                <Text style={styles.actionLabel}>{action.label}</Text>
+              </TouchableOpacity>
+            ))}
         </View>
 
         <TouchableOpacity style={styles.textButton} onPress={handleStartOver}>

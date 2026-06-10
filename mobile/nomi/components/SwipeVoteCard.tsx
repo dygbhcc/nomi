@@ -15,7 +15,6 @@ const ACCENT = Colors.accent;
 const CARD_BG = Colors.cardBackground;
 const TEXT_PRIMARY = Colors.textPrimary;
 const TEXT_SECONDARY = Colors.textSecondary;
-const GREEN = "#2ECC71";
 const RED = "#E74C3C";
 const AVATAR_COLORS = ["#C25A41", "#E06A4F", "#B54F3A", "#FF8A3D"];
 

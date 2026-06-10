@@ -29,7 +29,6 @@
     "home": "Home",
     "validate": "Validate",
     "group": "Group",
-    "ranking": "Ranking",
     "profile": "Profile"
   },
   "auth": {
@@ -378,30 +377,6 @@
       "5": "Hidden Gem Hunter"
     }
   },
-  "leaderboard": {
-    "title": "Leaderboard",
-    "weeklyTitle": "This Week's Top Deciders",
-    "tabs": {
-      "weekly": "Weekly",
-      "allTime": "All-Time"
-    },
-    "scopes": {
-      "friends": "Friends",
-      "lisbon": "Lisbon",
-      "global": "Global"
-    },
-    "resetsIn": "Resets in {{time}}",
-    "you": "You",
-    "points": "{{points}} pts",
-    "badgeCount": "{{count}} badge",
-    "badgeCount_plural": "{{count}} badges",
-    "podium": {
-      "1st": "1st",
-      "2nd": "2nd",
-      "3rd": "3rd"
-    },
-    "promoMessage": "Win a free drink at our partner restaurants this week 🍹"
-  },
   "validate": {
     "title": "Validate Visits",
     "progressLabel": "Progress",
@@ -487,7 +462,6 @@
     },
     "notifications": {
       "groupInvites": "Group invites",
-      "leaderboardUpdates": "Leaderboard updates",
       "newRestaurants": "New restaurants nearby",
       "validateReminders": "Validate reminders"
     },

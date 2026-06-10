@@ -1,6 +1,9 @@
 import { NextResponse } from 'next/server';
 import { getSwipeStats, getTopRestaurants, getConfidenceStats, getRestaurantDemandScores, getWeeklySwipeTrend } from '@/lib/queries';
 
+// Prevent build-time prerendering — this route must only query Firestore at request time
+export const dynamic = 'force-dynamic';
+
 export async function GET() {
   try {
     const [swipeStats, restaurants, confidenceStats, demandScores, weeklyTrend] = await Promise.all([

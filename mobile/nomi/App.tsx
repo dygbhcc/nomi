@@ -19,7 +19,6 @@ import WaitingRoomScreen from "./screens/WaitingRoomScreen";
 import VotingScreen from "./screens/VotingScreen";
 import ResultScreen from "./screens/ResultScreen";
 import ProfileScreen from "./screens/ProfileScreen";
-import LeaderboardScreen from "./screens/LeaderboardScreen";
 import ValidateScreen from "./screens/ValidateScreen";
 import SettingsScreen from "./screens/SettingsScreen";
 import GroupLikedScreen from "./screens/GroupLikedScreen";
@@ -34,6 +33,17 @@ import {
 } from "./services/notificationService";
 
 const ONBOARDED_KEY = "nomi_has_onboarded";
+
+// Fallback restaurant for the result screen when opened via the dev test shortcut
+const TEST_RESULT_RESTAURANT = {
+  id: "test-1",
+  name: "Taberna da Rua das Flores",
+  distance: "5 min walk",
+  budget: 2,
+  moods: ["romantic", "chill"],
+  reason: "Perfect cozy atmosphere for a relaxed evening with Portuguese charm",
+  photo: require("./assets/images/restaurants/taberna-rua-das-flores.jpg"),
+};
 
 type VotingResult = {
   restaurant: any;
@@ -57,7 +67,6 @@ type Screen =
   | "eventPlan"
   | "result"
   | "profile"
-  | "leaderboard"
   | "validate"
   | "settings";
 
@@ -127,9 +136,6 @@ function AppNavigator() {
           break;
         case 'validate_reminder':
           setScreen("validate");
-          break;
-        case 'leaderboard':
-          setScreen("leaderboard");
           break;
       }
     });
@@ -415,15 +421,7 @@ function AppNavigator() {
       )}
       {screen === "result" && (
         <ResultScreen
-          restaurant={votingResult?.restaurant || {
-            id: "test-1",
-            name: "Taberna da Rua das Flores",
-            distance: "5 min walk",
-            budget: 2,
-            moods: ["romantic", "chill"],
-            reason: "Perfect cozy atmosphere for a relaxed evening with Portuguese charm",
-            photo: require("./assets/images/restaurants/taberna-rua-das-flores.jpg")
-          }}
+          restaurant={votingResult?.restaurant || TEST_RESULT_RESTAURANT}
           totalVoters={votingResult?.totalVoters || 4}
           likedBy={votingResult?.likedBy || 3}
           roomCode={votingResult?.roomCode || "TEST123"}
@@ -439,8 +437,8 @@ function AppNavigator() {
             setScreen("mood");
           }}
           onNavigate={(s) => {
-            if (s === "detail" && votingResult?.restaurant) {
-              setDetailRestaurant(votingResult.restaurant as Restaurant);
+            if (s === "detail") {
+              setDetailRestaurant((votingResult?.restaurant || TEST_RESULT_RESTAURANT) as Restaurant);
               setPreviousScreen("result");
               setScreen("detail");
             } else {
@@ -451,11 +449,6 @@ function AppNavigator() {
       )}
       {screen === "profile" && (
         <ProfileScreen
-          onNavigate={(s) => setScreen(s as Screen)}
-        />
-      )}
-      {screen === "leaderboard" && (
-        <LeaderboardScreen
           onNavigate={(s) => setScreen(s as Screen)}
         />
       )}

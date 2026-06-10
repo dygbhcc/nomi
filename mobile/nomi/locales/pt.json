@@ -29,7 +29,6 @@
     "home": "Início",
     "validate": "Validar",
     "group": "Grupo",
-    "ranking": "Ranking",
     "profile": "Perfil"
   },
   "auth": {
@@ -378,30 +377,6 @@
       "5": "Caçador de Joias Escondidas"
     }
   },
-  "leaderboard": {
-    "title": "Tabela de Classificação",
-    "weeklyTitle": "Top Decisores desta Semana",
-    "tabs": {
-      "weekly": "Semanal",
-      "allTime": "Desde Sempre"
-    },
-    "scopes": {
-      "friends": "Amigos",
-      "lisbon": "Lisboa",
-      "global": "Global"
-    },
-    "resetsIn": "Reinicia em {{time}}",
-    "you": "Tu",
-    "points": "{{points}} pts",
-    "badgeCount": "{{count}} distintivo",
-    "badgeCount_plural": "{{count}} distintivos",
-    "podium": {
-      "1st": "1º",
-      "2nd": "2º",
-      "3rd": "3º"
-    },
-    "promoMessage": "Ganha uma bebida grátis nos nossos restaurantes parceiros esta semana 🍹"
-  },
   "validate": {
     "title": "Validar Visitas",
     "progressLabel": "Progresso",
@@ -487,7 +462,6 @@
     },
     "notifications": {
       "groupInvites": "Convites de grupo",
-      "leaderboardUpdates": "Atualizações da classificação",
       "newRestaurants": "Novos restaurantes por perto",
       "validateReminders": "Lembretes de validação"
     },

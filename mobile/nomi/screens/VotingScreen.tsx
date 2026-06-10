@@ -221,7 +221,7 @@ export default function VotingScreen({ roomCode, selectedMoods, budgetLevel, onV
 
     // Update myVotes IMMEDIATELY so the count shows during animation
     if (restaurant) {
-      const newVotes = { ...myVotes, [restaurant.id]: vote };
+      const newVotes: Record<string, "like" | "pass"> = { ...myVotes, [restaurant.id]: vote };
       __DEV__ && console.log('  📝 Updating myVotes with:', { [restaurant.id]: vote });
       setMyVotes(newVotes);
       __DEV__ && console.log('  ✅ Vote updated immediately:', { restaurant: restaurant.name, vote });
