@@ -182,6 +182,12 @@ async function fetchAndCacheByCoordinates({lat, lng, radius = 800, maxResults = 
     return {source: "cache", count: cachedRestaurants.length, restaurants: cachedRestaurants};
   }
 
+  // Pipelines disabled — return empty instead of calling Google Places API
+  if (process.env.PIPELINES_DISABLED === "true") {
+    logger.info(`[fetchAndCache] Cache miss for ${regionKey} — pipelines disabled, returning empty.`);
+    return {source: "cache_miss_disabled", count: 0, restaurants: []};
+  }
+
   const nearby = await nearbySearch({
     lat: latNumber,
     lng: lngNumber,
@@ -252,6 +258,9 @@ exports.warmupLisbonRestaurants = onCall(
       region: "europe-west1",
     },
     async () => {
+      if (process.env.PIPELINES_DISABLED === "true") {
+        return {disabled: true, message: "Pipelines disabled for launch"};
+      }
       const results = [];
       for (const neighborhood of neighborhoods) {
         const response = await fetchAndCacheByCoordinates({
@@ -284,6 +293,14 @@ exports.getDemandForecast = onCall(
     },
     async () => {
       try {
+        // When pipelines disabled, return cached forecast from Firestore
+        if (process.env.PIPELINES_DISABLED === "true") {
+          const cached = await db.collection("demand_forecasts").doc("latest").get();
+          if (cached.exists) {
+            return cached.data();
+          }
+          return {overall: {score: 0, label: "Unknown"}, message: "No forecast data available"};
+        }
         const forecast = await calculateDemandForecast();
         return forecast;
       } catch (error) {
@@ -304,26 +321,9 @@ exports.scheduledDemandUpdate = onSchedule(
       region: "europe-west1",
     },
     async () => {
-      try {
-        logger.info("Running scheduled demand forecast update...");
-
-        const forecast = await calculateDemandForecast();
-
-        // Store in Firestore for admin dashboard
-        await db.collection("demand_forecasts").doc("latest").set({
-          ...forecast,
-          updatedAt: admin.firestore.FieldValue.serverTimestamp(),
-        });
-
-        logger.info("Demand forecast updated successfully", {
-          overallScore: forecast.overall.score,
-        });
-
-        return {success: true, score: forecast.overall.score};
-      } catch (error) {
-        logger.error("scheduledDemandUpdate failed:", error);
-        throw error;
-      }
+      // Disabled — running on existing data only, no external API calls
+      logger.info("[scheduledDemandUpdate] Skipped — pipelines disabled for launch.");
+      return;
     },
 );
 
@@ -335,6 +335,9 @@ exports.runFullLisbonPipeline = onCall(
       secrets: [cloudinaryCloudName, cloudinaryApiKey, cloudinaryApiSecret],
     },
     async () => {
+      if (process.env.PIPELINES_DISABLED === "true") {
+        return {disabled: true, message: "Pipelines disabled for launch"};
+      }
       return await runFullPipeline(neighborhoods, filters);
     },
 );
@@ -350,6 +353,9 @@ exports.markClosedRestaurants = onCall(
       memory: "512MiB",
     },
     async (request) => {
+      if (process.env.PIPELINES_DISABLED === "true") {
+        return {disabled: true, message: "Pipelines disabled for launch"};
+      }
       const batchSize = request.data?.batchSize || 50;
       const delayMs = request.data?.delayMs || 100;
 
@@ -476,12 +482,14 @@ exports.checkRestaurantById = onCall(
         };
       }
 
-      // Get from Google Places API
+      // Get from Google Places API (skip if pipelines disabled)
       let googleData = null;
-      try {
-        googleData = await placeDetails(placeId);
-      } catch (error) {
-        logger.error("Failed to fetch from Google", error);
+      if (process.env.PIPELINES_DISABLED !== "true") {
+        try {
+          googleData = await placeDetails(placeId);
+        } catch (error) {
+          logger.error("Failed to fetch from Google", error);
+        }
       }
 
       return {
@@ -1453,8 +1461,9 @@ exports.scheduledGeminiNlp = onSchedule(
       memory: "256MiB",
     },
     async () => {
-      const result = await runGeminiNlpBatch(50);
-      console.log("[Scheduler] Result:", result);
+      // Disabled — all restaurants already processed, no new NLP calls needed
+      logger.info("[scheduledGeminiNlp] Skipped — pipelines disabled for launch.");
+      return;
     },
 );
 
@@ -1465,6 +1474,9 @@ exports.manualGeminiNlp = onRequest(
       memory: "256MiB",
     },
     async (req, res) => {
+      if (process.env.PIPELINES_DISABLED === "true") {
+        return res.json({disabled: true, message: "Pipelines disabled for launch"});
+      }
       const secret = req.headers["x-nomi-secret"];
       if (secret !== process.env.MANUAL_TRIGGER_SECRET) {
         return res.status(401).json({error: "Unauthorized"});
