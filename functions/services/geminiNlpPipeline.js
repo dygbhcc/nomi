@@ -14,6 +14,9 @@
 
 const {GoogleGenAI} = require("@google/genai");
 const admin = require("firebase-admin");
+const fs = require("fs");
+const os = require("os");
+const path = require("path");
 
 const DRY_RUN = process.env.DRY_RUN === "true";
 
@@ -78,7 +81,7 @@ async function analyzeRestaurantWithGemini(ai, restaurant, localeKey = "pt") {
 - Qualitative summary: ${moodSummary}
 
 # Task
-Search Google, TripAdvisor, RestaurantGuru, Zomato and TheFork for this venue and read the available reviews and photos. Combine what you find with any provided sentiment metadata to score each mood 0.0-1.0, map metrics, and extract insights. If sentiment metadata is "N/A", rely on the reviews you find.
+Using the provided sentiment metadata and your training knowledge about this venue, score each mood 0.0-1.0, map metrics, and extract insights. If sentiment metadata is "N/A", rely on your knowledge about the venue.
 
 # Mood Definitions
 - romantic: Intimate, dim-lit spaces for couples and date nights. Quiet enough to talk closely; cozy, candlelit. NOT loud or crowded.
@@ -122,7 +125,6 @@ All insight fields are bilingual objects with "en" and "${localeKey}" keys. Summ
           temperature: 0.1,
           maxOutputTokens: 4096, // was 2048 — bilingual payload truncates and silently nulls
           thinkingConfig: {thinkingBudget: 0},
-          tools: [{googleSearch: {}}],
         },
       });
 
@@ -210,10 +212,34 @@ function calculateWeightedConfidence(tag, {nlpScores, validateData, swipeData}) 
  * @return {object} Result with processed and errors counts
  */
 async function runGeminiNlpBatch(batchSize = 50) {
+  if (process.env.NLP_PIPELINE_DISABLED === "true") {
+    console.log("[Gemini Pipeline] Disabled via NLP_PIPELINE_DISABLED env var.");
+    return {processed: 0, errors: 0, disabled: true};
+  }
+
   const db = admin.firestore();
+
+  const projectId = process.env.SERVICE_ACCOUNT_PROJECT_ID || "nomi-mvp";
+
+  // Ensure GOOGLE_APPLICATION_CREDENTIALS is set for Vertex AI auth
+  if (!process.env.GOOGLE_APPLICATION_CREDENTIALS) {
+    const clientEmail = process.env.SERVICE_ACCOUNT_EMAIL;
+    const privateKey = process.env.SERVICE_ACCOUNT_KEY?.replace(/\\n/g, "\n");
+    if (clientEmail && privateKey) {
+      const tmpSaPath = path.join(os.tmpdir(), "nomi-sa-nlp.json");
+      fs.writeFileSync(tmpSaPath, JSON.stringify({
+        type: "service_account",
+        project_id: projectId,
+        client_email: clientEmail,
+        private_key: privateKey,
+      }));
+      process.env.GOOGLE_APPLICATION_CREDENTIALS = tmpSaPath;
+    }
+  }
+
   const ai = new GoogleGenAI({
     vertexai: true,
-    project: process.env.GCLOUD_PROJECT || "nomi-mvp",
+    project: projectId,
     location: "us-central1",
   });
 

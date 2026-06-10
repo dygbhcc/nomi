@@ -97,7 +97,8 @@ function mapRowToDocument(row) {
     is_local_concept:
       String(row.is_local_concept || "")
         .trim()
-        .toLowerCase() === "true"
+        .toLowerCase() === "true",
+    nlp_processed: false,
   };
 }
 

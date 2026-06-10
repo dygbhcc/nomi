@@ -114,6 +114,7 @@ async function main() {
         }] : [],
         cache_date: admin.firestore.FieldValue.serverTimestamp(),
         is_local_concept: false,
+        nlp_processed: false,
       };
 
       const ref = db.collection("restaurants").doc(doc.place_id);

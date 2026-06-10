@@ -1,5 +1,5 @@
 /**
- * Bulk NLP processing using Vertex AI (Blaze credits).
+ * Bulk NLP processing using Vertex AI (no grounding).
  * Processes all restaurants with nlp_processed == false.
  *
  * Vertex AI: 15 RPM for Gemini 2.5 Flash → 4 sec delay between requests.
@@ -9,20 +9,34 @@
 require("dotenv").config({path: __dirname + "/../functions/.env"});
 const admin = require("../functions/node_modules/firebase-admin");
 const {GoogleGenAI} = require("../functions/node_modules/@google/genai");
+const fs = require("fs");
+const os = require("os");
+const path = require("path");
 
-const saPath = process.env.GOOGLE_APPLICATION_CREDENTIALS || "./service-account.json";
-const serviceAccount = require(saPath);
+const projectId = process.env.SERVICE_ACCOUNT_PROJECT_ID || "nomi-mvp";
+const clientEmail = process.env.SERVICE_ACCOUNT_EMAIL;
+const privateKey = process.env.SERVICE_ACCOUNT_KEY.replace(/\\n/g, "\n");
 
 admin.initializeApp({
-  credential: admin.credential.cert(serviceAccount),
-  projectId: "nomi-mvp",
+  credential: admin.credential.cert({projectId, clientEmail, privateKey}),
 });
 const db = admin.firestore();
 
-// Vertex AI (Blaze credits)
+// Vertex AI auth
+if (!process.env.GOOGLE_APPLICATION_CREDENTIALS) {
+  const tmpSaPath = path.join(os.tmpdir(), "nomi-sa-bulk.json");
+  fs.writeFileSync(tmpSaPath, JSON.stringify({
+    type: "service_account",
+    project_id: projectId,
+    client_email: clientEmail,
+    private_key: privateKey,
+  }));
+  process.env.GOOGLE_APPLICATION_CREDENTIALS = tmpSaPath;
+}
+
 const ai = new GoogleGenAI({
   vertexai: true,
-  project: "nomi-mvp",
+  project: projectId,
   location: "us-central1",
 });
 
@@ -81,7 +95,7 @@ async function analyzeWithGemini(restaurant, localeKey = "pt") {
 - Qualitative summary: ${moodSummary}
 
 # Task
-Search Google, TripAdvisor, RestaurantGuru, Zomato and TheFork for this venue and read the available reviews and photos. Combine what you find with any provided sentiment metadata to score each mood 0.0-1.0, map metrics, and extract insights. If sentiment metadata is "N/A", rely on the reviews you find.
+Using the provided sentiment metadata and your training knowledge about this venue, score each mood 0.0-1.0, map metrics, and extract insights. If sentiment metadata is "N/A", rely on your knowledge about the venue.
 
 # Mood Definitions
 - romantic: Intimate, dim-lit spaces for couples and date nights. Quiet enough to talk closely; cozy, candlelit. NOT loud or crowded.
@@ -123,7 +137,6 @@ All insight fields are bilingual objects with "en" and "${localeKey}" keys. Summ
           temperature: 0.1,
           maxOutputTokens: 4096,
           thinkingConfig: {thinkingBudget: 0},
-          tools: [{googleSearch: {}}],
         },
       });
 
@@ -158,7 +171,7 @@ All insight fields are bilingual objects with "en" and "${localeKey}" keys. Summ
 }
 
 async function main() {
-  console.log("=== Bulk NLP Processing (AI Studio Free Tier) ===\n");
+  console.log("=== Bulk NLP Processing (Vertex AI, no grounding) ===\n");
 
   const snapshot = await db.collection("restaurants")
       .where("nlp_processed", "==", false)
