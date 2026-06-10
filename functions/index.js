@@ -111,6 +111,78 @@ async function buildRestaurantDocument(place) {
   };
 }
 
+/**
+ * Fetch new restaurants not yet in Firestore.
+ * Rotates through neighborhoods daily, checks each nearbySearch result
+ * against Firestore, and only calls placeDetails for new ones.
+ * Stops after reaching targetCount.
+ * @param {number} targetCount - Number of new restaurants to find
+ * @return {object} { newCount, nearbySearchCalls, detailsCalls }
+ */
+async function fetchNewRestaurants(targetCount = 20) {
+  let newCount = 0;
+  let nearbySearchCalls = 0;
+  let detailsCalls = 0;
+
+  // Start from a different neighborhood each day
+  const dayOfYear = Math.floor(
+      (Date.now() - new Date(new Date().getFullYear(), 0, 0).getTime()) / 86400000,
+  );
+  const startIdx = dayOfYear % neighborhoods.length;
+
+  for (let i = 0; i < neighborhoods.length; i++) {
+    if (newCount >= targetCount) break;
+
+    const hood = neighborhoods[(startIdx + i) % neighborhoods.length];
+
+    let nearby;
+    try {
+      nearby = await nearbySearch({
+        lat: hood.lat,
+        lng: hood.lng,
+        radius: hood.radius,
+        type: "restaurant",
+      });
+      nearbySearchCalls++;
+    } catch (error) {
+      logger.warn(`[fetchNew] nearbySearch failed for ${hood.name}:`, error.message);
+      continue;
+    }
+
+    const filtered = nearby.filter((p) => p.business_status !== "CLOSED_PERMANENTLY");
+    if (filtered.length === 0) continue;
+
+    // Batch check which restaurants already exist in Firestore
+    const refs = filtered.map((p) => db.collection("restaurants").doc(p.place_id));
+    const docs = await db.getAll(...refs);
+    const existingIds = new Set(docs.filter((d) => d.exists).map((d) => d.id));
+
+    const newPlaces = filtered.filter((p) => !existingIds.has(p.place_id));
+    if (newPlaces.length === 0) continue;
+
+    logger.info(`[fetchNew] ${hood.name}: ${newPlaces.length} new out of ${filtered.length}`);
+
+    for (const place of newPlaces) {
+      if (newCount >= targetCount) break;
+
+      try {
+        const details = await placeDetails(place.place_id);
+        detailsCalls++;
+        if (!details || details.business_status === "CLOSED_PERMANENTLY") continue;
+
+        const restaurant = await buildRestaurantDocument(details);
+        await db.collection("restaurants").doc(restaurant.place_id).set(restaurant);
+        newCount++;
+        logger.info(`[fetchNew] Added: ${restaurant.name} (${hood.name})`);
+      } catch (error) {
+        logger.warn(`[fetchNew] placeDetails failed:`, {placeId: place.place_id, error: error.message});
+      }
+    }
+  }
+
+  return {newCount, nearbySearchCalls, detailsCalls};
+}
+
 async function readRegionCache(regionKey) {
   const regionRef = db.collection("cache_regions").doc(regionKey);
   const regionSnap = await regionRef.get();
@@ -1512,12 +1584,18 @@ exports.scheduledGeminiNlp = onSchedule(
       timeZone: "Europe/Lisbon",
       region: "europe-west1",
       timeoutSeconds: 540,
-      memory: "256MiB",
+      memory: "512MiB",
     },
     async () => {
-      logger.info("[scheduledGeminiNlp] Starting nightly NLP batch...");
-      const result = await runGeminiNlpBatch(50);
-      logger.info("[scheduledGeminiNlp] Done.", result);
+      // Step 1: Fetch up to 20 new restaurants not yet in Firestore
+      logger.info("[scheduledGeminiNlp] Step 1: Fetching new restaurants...");
+      const fetchResult = await fetchNewRestaurants(20);
+      logger.info("[scheduledGeminiNlp] Fetch done.", fetchResult);
+
+      // Step 2: Run NLP on unprocessed restaurants (batch of 20, free tier daily limit)
+      logger.info("[scheduledGeminiNlp] Step 2: Running NLP batch (20)...");
+      const nlpResult = await runGeminiNlpBatch(20);
+      logger.info("[scheduledGeminiNlp] Done.", nlpResult);
     },
 );
 
