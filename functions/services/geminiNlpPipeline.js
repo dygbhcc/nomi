@@ -14,9 +14,6 @@
 
 const {GoogleGenAI} = require("@google/genai");
 const admin = require("firebase-admin");
-const fs = require("fs");
-const os = require("os");
-const path = require("path");
 
 const DRY_RUN = process.env.DRY_RUN === "true";
 
@@ -219,28 +216,8 @@ async function runGeminiNlpBatch(batchSize = 50) {
 
   const db = admin.firestore();
 
-  const projectId = process.env.SERVICE_ACCOUNT_PROJECT_ID || "nomi-mvp";
-
-  // Ensure GOOGLE_APPLICATION_CREDENTIALS is set for Vertex AI auth
-  if (!process.env.GOOGLE_APPLICATION_CREDENTIALS) {
-    const clientEmail = process.env.SERVICE_ACCOUNT_EMAIL;
-    const privateKey = process.env.SERVICE_ACCOUNT_KEY?.replace(/\\n/g, "\n");
-    if (clientEmail && privateKey) {
-      const tmpSaPath = path.join(os.tmpdir(), "nomi-sa-nlp.json");
-      fs.writeFileSync(tmpSaPath, JSON.stringify({
-        type: "service_account",
-        project_id: projectId,
-        client_email: clientEmail,
-        private_key: privateKey,
-      }));
-      process.env.GOOGLE_APPLICATION_CREDENTIALS = tmpSaPath;
-    }
-  }
-
   const ai = new GoogleGenAI({
-    vertexai: true,
-    project: projectId,
-    location: "us-central1",
+    apiKey: process.env.GEMINI_API_KEY,
   });
 
   console.log(`[Gemini Pipeline] Starting. Batch size: ${batchSize}${DRY_RUN ? " (DRY RUN)" : ""}`);

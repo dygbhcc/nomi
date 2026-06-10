@@ -182,12 +182,6 @@ async function fetchAndCacheByCoordinates({lat, lng, radius = 800, maxResults = 
     return {source: "cache", count: cachedRestaurants.length, restaurants: cachedRestaurants};
   }
 
-  // Pipelines disabled — return empty instead of calling Google Places API
-  if (process.env.PIPELINES_DISABLED === "true") {
-    logger.info(`[fetchAndCache] Cache miss for ${regionKey} — pipelines disabled, returning empty.`);
-    return {source: "cache_miss_disabled", count: 0, restaurants: []};
-  }
-
   const nearby = await nearbySearch({
     lat: latNumber,
     lng: lngNumber,
@@ -243,6 +237,9 @@ exports.fetchAndCacheRestaurants = onCall(
       region: "europe-west1",
     },
     async (request) => {
+      if (process.env.PIPELINES_DISABLED === "true") {
+        return {disabled: true, message: "Pipelines disabled — use cached data only"};
+      }
       const data = request.data || {};
       return fetchAndCacheByCoordinates({
         lat: data.lat,
@@ -293,37 +290,94 @@ exports.getDemandForecast = onCall(
     },
     async () => {
       try {
-        // When pipelines disabled, return cached forecast from Firestore
-        if (process.env.PIPELINES_DISABLED === "true") {
-          const cached = await db.collection("demand_forecasts").doc("latest").get();
-          if (cached.exists) {
-            return cached.data();
-          }
-          return {overall: {score: 0, label: "Unknown"}, message: "No forecast data available"};
+        const cached = await db.collection("demand_forecasts").doc("latest").get();
+        if (cached.exists) {
+          return cached.data();
         }
-        const forecast = await calculateDemandForecast();
-        return forecast;
+        return {overall: {score: 0, label: "Unknown"}, message: "No forecast data available"};
       } catch (error) {
         logger.error("getDemandForecast error:", error);
-        throw new HttpsError("internal", "Failed to calculate demand forecast");
+        throw new HttpsError("internal", "Failed to get demand forecast");
       }
     },
 );
 
 /**
- * Scheduled function to update demand forecast every hour
- * Stores result in Firestore for dashboard consumption
+ * Scheduled function to update demand forecast daily at 08:00 Lisbon.
+ * Stores result in Firestore for dashboard/client consumption.
  */
 exports.scheduledDemandUpdate = onSchedule(
     {
-      schedule: "every 1 hours",
+      schedule: "0 8 * * *",
       timeZone: "Europe/Lisbon",
       region: "europe-west1",
     },
     async () => {
-      // Disabled — running on existing data only, no external API calls
-      logger.info("[scheduledDemandUpdate] Skipped — pipelines disabled for launch.");
-      return;
+      logger.info("[scheduledDemandUpdate] Starting daily demand forecast...");
+      try {
+        const forecast = await calculateDemandForecast();
+        await db.collection("demand_forecasts").doc("latest").set({
+          ...forecast,
+          updated_at: admin.firestore.FieldValue.serverTimestamp(),
+        });
+        logger.info("[scheduledDemandUpdate] Done.", {score: forecast?.overall?.score});
+      } catch (error) {
+        logger.error("[scheduledDemandUpdate] Failed:", error);
+      }
+    },
+);
+
+/**
+ * Monthly restaurant refresh — runs on the 1st of each month at 03:00 Lisbon.
+ * Iterates all neighborhoods and refreshes expired caches via Google Places API.
+ * Cache TTL is 30 days, so each monthly run only fetches neighborhoods whose
+ * cache has expired. Estimated usage: ~39 nearbySearch + ~200 placeDetails/month.
+ */
+exports.scheduledMonthlyRefresh = onSchedule(
+    {
+      schedule: "0 3 1 * *",
+      timeZone: "Europe/Lisbon",
+      region: "europe-west1",
+      timeoutSeconds: 540,
+      memory: "512MiB",
+    },
+    async () => {
+      logger.info("[scheduledMonthlyRefresh] Starting monthly restaurant refresh...");
+      const results = [];
+      let refreshed = 0;
+      let cached = 0;
+      let errors = 0;
+
+      for (const neighborhood of neighborhoods) {
+        try {
+          const response = await fetchAndCacheByCoordinates({
+            lat: neighborhood.lat,
+            lng: neighborhood.lng,
+            radius: neighborhood.radius,
+            maxResults: 40,
+          });
+          results.push({
+            neighborhood: neighborhood.name,
+            source: response.source,
+            count: response.count,
+          });
+          if (response.source === "google_places") {
+            refreshed++;
+          } else {
+            cached++;
+          }
+        } catch (error) {
+          logger.error(`[scheduledMonthlyRefresh] Failed for ${neighborhood.name}:`, error);
+          errors++;
+        }
+      }
+
+      logger.info("[scheduledMonthlyRefresh] Done.", {
+        total: neighborhoods.length,
+        refreshed,
+        cached,
+        errors,
+      });
     },
 );
 
@@ -1461,9 +1515,9 @@ exports.scheduledGeminiNlp = onSchedule(
       memory: "256MiB",
     },
     async () => {
-      // Disabled — all restaurants already processed, no new NLP calls needed
-      logger.info("[scheduledGeminiNlp] Skipped — pipelines disabled for launch.");
-      return;
+      logger.info("[scheduledGeminiNlp] Starting nightly NLP batch...");
+      const result = await runGeminiNlpBatch(50);
+      logger.info("[scheduledGeminiNlp] Done.", result);
     },
 );
 
