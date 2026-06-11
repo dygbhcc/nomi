@@ -98,7 +98,7 @@ type Props = {
 
 export default function ProfileScreen({ onNavigate }: Props) {
   const { t } = useTranslation();
-  const { user: authUser } = useAuth();
+  const { user: authUser, signOut } = useAuth();
   const [user, setUser] = useState<UserProfileData | null>(null);
   const [loading, setLoading] = useState(true);
 
@@ -159,7 +159,16 @@ export default function ProfileScreen({ onNavigate }: Props) {
       <SafeAreaView style={styles.container}>
         <StatusBar style="dark" />
         <View style={styles.loadingContainer}>
-          <Text style={styles.errorText}>Please sign in to view your profile</Text>
+          <Text style={styles.signInEmoji}>{"\u{1F464}"}</Text>
+          <Text style={styles.errorText}>{t('profile.signInPrompt')}</Text>
+          <TouchableOpacity
+            style={styles.signInButton}
+            onPress={() => signOut()} // leaves guest mode, App falls back to the auth screen
+            accessibilityLabel="Go to sign in or sign up"
+            accessibilityRole="button"
+          >
+            <Text style={styles.signInButtonText}>{t('profile.signInButton')}</Text>
+          </TouchableOpacity>
         </View>
         <BottomNavigationBar activeTab="profile" onNavigate={onNavigate} />
       </SafeAreaView>
@@ -342,10 +351,28 @@ const styles = StyleSheet.create({
     flex: 1,
     alignItems: "center",
     justifyContent: "center",
+    paddingHorizontal: 40,
   },
   errorText: {
     color: TEXT_SECONDARY,
     fontSize: 15,
+    textAlign: "center",
+  },
+  signInEmoji: {
+    fontSize: 44,
+    marginBottom: 12,
+  },
+  signInButton: {
+    marginTop: 20,
+    backgroundColor: ACCENT,
+    borderRadius: 12,
+    paddingVertical: 14,
+    paddingHorizontal: 32,
+  },
+  signInButtonText: {
+    color: "#FFFFFF",
+    fontSize: 16,
+    fontWeight: "700",
   },
   scrollContent: {
     paddingHorizontal: 20,

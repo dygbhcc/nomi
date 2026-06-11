@@ -322,6 +322,8 @@
     "points": "+100 pts"
   },
   "profile": {
+    "signInPrompt": "Sign in to track your points, badges and saved restaurants",
+    "signInButton": "Sign In / Sign Up",
     "level": "Level {{level}}",
     "points": "{{points}} pts",
     "totalPoints": "total points",

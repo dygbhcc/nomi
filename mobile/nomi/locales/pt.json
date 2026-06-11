@@ -322,6 +322,8 @@
     "points": "+100 pts"
   },
   "profile": {
+    "signInPrompt": "Entra para acompanhar os teus pontos, distintivos e restaurantes guardados",
+    "signInButton": "Entrar / Registar",
     "level": "Nível {{level}}",
     "points": "{{points}} pts",
     "totalPoints": "pontos totais",
