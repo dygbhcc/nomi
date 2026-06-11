@@ -16,10 +16,14 @@
       "supportsTablet": true,
       "bundleIdentifier": "com.anonymous.nomi",
       "infoPlist": {
-        "UIBackgroundModes": ["remote-notification"]
+        "UIBackgroundModes": [
+          "remote-notification",
+          "remote-notification"
+        ]
       }
     },
     "android": {
+      "package": "com.anonymous.nomi",
       "adaptiveIcon": {
         "foregroundImage": "./assets/logo_store.png",
         "backgroundColor": "#ffffff"
@@ -39,6 +43,18 @@
           "defaultChannel": "default"
         }
       ]
-    ]
+    ],
+    "extra": {
+      "eas": {
+        "projectId": "eae85af8-acff-4f28-85af-b05f5dd28b16"
+      }
+    },
+    "owner": "nomiapppt",
+    "runtimeVersion": {
+      "policy": "appVersion"
+    },
+    "updates": {
+      "url": "https://u.expo.dev/eae85af8-acff-4f28-85af-b05f5dd28b16"
+    }
   }
 }
