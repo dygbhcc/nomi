@@ -24,7 +24,12 @@ const CARD_BG = Colors.cardBackground;
 const TEXT_PRIMARY = Colors.textPrimary;
 const TEXT_SECONDARY = Colors.textSecondary;
 
-const { width: SCREEN_WIDTH } = Dimensions.get("window");
+const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get("window");
+
+// The result screen must fit one viewport without scrolling — scale fixed
+// sizes down on short screens (e.g. iPhone SE) instead of overflowing.
+const IS_COMPACT = SCREEN_HEIGHT < 760;
+const sz = (regular: number, compact: number) => (IS_COMPACT ? compact : regular);
 
 type Restaurant = {
   id: string;
@@ -260,10 +265,7 @@ export default function ResultScreen({
       <StatusBar style="dark" />
       <ConfettiAnimation />
 
-      <ScrollView
-        contentContainerStyle={styles.scrollContent}
-        showsVerticalScrollIndicator={false}
-      >
+      <ScrollView contentContainerStyle={styles.scrollContent}>
         {/* --- Trophy --- */}
         <Animated.View
           style={[
@@ -363,7 +365,7 @@ export default function ResultScreen({
         </TouchableOpacity>
 
 
-        <View style={{ height: 40 }} />
+        <View style={{ height: sz(16, 8) }} />
       </ScrollView>
     </SafeAreaView>
   );
@@ -377,30 +379,30 @@ const styles = StyleSheet.create({
   scrollContent: {
     paddingHorizontal: 20,
     alignItems: "center",
-    paddingTop: 24,
+    paddingTop: sz(16, 8),
   },
 
   // --- Trophy ---
   trophyContainer: {
-    width: 80,
-    height: 80,
-    borderRadius: 40,
+    width: sz(64, 48),
+    height: sz(64, 48),
+    borderRadius: sz(32, 24),
     backgroundColor: ACCENT,
     alignItems: "center",
     justifyContent: "center",
-    marginBottom: 16,
+    marginBottom: sz(12, 8),
   },
   trophyIcon: {
     color: TEXT_PRIMARY,
-    fontSize: 40,
+    fontSize: sz(32, 24),
     fontWeight: "800",
   },
   title: {
     color: TEXT_PRIMARY,
-    fontSize: 26,
+    fontSize: sz(24, 20),
     fontWeight: "700",
     textAlign: "center",
-    marginBottom: 24,
+    marginBottom: sz(16, 10),
   },
 
   // --- Winner Card ---
@@ -415,10 +417,10 @@ const styles = StyleSheet.create({
   },
   winnerPhoto: {
     width: "100%",
-    height: 200,
+    height: Math.min(sz(200, 140), SCREEN_HEIGHT * sz(0.22, 0.18)),
   },
   winnerPhotoPlaceholder: {
-    height: 200,
+    height: Math.min(sz(200, 140), SCREEN_HEIGHT * sz(0.22, 0.18)),
     backgroundColor: "#1A1A2E",
     alignItems: "center",
     justifyContent: "center",
@@ -430,18 +432,18 @@ const styles = StyleSheet.create({
     opacity: 0.4,
   },
   winnerInfo: {
-    padding: 16,
+    padding: sz(14, 10),
   },
   winnerName: {
     color: TEXT_PRIMARY,
-    fontSize: 22,
+    fontSize: sz(20, 18),
     fontWeight: "800",
-    marginBottom: 10,
+    marginBottom: sz(8, 6),
   },
   moodRow: {
     flexDirection: "row",
     gap: 8,
-    marginBottom: 10,
+    marginBottom: sz(8, 6),
   },
   moodBadge: {
     backgroundColor: "rgba(224, 106, 79, 0.15)",
@@ -457,7 +459,7 @@ const styles = StyleSheet.create({
   metaRow: {
     flexDirection: "row",
     alignItems: "center",
-    marginBottom: 12,
+    marginBottom: sz(10, 6),
   },
   metaText: {
     color: TEXT_SECONDARY,
@@ -471,7 +473,7 @@ const styles = StyleSheet.create({
   reasonBox: {
     backgroundColor: ACCENT,
     borderRadius: 12,
-    padding: 12,
+    padding: sz(12, 10),
   },
   reasonLabel: {
     color: "rgba(255,255,255,0.7)",
@@ -493,10 +495,10 @@ const styles = StyleSheet.create({
     alignItems: "center",
     backgroundColor: CARD_BG,
     borderRadius: 14,
-    paddingVertical: 12,
+    paddingVertical: sz(10, 8),
     paddingHorizontal: 16,
     width: "100%",
-    marginBottom: 24,
+    marginBottom: sz(16, 10),
   },
   voterDots: {
     flexDirection: "row",
@@ -527,7 +529,7 @@ const styles = StyleSheet.create({
     width: "48%",
     backgroundColor: CARD_BG,
     borderRadius: 12,
-    paddingVertical: 10,
+    paddingVertical: sz(10, 8),
     alignItems: "center",
     gap: 4,
     borderWidth: 0.5,
@@ -542,8 +544,8 @@ const styles = StyleSheet.create({
     fontWeight: "600",
   },
   textButton: {
-    paddingVertical: 12,
-    marginBottom: 16,
+    paddingVertical: sz(10, 8),
+    marginBottom: sz(8, 4),
   },
   textButtonText: {
     color: TEXT_SECONDARY,

@@ -97,6 +97,22 @@ export default function RestaurantDetailScreen({ restaurant, selectedMoods, onBa
     <SafeAreaView style={styles.container}>
       <StatusBar style="dark" />
 
+      {/* Header — same pattern as SwipeScreen */}
+      <View style={styles.header}>
+        <TouchableOpacity
+          style={styles.headerSide}
+          onPress={onBack}
+          accessibilityLabel="Go back"
+          accessibilityRole="button"
+        >
+          <Text style={styles.backText}>{"←"} {t('common.back')}</Text>
+        </TouchableOpacity>
+        <Text style={styles.counterText}>
+          {photos.length > 1 ? `${currentPhotoIndex + 1} / ${photos.length}` : ""}
+        </Text>
+        <View style={styles.headerSide} />
+      </View>
+
       {/* Hero image carousel */}
       <View style={styles.heroContainer}>
         {photos.length > 0 ? (
@@ -149,13 +165,6 @@ export default function RestaurantDetailScreen({ restaurant, selectedMoods, onBa
         ) : (
           <View style={[styles.heroImage, { backgroundColor: '#E8E8E8' }]} />
         )}
-
-        {/* Back button */}
-        <SafeAreaView style={styles.backButtonContainer} edges={["top"]}>
-          <TouchableOpacity style={styles.backButton} onPress={onBack}>
-            <Text style={styles.backIcon}>{"\u2190"}</Text>
-          </TouchableOpacity>
-        </SafeAreaView>
 
         {/* Bottom overlay: save button */}
         <View style={styles.heroOverlay}>
@@ -485,23 +494,24 @@ const styles = StyleSheet.create({
     borderRadius: 4,
     backgroundColor: "#FFFFFF",
   },
-  backButtonContainer: {
-    position: "absolute",
-    top: 0,
-    left: 16,
-  },
-  backButton: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: "rgba(0,0,0,0.5)",
+  header: {
+    flexDirection: "row",
     alignItems: "center",
-    justifyContent: "center",
-    marginTop: 8,
+    justifyContent: "space-between",
+    paddingHorizontal: 20,
+    paddingTop: 8,
+    paddingBottom: 12,
   },
-  backIcon: {
-    color: TEXT_PRIMARY,
-    fontSize: 20,
+  headerSide: {
+    flex: 1,
+  },
+  backText: {
+    color: TEXT_SECONDARY,
+    fontSize: 15,
+  },
+  counterText: {
+    color: TEXT_SECONDARY,
+    fontSize: 14,
   },
   heroOverlay: {
     position: "absolute",

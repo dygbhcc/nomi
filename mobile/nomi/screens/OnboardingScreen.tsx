@@ -5,7 +5,9 @@ import {
   TouchableOpacity,
   StyleSheet,
   Animated,
+  Easing,
   Image,
+  Dimensions,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { StatusBar } from "expo-status-bar";
@@ -16,6 +18,11 @@ const ACCENT = Colors.accent;
 const TEXT = Colors.textPrimary;
 const MUTED = "#8C6B55";
 const WARM_BG = "#FFF4EE";
+
+const SCREEN_HEIGHT = Dimensions.get("window").height;
+// Shrink the demo card on short screens (e.g. iPhone SE) so the slide fits
+const DEMO_CARD_IMAGE_HEIGHT = SCREEN_HEIGHT < 700 ? 140 : 180;
+const DEMO_CARD_STACK_HEIGHT = DEMO_CARD_IMAGE_HEIGHT + 150;
 
 const TOTAL_SCREENS = 5;
 
@@ -282,13 +289,82 @@ const value1Styles = StyleSheet.create({
 // --- Screen 2: Swipe Match ---
 
 function SwipeSlide({ t }: { t: any }) {
+  // One looping progress value drives the demo: 0->1 front card swipes out
+  // with a LIKE stamp, 1->2 the next card settles back into place
+  const progress = useRef(new Animated.Value(0)).current;
+
+  useEffect(() => {
+    const loop = Animated.loop(
+      Animated.sequence([
+        Animated.delay(900),
+        Animated.timing(progress, {
+          toValue: 1,
+          duration: 1000,
+          easing: Easing.inOut(Easing.cubic),
+          useNativeDriver: true,
+        }),
+        Animated.delay(200),
+        Animated.timing(progress, {
+          toValue: 2,
+          duration: 450,
+          easing: Easing.out(Easing.quad),
+          useNativeDriver: true,
+        }),
+        Animated.delay(1100),
+      ])
+    );
+    loop.start();
+    return () => loop.stop();
+  }, []);
+
+  const frontTranslateX = progress.interpolate({
+    inputRange: [0, 1, 1.001, 2],
+    outputRange: [0, 360, 0, 0],
+  });
+  const frontRotate = progress.interpolate({
+    inputRange: [0, 1, 1.001, 2],
+    outputRange: ["0deg", "14deg", "0deg", "0deg"],
+  });
+  // Card flies out fully visible, then fades back in as the "next" card
+  const frontOpacity = progress.interpolate({
+    inputRange: [0, 1, 1.001, 1.6, 2],
+    outputRange: [1, 1, 0, 1, 1],
+  });
+  const frontScale = progress.interpolate({
+    inputRange: [0, 1, 1.001, 2],
+    outputRange: [1, 1, 0.94, 1],
+  });
+  const stampOpacity = progress.interpolate({
+    inputRange: [0, 0.15, 0.5, 1, 1.001, 2],
+    outputRange: [0, 0, 1, 1, 0, 0],
+  });
+  // Back card is promoted while the front card leaves, then recedes
+  const backScale = progress.interpolate({
+    inputRange: [0, 0.4, 1, 1.001, 2],
+    outputRange: [0.965, 0.965, 1, 1, 0.965],
+  });
+  const backTranslateY = progress.interpolate({
+    inputRange: [0, 0.4, 1, 1.001, 2],
+    outputRange: [0, 0, -7, -7, 0],
+  });
+  const likeButtonScale = progress.interpolate({
+    inputRange: [0, 0.4, 0.7, 2],
+    outputRange: [1, 1.18, 1, 1],
+  });
+
   return (
     <View style={[slideStyles.container, { backgroundColor: "#fff", justifyContent: "center" }]}>
       <View style={swipeStyles.topSection}>
         {/* Card stack */}
         <View style={swipeStyles.cardStack}>
           {/* Back card */}
-          <View style={[swipeStyles.card, swipeStyles.cardBack]}>
+          <Animated.View
+            style={[
+              swipeStyles.card,
+              swipeStyles.cardBack,
+              { transform: [{ scale: backScale }, { translateY: backTranslateY }] },
+            ]}
+          >
             <Image
               source={{ uri: "https://images.unsplash.com/photo-1555396273-367ea4eb4db5?w=400&q=80" }}
               style={swipeStyles.cardImage}
@@ -297,13 +373,26 @@ function SwipeSlide({ t }: { t: any }) {
               <Text style={swipeStyles.cardName}>{t("onboarding.swipe.card2")}</Text>
               <Text style={swipeStyles.cardPrice}>{t("onboarding.swipe.card2Price")}</Text>
             </View>
-          </View>
+          </Animated.View>
           {/* Front card */}
-          <View style={[swipeStyles.card, swipeStyles.cardFront]}>
+          <Animated.View
+            style={[
+              swipeStyles.card,
+              swipeStyles.cardFront,
+              {
+                opacity: frontOpacity,
+                transform: [
+                  { translateX: frontTranslateX },
+                  { rotate: frontRotate },
+                  { scale: frontScale },
+                ],
+              },
+            ]}
+          >
             {/* LIKE stamp */}
-            <View style={swipeStyles.likeStamp}>
+            <Animated.View style={[swipeStyles.likeStamp, { opacity: stampOpacity }]}>
               <Text style={swipeStyles.likeStampText}>LIKE</Text>
-            </View>
+            </Animated.View>
             <Image
               source={{ uri: "https://images.unsplash.com/photo-1414235077428-338989a2e8c0?w=400&q=80" }}
               style={swipeStyles.cardImage}
@@ -316,7 +405,7 @@ function SwipeSlide({ t }: { t: any }) {
               <Text style={swipeStyles.whyLabel}>WHY FOR YOU?</Text>
               <Text style={swipeStyles.whyText}>{t("onboarding.swipe.card1Why")}</Text>
             </View>
-          </View>
+          </Animated.View>
         </View>
 
         {/* Swipe buttons */}
@@ -324,9 +413,11 @@ function SwipeSlide({ t }: { t: any }) {
           <View style={swipeStyles.nopeButton}>
             <Text style={swipeStyles.nopeButtonText}>{"\u2715"}</Text>
           </View>
-          <View style={swipeStyles.likeButton}>
+          <Animated.View
+            style={[swipeStyles.likeButton, { transform: [{ scale: likeButtonScale }] }]}
+          >
             <Text style={swipeStyles.likeButtonText}>{"\u2665"}</Text>
-          </View>
+          </Animated.View>
         </View>
 
         {/* Slogan — directly below buttons */}
@@ -345,7 +436,7 @@ const swipeStyles = StyleSheet.create({
     paddingTop: 16,
   },
   cardStack: {
-    height: 320,
+    height: DEMO_CARD_STACK_HEIGHT,
     position: "relative",
   },
   card: {
@@ -362,7 +453,6 @@ const swipeStyles = StyleSheet.create({
   },
   cardBack: {
     top: 7,
-    transform: [{ scale: 0.965 }],
     zIndex: 1,
   },
   cardFront: {
@@ -388,7 +478,7 @@ const swipeStyles = StyleSheet.create({
     letterSpacing: 2,
   },
   cardImage: {
-    height: 180,
+    height: DEMO_CARD_IMAGE_HEIGHT,
     width: "100%",
     backgroundColor: "#F0E8E4",
   },

@@ -483,7 +483,7 @@ const styles = StyleSheet.create({
   skipButton: {
     alignItems: "center",
     paddingVertical: 14,
-    paddingBottom: 100,
+    paddingBottom: 84, // clear the absolute-positioned bottom nav bar
   },
   skipText: {
     color: TEXT_SECONDARY,

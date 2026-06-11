@@ -20,6 +20,12 @@ const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get("window");
 const CARD_WIDTH = (SCREEN_WIDTH - 20 * 2 - 12) / 2; // 2 columns, 20px padding, 12px gap
 const CARD_IMAGE_HEIGHT = CARD_WIDTH * 0.65; // image takes 65% of card width
 
+// The mood grid fills the screen with flex rows; on short screens the flex:1
+// card images are squeezed to zero height, so scale text/chrome down and
+// guarantee a minimum image size instead.
+const IS_COMPACT = SCREEN_HEIGHT < 760;
+const sz = (regular: number, compact: number) => (IS_COMPACT ? compact : regular);
+
 type Mood = {
   id: string;
   labelKey: string;
@@ -340,11 +346,11 @@ const styles = StyleSheet.create({
   },
   title: {
     color: TEXT_PRIMARY,
-    fontSize: 24,
+    fontSize: sz(24, 20),
     fontWeight: "700",
     paddingHorizontal: 16,
-    marginTop: 16,
-    marginBottom: 16,
+    marginTop: sz(16, 8),
+    marginBottom: sz(16, 8),
   },
   gridContainer: {
     flex: 1,
@@ -382,7 +388,7 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     paddingHorizontal: 16,
-    paddingVertical: 20,
+    paddingVertical: sz(20, 12),
     gap: 12,
     backgroundColor: '#FFFFFF',
     shadowColor: '#000',
@@ -395,22 +401,23 @@ const styles = StyleSheet.create({
   cardImage: {
     flex: 1,
     width: "100%",
+    minHeight: 32,
     maxHeight: CARD_IMAGE_HEIGHT,
     resizeMode: "contain",
     paddingHorizontal: 8,
-    paddingTop: 8,
+    paddingTop: sz(8, 2),
   },
   cardImageSmall: {
-    width: 70,
-    height: 70,
+    width: sz(70, 52),
+    height: sz(70, 52),
     resizeMode: "contain",
   },
   cardLabel: {
     color: TEXT_PRIMARY,
-    fontSize: 16,
+    fontSize: sz(16, 14),
     fontWeight: "600",
     textAlign: "center",
-    marginTop: 6,
+    marginTop: sz(6, 2),
     paddingHorizontal: 6,
   },
   cardLabelSelected: {
@@ -418,10 +425,10 @@ const styles = StyleSheet.create({
   },
   cardHint: {
     color: "#888888",
-    fontSize: 11,
+    fontSize: sz(11, 10),
     textAlign: "center",
     marginTop: 2,
-    marginBottom: 10,
+    marginBottom: sz(10, 4),
     paddingHorizontal: 6,
   },
   cardHintSelected: {

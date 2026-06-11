@@ -5,6 +5,7 @@ import {
   TouchableOpacity,
   StyleSheet,
   ScrollView,
+  Dimensions,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { StatusBar } from "expo-status-bar";
@@ -38,6 +39,12 @@ const DISTANCE_OPTIONS: DistanceOption[] = [
   { value: 3500, emoji: "\u{1F697}", titleKey: "budget.distanceOptions.3500.title", subtitleKey: "budget.distanceOptions.3500.subtitle" },
   { value: 10000, emoji: "\u{1F5FA}", titleKey: "budget.distanceOptions.10000.title", subtitleKey: "budget.distanceOptions.10000.subtitle" },
 ];
+
+// Both sections plus the CTA and tab bar must fit one viewport without
+// scrolling — scale paddings down on short screens instead of overflowing.
+const SCREEN_HEIGHT = Dimensions.get("window").height;
+const IS_COMPACT = SCREEN_HEIGHT < 760;
+const sz = (regular: number, compact: number) => (IS_COMPACT ? compact : regular);
 
 // Using central theme
 const ACCENT = Colors.accent;
@@ -142,11 +149,7 @@ export default function BudgetDistanceScreen({
         </TouchableOpacity>
       </View>
 
-      <ScrollView
-        style={{ flex: 1 }}
-        contentContainerStyle={[styles.scrollContent, { paddingBottom: 160 }]}
-        showsVerticalScrollIndicator={false}
-      >
+      <ScrollView style={{ flex: 1 }} contentContainerStyle={styles.scrollContent}>
         {/* Budget Section */}
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>{t('budget.budgetTitle')}</Text>
@@ -257,26 +260,26 @@ const styles = StyleSheet.create({
     borderRadius: 2,
   },
   scrollContent: {
-    paddingBottom: 16,
+    paddingBottom: 8,
   },
   section: {
-    marginTop: 24,
+    marginTop: sz(16, 10),
   },
   sectionTitle: {
     color: TEXT_PRIMARY,
-    fontSize: 24,
+    fontSize: sz(20, 18),
     fontWeight: "700",
     paddingHorizontal: 20,
-    marginBottom: 16,
+    marginBottom: sz(10, 8),
   },
   listContainer: {
     paddingHorizontal: 20,
-    gap: 12,
+    gap: sz(10, 8),
   },
   card: {
     backgroundColor: CARD_BG,
     borderRadius: 16,
-    paddingVertical: 20,
+    paddingVertical: sz(14, 10),
     paddingHorizontal: 20,
     flexDirection: "row",
     alignItems: "center",
@@ -302,7 +305,7 @@ const styles = StyleSheet.create({
     color: ACCENT,
   },
   cardEmoji: {
-    fontSize: 28,
+    fontSize: sz(28, 24),
     marginRight: 16,
   },
   cardTextContainer: {
@@ -326,14 +329,11 @@ const styles = StyleSheet.create({
     color: "#666666",
   },
   bottomContainer: {
-    position: "absolute",
-    bottom: 70,
-    left: 0,
-    right: 0,
     paddingHorizontal: 20,
-    paddingTop: 16,
-    paddingBottom: 16,
+    paddingTop: 8,
+    paddingBottom: 8,
     backgroundColor: BG,
+    marginBottom: 70, // clear the absolute-positioned bottom nav bar
   },
   continueButton: {
     width: "100%",

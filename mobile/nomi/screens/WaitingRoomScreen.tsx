@@ -6,6 +6,7 @@ import {
   StyleSheet,
   Share,
   Animated,
+  ScrollView,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { StatusBar } from "expo-status-bar";
@@ -109,8 +110,12 @@ export default function WaitingRoomScreen({ roomCode, onBack, onStartVoting }: P
         {t('waitingRoom.membersReady', { count: readyCount, total: participants.length })}
       </Text>
 
-      {/* Participant list */}
-      <View style={styles.participantList}>
+      {/* Participant list — scrolls when the room has many members */}
+      <ScrollView
+        style={styles.participantScroll}
+        contentContainerStyle={styles.participantList}
+        showsVerticalScrollIndicator={false}
+      >
         {participants.map((p) => (
           <View key={p.id} style={styles.participantRow}>
             <View style={[styles.avatar, { backgroundColor: p.color }]}>
@@ -125,7 +130,7 @@ export default function WaitingRoomScreen({ roomCode, onBack, onStartVoting }: P
             </View>
           </View>
         ))}
-      </View>
+      </ScrollView>
 
       {/* Bottom actions */}
       <View style={styles.bottomContainer}>
@@ -209,6 +214,10 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
     marginTop: 6,
     marginBottom: 24,
+  },
+  participantScroll: {
+    flexGrow: 0, // keep the start button visible; list scrolls within leftover space
+    flexShrink: 1,
   },
   participantList: {
     paddingHorizontal: 20,

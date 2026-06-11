@@ -211,11 +211,15 @@ const styles = StyleSheet.create({
   },
   photoImage: {
     width: "100%",
-    height: 380,
+    flex: 1,
+    minHeight: 120,
+    maxHeight: 380,
   },
   photoPlaceholder: {
     width: "100%",
-    height: 380,
+    flex: 1,
+    minHeight: 120,
+    maxHeight: 380,
     alignItems: "center",
     justifyContent: "center",
   },

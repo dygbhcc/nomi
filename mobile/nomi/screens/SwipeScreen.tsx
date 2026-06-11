@@ -354,12 +354,10 @@ export default function SwipeScreen({ selectedMoods, budgetLevel, selectedDistan
 
           {/* Photo */}
           {getPhotoUrl(restaurant) ? (
-            <View>
-              <Image
-                source={{ uri: getPhotoUrl(restaurant)! }}
-                style={styles.photoSection}
-              />
-            </View>
+            <Image
+              source={{ uri: getPhotoUrl(restaurant)! }}
+              style={styles.photoSection}
+            />
           ) : (
             <View style={[styles.photoSection, { backgroundColor: '#E8E8E8' }]} />
           )}
@@ -463,10 +461,12 @@ const styles = StyleSheet.create({
     fontWeight: "600",
   },
   cardWrapper: {
+    flex: 1,
     paddingHorizontal: 16,
     paddingBottom: 0,
   },
   card: {
+    flexShrink: 1,
     backgroundColor: CARD_BG,
     borderRadius: 20,
     overflow: "hidden",
@@ -500,6 +500,8 @@ const styles = StyleSheet.create({
   },
   photoSection: {
     height: SCREEN_HEIGHT * 0.40,
+    flexShrink: 1, // photo gives up space first on short screens
+    minHeight: 140,
     width: "100%",
     resizeMode: "cover",
     backgroundColor: PHOTO_BG,
@@ -519,6 +521,7 @@ const styles = StyleSheet.create({
     opacity: 0.8,
   },
   infoSection: {
+    flexShrink: 0, // text keeps its space; the photo shrinks instead
     padding: 16,
     paddingBottom: 20,
     backgroundColor: CARD_BG,
