@@ -1399,9 +1399,26 @@ exports.getSmartRecommendations = onCall(
           });
 
           if (distance) {
-            candidates = candidates.filter(
+            // Soft distance filter: prefer restaurants within range, but if too
+            // few qualify (e.g. "Nearby/500m" around a sparse area), backfill
+            // with the nearest out-of-range ones so we never return an empty
+            // list. Mirrors the client-side fallback behaviour.
+            const TARGET = 12;
+            const inRange = candidates.filter(
                 (c) => c._distanceMetres == null || c._distanceMetres <= distance,
             );
+            if (inRange.length >= TARGET) {
+              candidates = inRange;
+            } else {
+              const outRange = candidates
+                  .filter((c) => c._distanceMetres != null &&
+                                 c._distanceMetres > distance)
+                  .sort((a, b) => a._distanceMetres - b._distanceMetres);
+              candidates = [
+                ...inRange,
+                ...outRange.slice(0, TARGET - inRange.length),
+              ];
+            }
           }
         }
 

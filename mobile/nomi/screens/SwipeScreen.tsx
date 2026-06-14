@@ -36,7 +36,7 @@ function budgetSymbol(level: number): string {
   return "\u20AC".repeat(level);
 }
 
-// Default location: Lisbon center (used for web and mobile)
+// Fallback location: Lisbon center (used when device location is unavailable)
 const DEFAULT_LAT = 38.7223;
 const DEFAULT_LNG = -9.1393;
 
@@ -44,6 +44,8 @@ type Props = {
   selectedMoods: string[];
   budgetLevel: number;
   selectedDistance: number | null;
+  userLat?: number | null;
+  userLng?: number | null;
   onBack: () => void;
   onChangePreferences: () => void;
   onDetail: (restaurant: Restaurant) => void;
@@ -52,7 +54,7 @@ type Props = {
 
 export { type Restaurant };
 
-export default function SwipeScreen({ selectedMoods, budgetLevel, selectedDistance, onBack, onChangePreferences, onDetail, onShowLiked }: Props) {
+export default function SwipeScreen({ selectedMoods, budgetLevel, selectedDistance, userLat, userLng, onBack, onChangePreferences, onDetail, onShowLiked }: Props) {
   const { t } = useTranslation();
   const { user } = useAuth();
   const [restaurants, setRestaurants] = useState<Restaurant[]>([]);
@@ -73,8 +75,8 @@ export default function SwipeScreen({ selectedMoods, budgetLevel, selectedDistan
           selectedMoods,
           budgetLevel,
           selectedDistance,
-          DEFAULT_LAT,
-          DEFAULT_LNG
+          userLat ?? DEFAULT_LAT,
+          userLng ?? DEFAULT_LNG
         );
         const withReasons = result.restaurants.slice(0, 6).map(r => ({
           ...r,
@@ -89,7 +91,7 @@ export default function SwipeScreen({ selectedMoods, budgetLevel, selectedDistan
       }
     };
     fetchRestaurants();
-  }, [selectedMoods, budgetLevel, selectedDistance]);
+  }, [selectedMoods, budgetLevel, selectedDistance, userLat, userLng]);
 
   const batchEnd = batchStart + BATCH_SIZE;
   const currentBatch = restaurants.slice(batchStart, batchEnd);
@@ -217,8 +219,8 @@ export default function SwipeScreen({ selectedMoods, budgetLevel, selectedDistan
         selectedMoods,
         budgetLevel,
         selectedDistance,
-        DEFAULT_LAT,
-        DEFAULT_LNG
+        userLat ?? DEFAULT_LAT,
+        userLng ?? DEFAULT_LNG
       );
       const withReasons = result.restaurants.slice(0, 6).map(r => ({
         ...r,

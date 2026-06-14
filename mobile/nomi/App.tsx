@@ -31,6 +31,7 @@ import {
   registerForPushNotificationsAsync,
   savePushTokenToFirestore,
 } from "./services/notificationService";
+import { getUserCoords, type Coords } from "./services/locationService";
 
 const ONBOARDED_KEY = "nomi_has_onboarded";
 
@@ -78,6 +79,7 @@ function AppNavigator() {
   const [selectedMoods, setSelectedMoods] = useState<string[]>([]);
   const [selectedBudget, setSelectedBudget] = useState<number | null>(null);
   const [selectedDistance, setSelectedDistance] = useState<number | null>(null);
+  const [userCoords, setUserCoords] = useState<Coords | null>(null);
   const [detailRestaurant, setDetailRestaurant] = useState<Restaurant | null>(null);
   const [likedRestaurants, setLikedRestaurants] = useState<Restaurant[]>([]);
   const [roomCode, setRoomCode] = useState("");
@@ -95,6 +97,14 @@ function AppNavigator() {
   useEffect(() => {
     AsyncStorage.getItem(ONBOARDED_KEY).then((value) => {
       setScreen(value === "true" ? "mood" : "onboarding");
+    });
+  }, []);
+
+  // Request location once on startup so recommendations use the user's real
+  // position. Falls back to Lisbon (handled in SwipeScreen) if denied.
+  useEffect(() => {
+    getUserCoords().then((coords) => {
+      if (coords) setUserCoords(coords);
     });
   }, []);
 
@@ -215,6 +225,8 @@ function AppNavigator() {
             selectedMoods={selectedMoods}
             budgetLevel={selectedBudget}
             selectedDistance={selectedDistance}
+            userLat={userCoords?.lat ?? null}
+            userLng={userCoords?.lng ?? null}
             onBack={() => setScreen("budget")}
             onChangePreferences={() => setScreen("mood")}
             onDetail={(restaurant) => {

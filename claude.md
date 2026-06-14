@@ -47,7 +47,8 @@
 - Config: config/
 
 ## Mood System (canonical, do not modify)
-romantic | energetic | chill | explorer | focus | retreat | hungry_quick | celebrating
+romantic | energetic | chill | explorer | focus  | hungry_quick
+
 
 ## Cost Guardrails
 - Google Places API: always check Firestore cache first (geohash)
