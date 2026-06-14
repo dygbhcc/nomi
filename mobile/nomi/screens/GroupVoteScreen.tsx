@@ -6,8 +6,8 @@ import {
   TouchableOpacity,
   Image,
   StyleSheet,
-  SafeAreaView,
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { StatusBar } from 'expo-status-bar';
 import { useTranslation } from 'react-i18next';
 import * as Haptics from 'expo-haptics';

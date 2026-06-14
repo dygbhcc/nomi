@@ -7,7 +7,7 @@ import {
   ScrollView,
   Dimensions,
 } from "react-native";
-import { SafeAreaView } from "react-native-safe-area-context";
+import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context";
 import { StatusBar } from "expo-status-bar";
 import { useTranslation } from "react-i18next";
 import { Colors, Shadows, Spacing, BorderRadius } from "../theme/colors";
@@ -93,6 +93,7 @@ export default function BudgetDistanceScreen({
 }: Props) {
   const { t } = useTranslation();
   const { user } = useAuth();
+  const insets = useSafeAreaInsets();
   const [selectedBudget, setSelectedBudget] = useState<number | null>(null);
   const [selectedDistance, setSelectedDistance] = useState<number | null>(null);
 
@@ -204,7 +205,7 @@ export default function BudgetDistanceScreen({
         </View>
       </ScrollView>
 
-      <View style={styles.bottomContainer}>
+      <View style={[styles.bottomContainer, { marginBottom: 64 + insets.bottom }]}>
         <TouchableOpacity
           style={styles.continueButton}
           activeOpacity={0.8}
@@ -293,7 +294,9 @@ const styles = StyleSheet.create({
   },
   cardSelected: {
     borderColor: ACCENT,
-    backgroundColor: "rgba(224, 106, 79, 0.06)",
+    // Solid tint, not a translucent rgba — a semi-transparent background with
+    // Android `elevation` renders a gray shadow box behind the card.
+    backgroundColor: "#FDF6F4",
   },
   cardSymbol: {
     color: TEXT_PRIMARY,
@@ -333,7 +336,7 @@ const styles = StyleSheet.create({
     paddingTop: 8,
     paddingBottom: 8,
     backgroundColor: BG,
-    marginBottom: 70, // clear the absolute-positioned bottom nav bar
+    // marginBottom set inline as 64 + insets.bottom to clear the absolute nav bar
   },
   continueButton: {
     width: "100%",

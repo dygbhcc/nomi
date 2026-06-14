@@ -10,7 +10,7 @@ import {
   PanResponder,
   ImageSourcePropType,
 } from "react-native";
-import { SafeAreaView } from "react-native-safe-area-context";
+import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context";
 import { StatusBar } from "expo-status-bar";
 import * as Haptics from "expo-haptics";
 import { Colors } from "../theme/colors";
@@ -93,6 +93,7 @@ type Props = {
 export default function ValidateScreen({ onDone, onSkip, onNavigate }: Props) {
   const { t } = useTranslation();
   const { user } = useAuth();
+  const insets = useSafeAreaInsets();
   const [currentIndex, setCurrentIndex] = useState(0);
   const [validated, setValidated] = useState(0);
   const [totalPoints, setTotalPoints] = useState(0);
@@ -330,7 +331,7 @@ export default function ValidateScreen({ onDone, onSkip, onNavigate }: Props) {
       </View>
 
       {/* --- Skip --- */}
-      <TouchableOpacity style={styles.skipButton} onPress={onSkip}>
+      <TouchableOpacity style={[styles.skipButton, { paddingBottom: 64 + insets.bottom }]} onPress={onSkip}>
         <Text style={styles.skipText}>{t('mood.skipButton')}</Text>
       </TouchableOpacity>
 
@@ -483,7 +484,7 @@ const styles = StyleSheet.create({
   skipButton: {
     alignItems: "center",
     paddingVertical: 14,
-    paddingBottom: 84, // clear the absolute-positioned bottom nav bar
+    // paddingBottom set inline as 64 + insets.bottom to clear the absolute nav bar
   },
   skipText: {
     color: TEXT_SECONDARY,

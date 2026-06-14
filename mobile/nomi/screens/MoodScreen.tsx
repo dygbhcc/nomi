@@ -9,7 +9,7 @@ import {
   ImageSourcePropType,
   Dimensions,
 } from "react-native";
-import { SafeAreaView } from "react-native-safe-area-context";
+import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context";
 import { StatusBar } from "expo-status-bar";
 import { useTranslation } from "react-i18next";
 import * as Haptics from "expo-haptics";
@@ -77,6 +77,7 @@ function ProgressBar() {
 
 export default function MoodScreen({ onContinue, onSkip, onGroup, onProfile, onNavigate }: Props) {
   const { t } = useTranslation();
+  const insets = useSafeAreaInsets();
   const [selectedMoods, setSelectedMoods] = useState<string[]>([]);
   const [isSurprising, setIsSurprising] = useState(false);
   const [showTestButtons, setShowTestButtons] = useState(false);
@@ -231,7 +232,7 @@ export default function MoodScreen({ onContinue, onSkip, onGroup, onProfile, onN
           })()}
         </View>
 
-        <View style={styles.bottomContainer}>
+        <View style={[styles.bottomContainer, { marginBottom: 64 + insets.bottom }]}>
           {/* TEST BUTTONS - Only visible in development */}
           {__DEV__ && showTestButtons && (
             <>
@@ -455,7 +456,7 @@ const styles = StyleSheet.create({
     paddingTop: 8,
     paddingBottom: 8,
     backgroundColor: '#F7F7F7',
-    marginBottom: 70,
+    // marginBottom set inline as 64 + insets.bottom to clear the absolute nav bar
   },
   
   

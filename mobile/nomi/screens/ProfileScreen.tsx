@@ -11,7 +11,7 @@ import {
   ImageSourcePropType,
   ActivityIndicator,
 } from "react-native";
-import { SafeAreaView } from "react-native-safe-area-context";
+import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context";
 import { StatusBar } from "expo-status-bar";
 import { Colors } from "../theme/colors";
 import BottomNavigationBar from "../components/BottomNavigationBar";
@@ -99,6 +99,7 @@ type Props = {
 export default function ProfileScreen({ onNavigate }: Props) {
   const { t } = useTranslation();
   const { user: authUser, signOut } = useAuth();
+  const insets = useSafeAreaInsets();
   const [user, setUser] = useState<UserProfileData | null>(null);
   const [loading, setLoading] = useState(true);
 
@@ -185,7 +186,7 @@ export default function ProfileScreen({ onNavigate }: Props) {
     <SafeAreaView style={styles.container}>
       <StatusBar style="dark" />
       <ScrollView
-        contentContainerStyle={styles.scrollContent}
+        contentContainerStyle={[styles.scrollContent, { paddingBottom: 64 + insets.bottom }]}
         showsVerticalScrollIndicator={false}
       >
         {/* --- Header with Home and Settings --- */}

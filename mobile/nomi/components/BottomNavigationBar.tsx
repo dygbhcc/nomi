@@ -1,5 +1,6 @@
 import React from "react";
 import { View, Text, TouchableOpacity, StyleSheet } from "react-native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useTranslation } from "react-i18next";
 import { Colors } from "../theme/colors";
 
@@ -15,9 +16,10 @@ type Props = {
 
 export default function BottomNavigationBar({ activeTab, onNavigate }: Props) {
   const { t } = useTranslation();
+  const insets = useSafeAreaInsets();
 
   return (
-    <View style={styles.tabBar}>
+    <View style={[styles.tabBar, { paddingBottom: insets.bottom + 8 }]}>
       <TouchableOpacity
         style={styles.tab}
         onPress={() => onNavigate("mood")}
@@ -79,7 +81,6 @@ const styles = StyleSheet.create({
     backgroundColor: '#FFFFFF',
     borderTopWidth: 1,
     borderTopColor: '#F0F0F0',
-    paddingBottom: 20,
     paddingTop: 8,
   },
   tab: {
