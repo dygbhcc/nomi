@@ -83,6 +83,12 @@ export default function SwipeScreen({ selectedMoods, budgetLevel, selectedDistan
           reason: buildReason(r, selectedMoods),
         }));
         setRestaurants(withReasons);
+        // B-03/B-05: preload suggestion photos so cards render with the image
+        // already in place instead of loading one-by-one.
+        withReasons.forEach((r) => {
+          const url = getPhotoUrl(r);
+          if (url) Image.prefetch(url).catch(() => {});
+        });
         transitionedRef.current = false; // Reset when new restaurants load
       } catch (e) {
         setError(t('swipe.errorLoading'));

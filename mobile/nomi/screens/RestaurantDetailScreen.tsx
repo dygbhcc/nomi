@@ -18,7 +18,7 @@ import { useTranslation } from "react-i18next";
 import * as Haptics from "expo-haptics";
 import { Colors } from "../theme/colors";
 import { Restaurant, getPhotoUrl, resolveLocalized } from "../services/restaurantService";
-import { saveRestaurant, unsaveRestaurant } from "../services/swipeService";
+import { saveRestaurant, unsaveRestaurant, isRestaurantSaved } from "../services/swipeService";
 import { useAuth } from "../context/AuthContext";
 
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get("window");
@@ -69,6 +69,19 @@ export default function RestaurantDetailScreen({ restaurant, selectedMoods, onBa
   const { user } = useAuth();
   const [saved, setSaved] = useState(false);
   const [validated, setValidated] = useState(false);
+
+  // B-13: reflect whether this place is already saved when the screen opens.
+  React.useEffect(() => {
+    let active = true;
+    if (user) {
+      isRestaurantSaved(user.uid, restaurant.id).then((s) => {
+        if (active) setSaved(s);
+      });
+    }
+    return () => {
+      active = false;
+    };
+  }, [user, restaurant.id]);
   const [currentPhotoIndex, setCurrentPhotoIndex] = useState(0);
   const todayIndex = getTodayIndex();
   const photos = (restaurant.photos || []).slice(0, 5);
@@ -81,15 +94,35 @@ export default function RestaurantDetailScreen({ restaurant, selectedMoods, onBa
   const viewConfigRef = React.useRef({ viewAreaCoveragePercentThreshold: 50 });
 
   const handleBookmark = async () => {
-    if (!user) return;
+    // Saving requires an authenticated user (incl. guest). If there is none —
+    // e.g. anonymous sign-in failed — tell the user instead of silently no-op.
+    if (!user) {
+      Alert.alert(
+        t('common.error') ?? 'Error',
+        'Please sign in to save places.',
+        [{ text: t('common.ok') ?? 'OK' }]
+      );
+      return;
+    }
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
 
-    if (saved) {
-      await unsaveRestaurant(user.uid, restaurant.id);
-      setSaved(false);
-    } else {
-      await saveRestaurant(user.uid, restaurant.id);
-      setSaved(true);
+    // Optimistic toggle, reverted if the write fails.
+    const next = !saved;
+    setSaved(next);
+    try {
+      if (next) {
+        await saveRestaurant(user.uid, restaurant.id);
+      } else {
+        await unsaveRestaurant(user.uid, restaurant.id);
+      }
+    } catch (error) {
+      console.error('handleBookmark error:', error);
+      setSaved(!next); // revert
+      Alert.alert(
+        t('common.error') ?? 'Error',
+        'Could not update saved places. Please try again.',
+        [{ text: t('common.ok') ?? 'OK' }]
+      );
     }
   };
 
@@ -166,16 +199,20 @@ export default function RestaurantDetailScreen({ restaurant, selectedMoods, onBa
           <View style={[styles.heroImage, { backgroundColor: '#E8E8E8' }]} />
         )}
 
-        {/* Bottom overlay: save button */}
+        {/* Bottom overlay: save button (B-13: clear, labelled save action) */}
         <View style={styles.heroOverlay}>
           <TouchableOpacity
-            style={styles.saveButton}
+            style={[styles.saveButton, saved && styles.saveButtonActive]}
             onPress={handleBookmark}
             accessibilityLabel={saved ? "Remove from saved" : "Save restaurant"}
             accessibilityRole="button"
+            accessibilityState={{ selected: saved }}
           >
-            <Text style={[styles.saveIcon, saved && { color: Colors.accent }]}>
-              {saved ? "🔖" : "🔗"}
+            <Text style={[styles.saveIcon, saved && { color: "#FFFFFF" }]}>
+              {"\u{1F516}"}
+            </Text>
+            <Text style={[styles.saveLabel, saved && { color: "#FFFFFF" }]}>
+              {saved ? t('restaurantDetail.saved') : t('restaurantDetail.save')}
             </Text>
           </TouchableOpacity>
         </View>
@@ -522,15 +559,26 @@ const styles = StyleSheet.create({
     justifyContent: "flex-end",
   },
   saveButton: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: "rgba(0,0,0,0.5)",
+    flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
+    gap: 6,
+    height: 40,
+    paddingHorizontal: 16,
+    borderRadius: 20,
+    backgroundColor: "rgba(0,0,0,0.55)",
+  },
+  saveButtonActive: {
+    backgroundColor: ACCENT,
   },
   saveIcon: {
-    fontSize: 20,
+    fontSize: 18,
+    color: "#FFFFFF",
+  },
+  saveLabel: {
+    color: "#FFFFFF",
+    fontSize: 14,
+    fontWeight: "700",
   },
   scrollContent: {
     paddingHorizontal: 20,

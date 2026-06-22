@@ -226,6 +226,94 @@ export const getSmartRecommendations = async (
   }
 };
 
+/**
+ * Build a validation queue: restaurants the user has NOT voted on yet,
+ * shuffled randomly so each session shows a fresh, unordered set.
+ * Prefers restaurants that match the selected moods, then fills from the
+ * general pool. Distances are computed for display only (no filtering).
+ */
+export const getRestaurantsForValidation = async (
+  userId: string | null,
+  moods: string[],
+  maxResults: number = 10,
+  userLat?: number | null,
+  userLng?: number | null
+): Promise<Restaurant[]> => {
+  // 1. Collect restaurant ids this user has already voted on
+  const votedIds = new Set<string>();
+  if (userId) {
+    try {
+      const votesSnap = await getDocs(query(
+        collection(db, 'votes'),
+        where('user_id', '==', userId)
+      ));
+      votesSnap.forEach((d) => {
+        const rid = d.data().restaurant_id;
+        if (rid) votedIds.add(rid);
+      });
+    } catch (e) {
+      __DEV__ && console.error('getRestaurantsForValidation votes error:', e);
+    }
+  }
+
+  // 2. Build a candidate pool, excluding already-voted restaurants
+  const seen = new Set<string>();
+  const pool: Restaurant[] = [];
+  const addDocs = (snap: any) => {
+    for (const d of snap.docs) {
+      if (!seen.has(d.id) && !votedIds.has(d.id)) {
+        seen.add(d.id);
+        pool.push({ id: d.id, ...d.data() } as Restaurant);
+      }
+    }
+  };
+
+  const fetchLimit = Math.max(maxResults * 4, 40);
+
+  // Tier 1: restaurants matching the selected moods
+  try {
+    if (moods.length > 0) {
+      const snap = await getDocs(query(
+        collection(db, 'restaurants'),
+        where('mood_tags', 'array-contains-any', moods),
+        limit(fetchLimit)
+      ));
+      addDocs(snap);
+    }
+  } catch (_) { /* index missing, skip */ }
+
+  // Tier 2: fill from the general pool
+  if (pool.length < maxResults) {
+    try {
+      const snap = await getDocs(query(
+        collection(db, 'restaurants'),
+        limit(fetchLimit)
+      ));
+      addDocs(snap);
+    } catch (_) { /* skip */ }
+  }
+
+  // 3. Compute display distances
+  if (userLat != null && userLng != null) {
+    for (const r of pool) {
+      const lat = r.location?.lat;
+      const lng = r.location?.lng;
+      if (lat != null && lng != null) {
+        const dist = haversineDistance(userLat, userLng, lat, lng);
+        r.distance = dist < 1000 ? `${Math.round(dist)} m` : `${(dist / 1000).toFixed(1)} km`;
+      }
+    }
+  }
+
+  // 4. Shuffle (Fisher-Yates) so the order is random every session
+  for (let i = pool.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [pool[i], pool[j]] = [pool[j], pool[i]];
+  }
+
+  return pool.slice(0, maxResults);
+};
+
 export const getRestaurantById = async (id: string): Promise<Restaurant | null> => {
   try {
     const docRef = doc(db, 'restaurants', id);

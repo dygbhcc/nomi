@@ -49,6 +49,15 @@
       "invalidEmail": "Por favor insira um endereço de email válido",
       "tooManyRequests": "Demasiadas tentativas. Por favor tente mais tarde",
       "default": "Ocorreu um erro. Por favor tente novamente"
+    },
+    "verify": {
+      "title": "Confirma o teu email",
+      "message": "Enviámos um link de confirmação para {{email}}. Abre-o e depois toca no botão abaixo para continuar.",
+      "checkButton": "Já confirmei",
+      "resend": "Reenviar email",
+      "resent": "Email de confirmação enviado",
+      "stillNotVerified": "Ainda não confirmado — verifica a caixa de entrada e o spam.",
+      "signOut": "Usar outra conta"
     }
   },
   "onboarding": {
@@ -57,7 +66,7 @@
     "next": "Seguinte",
     "back": "Voltar",
     "decideForMe": "Decide por mim",
-    "letsEat": "Vamos comer",
+    "letsEat": "Vamos!",
     "termsNotice": "Ao continuar, concordas com os Termos e Política de Privacidade do nomi.",
     "splash": {
       "tagline1": "deixa o mood",
@@ -200,6 +209,8 @@
     "hours": "Horário",
     "distance": "{{distance}} min a pé",
     "seeReviews": "Ver avaliações →",
+    "save": "Guardar",
+    "saved": "Guardado",
     "validateMood": "Achas que este lugar é {{mood}}?",
     "actions": {
       "call": "Ligar",

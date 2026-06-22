@@ -40,6 +40,7 @@ type SwipeVoteCardProps = {
   moods?: string[];
   address?: string;
   reason?: string; // "Why for you?" text
+  sentimentNuances?: string[]; // NLP sentiment pills (matches swipe card)
 
   // Vote info (optional, for group voting)
   voteData?: VoteData;
@@ -69,6 +70,7 @@ export default function SwipeVoteCard({
   moods,
   address,
   reason,
+  sentimentNuances,
   voteData,
   translateX,
   rotate,
@@ -152,6 +154,16 @@ export default function SwipeVoteCard({
           </View>
         )}
 
+        {sentimentNuances && sentimentNuances.length > 0 && (
+          <View style={styles.sentimentRow}>
+            {sentimentNuances.slice(0, 3).map((nuance) => (
+              <View key={nuance} style={styles.sentimentPill}>
+                <Text style={styles.sentimentPillText}>{nuance}</Text>
+              </View>
+            ))}
+          </View>
+        )}
+
         {voteData && (
           <View style={styles.voteRow}>
             <View style={styles.voteAvatars}>
@@ -186,7 +198,16 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: CARD_BG,
     borderRadius: 20,
+    // B-04/B-07/B-18: consistent orange-framed card on a white background
+    // across validation, swipe and suggestion screens.
+    borderWidth: 1.5,
+    borderColor: ACCENT,
     overflow: "hidden",
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.08,
+    shadowRadius: 12,
+    elevation: 4,
   },
   swipeLabel: {
     position: "absolute",
@@ -212,13 +233,14 @@ const styles = StyleSheet.create({
   photoImage: {
     width: "100%",
     flex: 1,
-    minHeight: 120,
+    minHeight: 140,
     maxHeight: 380,
+    backgroundColor: "#E8E8E8",
   },
   photoPlaceholder: {
     width: "100%",
     flex: 1,
-    minHeight: 120,
+    minHeight: 140,
     maxHeight: 380,
     alignItems: "center",
     justifyContent: "center",
@@ -234,7 +256,7 @@ const styles = StyleSheet.create({
   },
   restaurantName: {
     color: TEXT_PRIMARY,
-    fontSize: 18,
+    fontSize: 20,
     fontWeight: "700",
     marginBottom: 4,
   },
@@ -264,14 +286,31 @@ const styles = StyleSheet.create({
     marginBottom: 8,
   },
   moodBadge: {
-    backgroundColor: "rgba(224, 106, 79, 0.12)",
-    paddingHorizontal: 10,
+    backgroundColor: "rgba(224, 106, 79, 0.15)",
+    paddingHorizontal: 12,
     paddingVertical: 4,
-    borderRadius: 20,
+    borderRadius: 12,
   },
   moodBadgeText: {
     color: ACCENT,
-    fontSize: 11,
+    fontSize: 12,
+    fontWeight: "600",
+  },
+  sentimentRow: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: 6,
+    marginTop: 10,
+  },
+  sentimentPill: {
+    backgroundColor: "rgba(76, 175, 80, 0.10)",
+    paddingHorizontal: 8,
+    paddingVertical: 2,
+    borderRadius: 12,
+  },
+  sentimentPillText: {
+    color: "#4CAF50",
+    fontSize: 10,
     fontWeight: "600",
   },
   voteRow: {
@@ -307,9 +346,8 @@ const styles = StyleSheet.create({
   },
   reasonBox: {
     backgroundColor: "rgba(224, 106, 79, 0.08)",
-    borderRadius: 12,
+    borderRadius: 10,
     padding: 12,
-    marginBottom: 8,
   },
   reasonLabel: {
     color: ACCENT,
@@ -317,10 +355,10 @@ const styles = StyleSheet.create({
     fontWeight: "700",
     textTransform: "uppercase",
     letterSpacing: 0.5,
-    marginBottom: 4,
+    marginBottom: 2,
   },
   reasonText: {
-    color: TEXT_PRIMARY,
+    color: TEXT_SECONDARY,
     fontSize: 13,
     lineHeight: 18,
   },

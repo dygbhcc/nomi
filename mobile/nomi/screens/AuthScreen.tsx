@@ -100,8 +100,19 @@ export default function AuthScreen() {
     }
   };
 
-  const handleContinueAsGuest = () => {
-    continueAsGuest();
+  const handleContinueAsGuest = async () => {
+    setError("");
+    setLoading(true);
+    try {
+      await continueAsGuest();
+    } catch (err: unknown) {
+      // Anonymous auth can be disabled in Firebase or fail offline. Surface it
+      // instead of entering a broken guest session that loses saves silently.
+      const firebaseError = err as { code?: string };
+      showError(cleanErrorMessage(firebaseError.code ?? ""));
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (

@@ -10,6 +10,7 @@ import {
   Image,
   ImageSourcePropType,
   ActivityIndicator,
+  RefreshControl,
 } from "react-native";
 import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context";
 import { StatusBar } from "expo-status-bar";
@@ -102,6 +103,7 @@ export default function ProfileScreen({ onNavigate }: Props) {
   const insets = useSafeAreaInsets();
   const [user, setUser] = useState<UserProfileData | null>(null);
   const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
 
   useEffect(() => {
     fetchProfile();
@@ -120,11 +122,16 @@ export default function ProfileScreen({ onNavigate }: Props) {
       if (profile) {
         const restaurants = await getSavedRestaurants(profile.likedRestaurants);
 
-        // Map restaurants to SavedRestaurant format
+        // Map restaurants to SavedRestaurant format. Restaurant docs store a
+        // `location`, not a precomputed `distance_meters`, so guard against NaN
+        // and only show a distance when one is actually available.
         const savedRestaurants: SavedRestaurant[] = restaurants.map((r) => ({
           id: r.id,
           name: r.name || 'Unknown',
-          distance: `${(r.distance_meters / 1000).toFixed(1)} km`,
+          distance:
+            typeof r.distance_meters === 'number' && !isNaN(r.distance_meters)
+              ? `${(r.distance_meters / 1000).toFixed(1)} km`
+              : '',
           budget: r.budget_level || 2,
         }));
 
@@ -141,6 +148,12 @@ export default function ProfileScreen({ onNavigate }: Props) {
     } finally {
       setLoading(false);
     }
+  };
+
+  const onRefresh = async () => {
+    setRefreshing(true);
+    await fetchProfile();
+    setRefreshing(false);
   };
 
   if (loading) {
@@ -188,6 +201,9 @@ export default function ProfileScreen({ onNavigate }: Props) {
       <ScrollView
         contentContainerStyle={[styles.scrollContent, { paddingBottom: 64 + insets.bottom }]}
         showsVerticalScrollIndicator={false}
+        refreshControl={
+          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={ACCENT} />
+        }
       >
         {/* --- Header with Home and Settings --- */}
         <View style={styles.settingsRow}>
@@ -206,7 +222,7 @@ export default function ProfileScreen({ onNavigate }: Props) {
             accessibilityRole="button"
             accessibilityHint="Manage your account settings"
           >
-            <Text style={styles.settingsIcon}>{"\u2699\uFE0F"}</Text>
+            <Text style={styles.settingsIcon}>{"\u2699\uFE0E"}</Text>
           </TouchableOpacity>
         </View>
 
@@ -321,7 +337,7 @@ export default function ProfileScreen({ onNavigate }: Props) {
                   {r.name}
                 </Text>
                 <Text style={styles.savedMeta}>
-                  {r.distance} · {budgetSymbol(r.budget)}
+                  {r.distance ? `${r.distance} · ` : ''}{budgetSymbol(r.budget)}
                 </Text>
               </View>
             ))}
@@ -507,7 +523,9 @@ const styles = StyleSheet.create({
     alignItems: "center",
   },
   badgeCardLocked: {
-    opacity: 0.45,
+    // Locked badges stay clearly visible (B-14/B-15): a single, light dim
+    // instead of compounding card + image opacity which made them near-invisible.
+    opacity: 0.7,
   },
   badgeImage: {
     width: 64,
@@ -515,7 +533,7 @@ const styles = StyleSheet.create({
     marginBottom: 4,
   },
   badgeImageLocked: {
-    opacity: 0.4,
+    opacity: 0.85,
   },
   badgeEmoji: {
     fontSize: 24,

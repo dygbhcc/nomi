@@ -444,7 +444,7 @@ function CTA({ onBack }: Pick<ScreenProps, 'onBack'>): React.JSX.Element {
                 onPress={() => email.length > 0 && setDone(true)}
                 style={[s.primaryBtn, email.length === 0 && { backgroundColor: '#DDD5D0' }]}
               >
-                <Text style={s.primaryBtnText}>Let's eat →</Text>
+                <Text style={s.primaryBtnText}>Let's go →</Text>
               </TouchableOpacity>
 
               <View style={s.divider}>

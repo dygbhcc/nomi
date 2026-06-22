@@ -8,7 +8,7 @@ import {
   Dimensions,
   Animated,
   PanResponder,
-  ImageSourcePropType,
+  Image,
 } from "react-native";
 import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context";
 import { StatusBar } from "expo-status-bar";
@@ -16,7 +16,14 @@ import * as Haptics from "expo-haptics";
 import { Colors } from "../theme/colors";
 import SwipeVoteCard from "../components/SwipeVoteCard";
 import BottomNavigationBar from "../components/BottomNavigationBar";
+import LoadingOverlay from "../components/LoadingOverlay";
 import { recordValidation } from "../services/swipeService";
+import {
+  getRestaurantsForValidation,
+  buildReason,
+  getPhotoUrl,
+  Restaurant,
+} from "../services/restaurantService";
 import { useAuth } from "../context/AuthContext";
 
 const ACCENT = Colors.accent;
@@ -31,72 +38,115 @@ const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get("window");
 const SWIPE_THRESHOLD = 100;
 const DAILY_LIMIT = 10;
 
-type ValidateItem = {
-  id: string;
-  name: string;
-  address: string;
-  mood: string;
-  photoColor: string;
-  photo?: ImageSourcePropType;
-};
+// Fallback location: Lisbon center (used when device location is unavailable)
+const DEFAULT_LAT = 38.7223;
+const DEFAULT_LNG = -9.1393;
 
-const MOCK_VALIDATE_QUEUE: ValidateItem[] = [
-  {
-    id: "1",
-    name: "Taberna da Rua das Flores",
-    address: "Rua das Flores 103",
-    mood: "romantic",
-    photoColor: "#1A1A2E",
-    photo: require("../assets/images/restaurants/taberna-rua-das-flores.jpg")
-  },
-  {
-    id: "2",
-    name: "ZeroZero",
-    address: "Rua do Passadi\u00E7o 35",
-    mood: "focus",
-    photoColor: "#0D1A0D",
-    photo: require("../assets/images/restaurants/zerozero.jpg")
-  },
-  {
-    id: "3",
-    name: "A Cevicheria",
-    address: "Rua Dom Pedro V 129",
-    mood: "energetic",
-    photoColor: "#1A0D0D",
-    photo: require("../assets/images/restaurants/cevicheria.jpg")
-  },
-  {
-    id: "4",
-    name: "Cantinho do Avillez",
-    address: "Rua dos Duques de Bragan\u00E7a 7",
-    mood: "explorer",
-    photoColor: "#1A1A0D",
-    photo: require("../assets/images/restaurants/catinho.jpg")
-  },
-  {
-    id: "5",
-    name: "Solar dos Presuntos",
-    address: "Rua Portas de Santo Ant\u00E3o 150",
-    mood: "chill",
-    photoColor: "#0D0D1A",
-    photo: require("../assets/images/restaurants/solar.jpg")
-  },
+// Canonical moods that have a validation question pool
+const QUESTION_MOODS = [
+  "romantic",
+  "energetic",
+  "chill",
+  "explorer",
+  "focus",
+  "hungry_quick",
 ];
 
+// Normalize the various mood id formats used across screens
+// (e.g. "hungry&quick", "hungryQuick") to a canonical mood.
+function normalizeMood(mood: string): string {
+  const m = mood.toLowerCase().replace(/[&\s_]+/g, "");
+  switch (m) {
+    case "hungryquick":
+      return "hungry_quick";
+    case "explore":
+    case "explorer":
+      return "explorer";
+    case "romantic":
+      return "romantic";
+    case "energetic":
+      return "energetic";
+    case "chill":
+      return "chill";
+    case "focus":
+      return "focus";
+    default:
+      return ""; // unknown mood (e.g. "surprise") has no question pool
+  }
+}
+
+// Map a canonical mood to its i18n question/label key.
+function questionKey(canonicalMood: string): string {
+  return canonicalMood === "hungry_quick" ? "hungryQuick" : canonicalMood;
+}
 
 type Props = {
+  selectedMoods: string[];
+  userLat?: number | null;
+  userLng?: number | null;
   onDone: () => void;
   onSkip: () => void;
   onNavigate: (screen: string) => void;
 };
 
-export default function ValidateScreen({ onDone, onSkip, onNavigate }: Props) {
+export default function ValidateScreen({
+  selectedMoods,
+  userLat,
+  userLng,
+  onDone,
+  onSkip,
+  onNavigate,
+}: Props) {
   const { t } = useTranslation();
   const { user } = useAuth();
   const insets = useSafeAreaInsets();
+  const [queue, setQueue] = useState<Restaurant[]>([]);
+  const [loading, setLoading] = useState(true);
   const [currentIndex, setCurrentIndex] = useState(0);
   const [validated, setValidated] = useState(0);
   const [totalPoints, setTotalPoints] = useState(0);
+
+  // Moods the user marked, normalized to canonical ones that have questions
+  const moodPool = useMemo(() => {
+    const valid = Array.from(
+      new Set(selectedMoods.map(normalizeMood).filter(Boolean))
+    );
+    return valid.length > 0 ? valid : QUESTION_MOODS;
+  }, [selectedMoods]);
+
+  // Fetch a fresh, random set of restaurants the user has not voted on yet
+  useEffect(() => {
+    let active = true;
+    const fetchQueue = async () => {
+      setLoading(true);
+      try {
+        const restaurants = await getRestaurantsForValidation(
+          user?.uid ?? null,
+          selectedMoods,
+          DAILY_LIMIT,
+          userLat ?? DEFAULT_LAT,
+          userLng ?? DEFAULT_LNG
+        );
+        if (active) {
+          setQueue(restaurants);
+          // B-03/B-05: preload card photos so they appear instantly instead of
+          // trickling in one-by-one (or not at all) as each card is shown.
+          restaurants.forEach((r) => {
+            const url = getPhotoUrl(r);
+            if (url) Image.prefetch(url).catch(() => {});
+          });
+        }
+      } catch (e) {
+        if (active) setQueue([]);
+      } finally {
+        if (active) setLoading(false);
+      }
+    };
+    fetchQueue();
+    return () => {
+      active = false;
+    };
+  }, [user?.uid, selectedMoods, userLat, userLng]);
 
   // Card animation
   const translateX = useRef(new Animated.Value(0)).current;
@@ -149,19 +199,39 @@ export default function ValidateScreen({ onDone, onSkip, onNavigate }: Props) {
     ]).start();
   };
 
+  const item = queue[currentIndex];
+  const progress = validated / DAILY_LIMIT;
+
+  // Pick a mood to ask about from the user's selected moods, one per card
+  const currentMood = useMemo(
+    () => moodPool[Math.floor(Math.random() * moodPool.length)],
+    [currentIndex, moodPool]
+  );
+  const moodLabelKey = questionKey(currentMood);
+
+  // Pick one random question from the mood's question pool per card
+  const currentQuestion = useMemo(() => {
+    const questions = t(`validate.questions.${moodLabelKey}`, { returnObjects: true }) as string[];
+    if (Array.isArray(questions) && questions.length > 0) {
+      return questions[Math.floor(Math.random() * questions.length)];
+    }
+    return t(`validate.moods.${moodLabelKey}`) + '?';
+  }, [currentIndex, t, moodLabelKey]);
+
+  const cardScale = slideIn.interpolate({
+    inputRange: [0, 1],
+    outputRange: [0.92, 1],
+  });
+
   const handleAnswer = async (direction: "left" | "right") => {
+    if (!item) return;
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
 
-    const currentItem = MOCK_VALIDATE_QUEUE[currentIndex % MOCK_VALIDATE_QUEUE.length];
-
-    // Record validation to Firestore
-    if (user && currentItem) {
-      await recordValidation(
-        user.uid,
-        currentItem.id,
-        currentItem.mood,
-        direction === "right"
-      );
+    // Record validation to Firestore with the real restaurant and asked mood
+    if (user) {
+      try {
+        await recordValidation(user.uid, item.id, currentMood, direction === "right");
+      } catch (_) { /* error logged in service */ }
     }
 
     const toValue = direction === "right" ? SCREEN_WIDTH * 1.5 : -SCREEN_WIDTH * 1.5;
@@ -179,6 +249,11 @@ export default function ValidateScreen({ onDone, onSkip, onNavigate }: Props) {
     });
   };
 
+  // PanResponder is created once, so keep it pointing at the latest handler —
+  // otherwise gesture swipes on later cards record the first card's restaurant.
+  const handleAnswerRef = useRef(handleAnswer);
+  handleAnswerRef.current = handleAnswer;
+
   const panResponder = useRef(
     PanResponder.create({
       onMoveShouldSetPanResponder: (_, g) => Math.abs(g.dx) > 10,
@@ -187,9 +262,9 @@ export default function ValidateScreen({ onDone, onSkip, onNavigate }: Props) {
       },
       onPanResponderRelease: (_, g) => {
         if (g.dx > SWIPE_THRESHOLD) {
-          handleAnswer("right");
+          handleAnswerRef.current("right");
         } else if (g.dx < -SWIPE_THRESHOLD) {
-          handleAnswer("left");
+          handleAnswerRef.current("left");
         } else {
           Animated.spring(translateX, {
             toValue: 0,
@@ -200,7 +275,36 @@ export default function ValidateScreen({ onDone, onSkip, onNavigate }: Props) {
     })
   ).current;
 
-  const allDone = validated >= DAILY_LIMIT;
+  const ranOut = !loading && currentIndex >= queue.length;
+  const allDone = validated >= DAILY_LIMIT || ranOut;
+
+  // --- Loading State ---
+  if (loading) {
+    return (
+      <SafeAreaView style={styles.container}>
+        <StatusBar style="dark" />
+        <LoadingOverlay />
+      </SafeAreaView>
+    );
+  }
+
+  // --- Empty State (no restaurants left to validate) ---
+  if (!loading && queue.length === 0) {
+    return (
+      <SafeAreaView style={styles.container}>
+        <StatusBar style="dark" />
+        <View style={styles.doneContainer}>
+          <Text style={styles.doneEmoji}>{"\u{1F50D}"}</Text>
+          <Text style={styles.doneTitle}>{t('validate.doneTitle')}</Text>
+          <Text style={styles.doneSubtitle}>{t('validate.doneMessage')}</Text>
+          <TouchableOpacity style={styles.doneButton} onPress={onSkip}>
+            <Text style={styles.doneButtonText}>{t('common.done')}</Text>
+          </TouchableOpacity>
+        </View>
+        <BottomNavigationBar activeTab="validate" onNavigate={onNavigate} />
+      </SafeAreaView>
+    );
+  }
 
   // --- Done State ---
   if (allDone) {
@@ -224,23 +328,6 @@ export default function ValidateScreen({ onDone, onSkip, onNavigate }: Props) {
     );
   }
 
-  const item = MOCK_VALIDATE_QUEUE[currentIndex % MOCK_VALIDATE_QUEUE.length];
-  const progress = validated / DAILY_LIMIT;
-
-  // Pick one random question from the mood's question pool per card
-  const currentQuestion = useMemo(() => {
-    const questions = t(`validate.questions.${item.mood}`, { returnObjects: true }) as string[];
-    if (Array.isArray(questions) && questions.length > 0) {
-      return questions[Math.floor(Math.random() * questions.length)];
-    }
-    return t(`validate.moods.${item.mood}`) + '?';
-  }, [currentIndex, t, item.mood]);
-
-  const cardScale = slideIn.interpolate({
-    inputRange: [0, 1],
-    outputRange: [0.92, 1],
-  });
-
   return (
     <SafeAreaView style={styles.container}>
       <StatusBar style="dark" />
@@ -256,16 +343,19 @@ export default function ValidateScreen({ onDone, onSkip, onNavigate }: Props) {
       </View>
 
       <Text style={styles.subtitle}>
-        {t(`validate.moods.${item.mood}`)}
+        {t(`validate.moods.${moodLabelKey}`)}
       </Text>
 
-      {/* --- Card --- */}
+      {/* --- Card (identical to the swipe card) --- */}
       <View style={styles.cardWrapper}>
         <SwipeVoteCard
           name={item.name}
-          address={item.address}
-          photo={item.photo}
-          photoColor={item.photoColor}
+          photo={getPhotoUrl(item) ? { uri: getPhotoUrl(item)! } : undefined}
+          distance={item.distance}
+          budget={item.budget_level}
+          moods={(item.mood_tags || []).filter((m) => selectedMoods.includes(m)).slice(0, 3)}
+          reason={buildReason(item, selectedMoods)}
+          sentimentNuances={item.nlp_metrics?.primary_sentiment_nuances}
           translateX={translateX}
           rotate={rotate}
           scale={cardScale}

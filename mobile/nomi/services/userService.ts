@@ -51,8 +51,15 @@ export const getUserProfile = async (userId: string): Promise<UserProfile | null
       ? createdAt.toLocaleDateString('en-US', { month: 'long', year: 'numeric' })
       : 'Recently';
 
+    // B-12: prefer a stored name; otherwise derive a friendly name from the
+    // email instead of showing "Anonymous".
+    const emailName =
+      typeof data.email === 'string' && data.email.includes('@')
+        ? data.email.split('@')[0]
+        : null;
+
     return {
-      displayName: data.display_name || data.displayName || 'Anonymous',
+      displayName: data.display_name || data.displayName || emailName || 'Foodie',
       points: data.points || 0,
       memberSince,
       restaurantsVisited: data.liked_restaurants?.length || 0,
@@ -71,27 +78,24 @@ export const getUserProfile = async (userId: string): Promise<UserProfile | null
  * Get saved restaurants details
  */
 export const getSavedRestaurants = async (restaurantIds: string[]): Promise<any[]> => {
-  try {
-    if (restaurantIds.length === 0) return [];
+  if (!restaurantIds || restaurantIds.length === 0) return [];
 
-    const restaurants = [];
+  // Fetch in parallel and isolate failures per id, so one stale/missing id
+  // can no longer wipe out the entire saved list (previous version returned []
+  // on the first error). Skip empty/invalid ids defensively.
+  const results = await Promise.all(
+    restaurantIds
+      .filter((id) => typeof id === 'string' && id.length > 0)
+      .map(async (id) => {
+        try {
+          const snap = await getDoc(doc(db, 'restaurants', id));
+          return snap.exists() ? { id: snap.id, ...snap.data() } : null;
+        } catch (error) {
+          console.error('getSavedRestaurants item error:', id, error);
+          return null;
+        }
+      })
+  );
 
-    // Fetch each restaurant
-    for (const id of restaurantIds) {
-      const restaurantRef = doc(db, 'restaurants', id);
-      const restaurantSnap = await getDoc(restaurantRef);
-
-      if (restaurantSnap.exists()) {
-        restaurants.push({
-          id: restaurantSnap.id,
-          ...restaurantSnap.data(),
-        });
-      }
-    }
-
-    return restaurants;
-  } catch (error) {
-    console.error('getSavedRestaurants error:', error);
-    return [];
-  }
+  return results.filter((r) => r !== null);
 };

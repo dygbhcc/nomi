@@ -56,6 +56,23 @@ export const unsaveRestaurant = async (
   }, { merge: true });
 };
 
+// B-13: check whether a restaurant is already saved so the detail screen can
+// show the correct Save/Saved state on open. Single user-doc read (no extra
+// votes/rooms queries) to keep Firestore reads minimal.
+export const isRestaurantSaved = async (
+  userId: string,
+  restaurantId: string
+): Promise<boolean> => {
+  try {
+    const snap = await getDoc(doc(db, 'users', userId));
+    const liked: string[] = snap.exists() ? (snap.data().liked_restaurants || []) : [];
+    return liked.includes(restaurantId);
+  } catch (error) {
+    console.error('isRestaurantSaved error:', error);
+    return false;
+  }
+};
+
 export const recordValidation = async (
   userId: string,
   restaurantId: string,

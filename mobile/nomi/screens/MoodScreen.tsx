@@ -54,7 +54,7 @@ const STEP_INACTIVE = Colors.stepInactive;
 type Props = {
   onContinue: (selectedMoods: string[]) => void;
   onSkip: () => void;
-  onGroup: () => void;
+  onGroup?: () => void; // B-02: group now lives only in the bottom nav bar
   onProfile?: () => void;
   onNavigate: (screen: string) => void;
 };
@@ -75,11 +75,10 @@ function ProgressBar() {
   );
 }
 
-export default function MoodScreen({ onContinue, onSkip, onGroup, onProfile, onNavigate }: Props) {
+export default function MoodScreen({ onContinue, onSkip, onProfile, onNavigate }: Props) {
   const { t } = useTranslation();
   const insets = useSafeAreaInsets();
   const [selectedMoods, setSelectedMoods] = useState<string[]>([]);
-  const [isSurprising, setIsSurprising] = useState(false);
   const [showTestButtons, setShowTestButtons] = useState(false);
 
   const toggleMood = (id: string) => {
@@ -90,27 +89,15 @@ export default function MoodScreen({ onContinue, onSkip, onGroup, onProfile, onN
 
   const handleSurprise = () => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-    setIsSurprising(true);
 
-    // Flash effect: rapidly cycle random highlights
-    let flashCount = 0;
-    const flashInterval = setInterval(() => {
-      const shuffled = [...MOODS].sort(() => Math.random() - 0.5);
-      setSelectedMoods(shuffled.slice(0, 3).map((m) => m.id));
-      flashCount++;
-      if (flashCount >= 4) {
-        clearInterval(flashInterval);
-        // Settle on final picks
-        const finalShuffled = [...MOODS].sort(() => Math.random() - 0.5);
-        const randomPicks = finalShuffled.slice(0, Math.floor(Math.random() * 2) + 2);
-        const finalIds = randomPicks.map((m) => m.id);
-        setSelectedMoods(finalIds);
-        setTimeout(() => {
-          setIsSurprising(false);
-          onContinue(finalIds);
-        }, 600);
-      }
-    }, 75);
+    // B-09: pick 2-3 random real moods silently and go straight to the next
+    // screen. The old version flashed the selection on-screen, which looked
+    // like the UI was glitching and exposed that the app picked the moods.
+    const realMoods = MOODS.filter((m) => m.id !== "surprise");
+    const shuffled = [...realMoods].sort(() => Math.random() - 0.5);
+    const count = Math.floor(Math.random() * 2) + 2; // 2 or 3 moods
+    const finalIds = shuffled.slice(0, count).map((m) => m.id);
+    onContinue(finalIds);
   };
 
   const hasSelection = selectedMoods.length > 0;
@@ -171,15 +158,8 @@ export default function MoodScreen({ onContinue, onSkip, onGroup, onProfile, onN
       <StatusBar style="dark" />
 
       <View style={styles.header}>
-        <TouchableOpacity
-          style={styles.groupButton}
-          onPress={onGroup}
-          accessibilityLabel="Create or join group session"
-          accessibilityRole="button"
-        >
-          <Text style={styles.groupIcon}>{"\u{1F465}"}</Text>
-          <Text style={styles.groupText}>Group</Text>
-        </TouchableOpacity>
+        {/* B-02: top "Group" entry removed to keep the main menu solo-only.
+            Group sessions are reachable from the bottom navigation bar. */}
         <ProgressBar />
         <TouchableOpacity
           style={styles.skipButton}

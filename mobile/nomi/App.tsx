@@ -8,6 +8,7 @@ import { AuthProvider, useAuth } from "./context/AuthContext";
 import ErrorBoundary from "./components/ErrorBoundary";
 import i18n, { initI18n } from "./i18n";
 import AuthScreen from "./screens/AuthScreen";
+import VerifyEmailScreen from "./screens/VerifyEmailScreen";
 import OnboardingScreen from "./screens/OnboardingScreen";
 import MoodScreen from "./screens/MoodScreen";
 import BudgetDistanceScreen from "./screens/BudgetDistanceScreen";
@@ -34,6 +35,10 @@ import {
 import { getUserCoords, type Coords } from "./services/locationService";
 
 const ONBOARDED_KEY = "nomi_has_onboarded";
+
+// Require email-account users to confirm their email before entering the app.
+// Guests (anonymous) are exempt. Flip to false to disable enforcement.
+const REQUIRE_EMAIL_VERIFICATION = true;
 
 // Fallback restaurant for the result screen when opened via the dev test shortcut
 const TEST_RESULT_RESTAURANT = {
@@ -173,6 +178,18 @@ function AppNavigator() {
   // Show auth screen if not authenticated and not guest
   if (!user && !isGuest) {
     return <AuthScreen />;
+  }
+
+  // Gate email-account users behind email verification (guests are exempt).
+  if (
+    REQUIRE_EMAIL_VERIFICATION &&
+    user &&
+    !user.isAnonymous &&
+    !!user.email &&
+    !user.emailVerified &&
+    !isGuest
+  ) {
+    return <VerifyEmailScreen />;
   }
 
   // Loading state while checking AsyncStorage
@@ -466,6 +483,9 @@ function AppNavigator() {
       )}
       {screen === "validate" && (
         <ValidateScreen
+          selectedMoods={selectedMoods}
+          userLat={userCoords?.lat ?? null}
+          userLng={userCoords?.lng ?? null}
           onDone={() => setScreen(returnScreen)}
           onSkip={() => setScreen(returnScreen)}
           onNavigate={(s) => setScreen(s as Screen)}
