@@ -263,17 +263,6 @@ export default function RestaurantDetailScreen({ restaurant, selectedMoods, onBa
           </Text>
         </View>
 
-        {/* B-21: quick-scan review tags (AI keyword badges from long reviews) */}
-        {restaurant.review_tags && restaurant.review_tags.length > 0 && (
-          <View style={styles.reviewTagsRow}>
-            {restaurant.review_tags.slice(0, 6).map((tag) => (
-              <View key={tag} style={styles.reviewTagPill}>
-                <Text style={styles.reviewTagText}>{tag}</Text>
-              </View>
-            ))}
-          </View>
-        )}
-
         {/* What Guests Say — NLP summary + sentiment nuances */}
         {resolveLocalized(restaurant.nlp_insights?.general_summary) && (
           <View style={styles.nlpCard}>
@@ -286,15 +275,6 @@ export default function RestaurantDetailScreen({ restaurant, selectedMoods, onBa
               )}
             </View>
             <Text style={styles.nlpSummary}>"{resolveLocalized(restaurant.nlp_insights?.general_summary)}"</Text>
-            {restaurant.nlp_metrics?.primary_sentiment_nuances && restaurant.nlp_metrics.primary_sentiment_nuances.length > 0 && (
-              <View style={styles.nlpSentimentRow}>
-                {restaurant.nlp_metrics.primary_sentiment_nuances.map((nuance: string) => (
-                  <View key={nuance} style={styles.sentimentPill}>
-                    <Text style={styles.sentimentPillText}>{nuance}</Text>
-                  </View>
-                ))}
-              </View>
-            )}
             {restaurant.nlp_metrics?.most_frequent_emotion && (
               <Text style={styles.nlpEmotion}>
                 {t('restaurantDetail.nlp.overallFeel', { emotion: restaurant.nlp_metrics.most_frequent_emotion })}
@@ -819,23 +799,6 @@ const styles = StyleSheet.create({
     lineHeight: 20,
     marginBottom: 10,
   },
-  nlpSentimentRow: {
-    flexDirection: "row",
-    flexWrap: "wrap",
-    gap: 6,
-    marginBottom: 6,
-  },
-  sentimentPill: {
-    backgroundColor: "rgba(76, 175, 80, 0.10)",
-    paddingHorizontal: 10,
-    paddingVertical: 4,
-    borderRadius: 20,
-  },
-  sentimentPillText: {
-    color: "#4CAF50",
-    fontSize: 11,
-    fontWeight: "600",
-  },
   nlpEmotion: {
     color: TEXT_SECONDARY,
     fontSize: 11,
@@ -864,13 +827,13 @@ const styles = StyleSheet.create({
     gap: 6,
   },
   foodPill: {
-    backgroundColor: "rgba(0, 0, 0, 0.05)",
+    backgroundColor: "rgba(76, 175, 80, 0.10)",
     paddingHorizontal: 10,
     paddingVertical: 4,
     borderRadius: 20,
   },
   foodPillText: {
-    color: TEXT_SECONDARY,
+    color: "#4CAF50",
     fontSize: 11,
     fontWeight: "600",
   },
@@ -883,24 +846,6 @@ const styles = StyleSheet.create({
   headsUpPillText: {
     color: "#C0392B",
     fontSize: 11,
-    fontWeight: "600",
-  },
-  // B-21 review tag badges
-  reviewTagsRow: {
-    flexDirection: "row",
-    flexWrap: "wrap",
-    gap: 6,
-    marginBottom: 14,
-  },
-  reviewTagPill: {
-    backgroundColor: "rgba(76, 175, 80, 0.10)",
-    paddingHorizontal: 10,
-    paddingVertical: 4,
-    borderRadius: 20,
-  },
-  reviewTagText: {
-    color: "#4CAF50",
-    fontSize: 12,
     fontWeight: "600",
   },
 });
