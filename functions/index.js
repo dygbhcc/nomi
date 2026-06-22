@@ -1305,25 +1305,54 @@ exports.getSmartRecommendations = onCall(
         // --- 1. Build candidate pool ---
         let candidates = [];
 
+        // Cost: geohash region cache. The candidate pool is shared across users
+        // in the same coarse area + prefs, so we cache it and read 1 doc instead
+        // of querying dozens. Per-user swipe filtering and scoring still run.
+        const CANDIDATE_LIMIT = 40;
+        const CACHE_TTL_MS = 6 * 60 * 60 * 1000; // 6h
+        const round = (n) => Math.round(n * 100) / 100; // ~1.1km grid cell
+        const moodKey = [...normalizedMoods].sort().join("-") || "any";
+        const regionKey = (userLat != null && userLng != null) ?
+          `${round(userLat)}_${round(userLng)}_${budgetLevel || "any"}_${moodKey}` :
+          null;
+
+        let cacheHit = false;
+        if (regionKey) {
+          try {
+            const cacheSnap = await db.collection("recommendation_cache").doc(regionKey).get();
+            if (cacheSnap.exists) {
+              const cdata = cacheSnap.data();
+              const ageMs = Date.now() - (cdata.cached_at?.toMillis?.() ?? 0);
+              if (ageMs < CACHE_TTL_MS && Array.isArray(cdata.candidates) && cdata.candidates.length) {
+                candidates = cdata.candidates;
+                cacheHit = true;
+                meta.cached = true;
+              }
+            }
+          } catch (e) {
+            logger.warn("recommendation_cache read failed:", e?.message);
+          }
+        }
+
         // Primary query: mood_tags + business_status OPERATIONAL + budget_level
-        if (normalizedMoods.length > 0 && budgetLevel) {
+        if (!cacheHit && normalizedMoods.length > 0 && budgetLevel) {
           const primaryQuery = db.collection("restaurants")
               .where("mood_tags", "array-contains-any", normalizedMoods)
               .where("business_status", "==", "OPERATIONAL")
               .where("budget_level", "==", budgetLevel)
               .orderBy("google_rating", "desc")
-              .limit(100);
+              .limit(CANDIDATE_LIMIT);
           const primarySnap = await primaryQuery.get();
           candidates = primarySnap.docs.map((doc) => ({id: doc.id, ...doc.data()}));
         }
 
         // Fallback tier 0: mood + business_status (no budget filter)
-        if (candidates.length < 10 && normalizedMoods.length > 0) {
+        if (!cacheHit && candidates.length < 10 && normalizedMoods.length > 0) {
           const moodStatusQuery = db.collection("restaurants")
               .where("mood_tags", "array-contains-any", normalizedMoods)
               .where("business_status", "==", "OPERATIONAL")
               .orderBy("google_rating", "desc")
-              .limit(100);
+              .limit(CANDIDATE_LIMIT);
           const moodStatusSnap = await moodStatusQuery.get();
           const existingIds = new Set(candidates.map((c) => c.id));
           moodStatusSnap.docs.forEach((doc) => {
@@ -1335,11 +1364,11 @@ exports.getSmartRecommendations = onCall(
         }
 
         // Fallback tier 1: mood only (no business_status filter)
-        if (candidates.length < 10 && normalizedMoods.length > 0) {
+        if (!cacheHit && candidates.length < 10 && normalizedMoods.length > 0) {
           const moodOnlyQuery = db.collection("restaurants")
               .where("mood_tags", "array-contains-any", normalizedMoods)
               .orderBy("google_rating", "desc")
-              .limit(100);
+              .limit(CANDIDATE_LIMIT);
           const moodOnlySnap = await moodOnlyQuery.get();
           const existingIds = new Set(candidates.map((c) => c.id));
           moodOnlySnap.docs.forEach((doc) => {
@@ -1351,11 +1380,11 @@ exports.getSmartRecommendations = onCall(
         }
 
         // Fallback tier 2: budget only
-        if (candidates.length < 10) {
+        if (!cacheHit && candidates.length < 10) {
           const budgetQuery = db.collection("restaurants")
               .where("budget_level", "==", budgetLevel)
               .orderBy("google_rating", "desc")
-              .limit(100);
+              .limit(CANDIDATE_LIMIT);
           const budgetSnap = await budgetQuery.get();
           const existingIds = new Set(candidates.map((c) => c.id));
           budgetSnap.docs.forEach((doc) => {
@@ -1367,10 +1396,10 @@ exports.getSmartRecommendations = onCall(
         }
 
         // Fallback tier 3: all restaurants
-        if (candidates.length < 10) {
+        if (!cacheHit && candidates.length < 10) {
           const allQuery = db.collection("restaurants")
               .orderBy("google_rating", "desc")
-              .limit(100);
+              .limit(CANDIDATE_LIMIT);
           const allSnap = await allQuery.get();
           const existingIds = new Set(candidates.map((c) => c.id));
           allSnap.docs.forEach((doc) => {
@@ -1379,6 +1408,21 @@ exports.getSmartRecommendations = onCall(
               existingIds.add(doc.id);
             }
           });
+        }
+
+        // Cache the freshly-built shared pool (trimmed to keep the doc small;
+        // write is best-effort — if it fails we just skip caching this round).
+        if (!cacheHit && regionKey && candidates.length) {
+          try {
+            await db.collection("recommendation_cache").doc(regionKey).set({
+              candidates: candidates.slice(0, 30),
+              cached_at: admin.firestore.FieldValue.serverTimestamp(),
+              mood_key: moodKey,
+              budget_level: budgetLevel || null,
+            });
+          } catch (e) {
+            logger.warn("recommendation_cache write failed:", e?.message);
+          }
         }
 
         meta.candidateCount = candidates.length;
@@ -1429,7 +1473,8 @@ exports.getSmartRecommendations = onCall(
         if (userId) {
           const swipeQuery = db.collection("swipes")
               .where("user_id", "==", userId)
-              .orderBy("timestamp", "desc");
+              .orderBy("timestamp", "desc")
+              .limit(400); // cost: bound the per-call swipe history read
           const swipeSnap = await swipeQuery.get();
 
           swipeSnap.docs.forEach((doc) => {

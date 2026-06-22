@@ -90,6 +90,9 @@ Using the provided sentiment metadata and your training knowledge about this ven
 
 # Insight Rules
 All insight fields are bilingual objects with "en" and "${localeKey}" keys. Summaries: 1-2 sentences max, direct. Keep local dish names unchanged across languages.
+- review_tags: 3-6 very short English keyword chips (1-3 words each) summarizing what reviewers highlight (e.g. "cozy ambiance", "great service", "good value"). These are shown as quick-scan badges instead of long review text.
+- love_tags: 2-4 very short English chips (1-3 words) for the BEST things people love (e.g. "craft beers", "great value", "friendly staff"). Short badge form of food_admiration.
+- watch_tags: 2-4 very short English chips (1-3 words) for downsides to be aware of (e.g. "gets crowded", "slow service", "noisy"). Short badge form of negative_aspects. Empty array if none.
 
 # Output Rules — CRITICAL
 1. Your ENTIRE response must be a single valid JSON object. Start with { and end with }.
@@ -109,8 +112,14 @@ All insight fields are bilingual objects with "en" and "${localeKey}" keys. Summ
   "review_count": 0,
   "review_sources": [],
   "top_keywords": [],
+  "review_tags": ["String"],
+  "love_tags": ["String"],
+  "watch_tags": ["String"],
   "confidence": "low|medium|high"
 }`;
+  // review_tags: 3-6 very short keyword badges (1-3 words each, English) that
+  // summarize what reviewers say — e.g. "cozy ambiance", "great service",
+  // "good value". Used as quick-scan chips in place of long review text.
 
   const maxAttempts = 3;
   for (let attempt = 1; attempt <= maxAttempts; attempt++) {
@@ -294,6 +303,9 @@ async function runGeminiNlpBatch(batchSize = 50) {
           nlp_review_count: geminiResult.review_count || 0,
           nlp_review_sources: geminiResult.review_sources || [],
           nlp_top_keywords: geminiResult.top_keywords || [],
+          review_tags: Array.isArray(geminiResult.review_tags) ? geminiResult.review_tags.slice(0, 6) : [],
+          love_tags: Array.isArray(geminiResult.love_tags) ? geminiResult.love_tags.slice(0, 4) : [],
+          watch_tags: Array.isArray(geminiResult.watch_tags) ? geminiResult.watch_tags.slice(0, 4) : [],
           nlp_confidence_level: geminiResult.confidence || "low",
         });
         console.log(`[Gemini] OK ${restaurant.name}: tags=[${newMoodTags.join(", ")}]`);
