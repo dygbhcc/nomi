@@ -89,7 +89,8 @@ export default function SwipeVoteCard({
     : { transform: [{ translateX }, { rotate }] };
 
   return (
-    <Animated.View style={[styles.card, transformStyle]} {...panHandlers}>
+    <Animated.View style={[styles.cardShadow, transformStyle]} {...panHandlers}>
+      <View style={styles.cardInner}>
       {/* Swipe overlays */}
       <Animated.View
         style={[styles.swipeLabel, styles.likeLabel, { opacity: likeOpacity }]}
@@ -189,25 +190,33 @@ export default function SwipeVoteCard({
           </View>
         )}
       </View>
+      </View>
     </Animated.View>
   );
 }
 
 const styles = StyleSheet.create({
-  card: {
+  // Outer wrapper carries the shadow. It must NOT clip (no overflow:hidden),
+  // otherwise iOS clips the shadow away. The inner view does the rounded
+  // clipping of the photo/content.
+  cardShadow: {
     flex: 1,
     backgroundColor: CARD_BG,
     borderRadius: 20,
-    // B-04/B-07/B-18: consistent orange-framed card on a white background
-    // across validation, swipe and suggestion screens.
-    borderWidth: 1.5,
-    borderColor: ACCENT,
-    overflow: "hidden",
+    // Soft, diffuse float to match the web rendering.
     shadowColor: "#000",
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.08,
-    shadowRadius: 12,
-    elevation: 4,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.18,
+    shadowRadius: 22,
+    elevation: 8,
+  },
+  cardInner: {
+    flex: 1,
+    backgroundColor: CARD_BG,
+    borderRadius: 20,
+    overflow: "hidden",
+    borderWidth: 1,
+    borderColor: "#EFEFEF",
   },
   swipeLabel: {
     position: "absolute",

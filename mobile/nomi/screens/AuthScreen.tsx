@@ -21,13 +21,14 @@ import { useAuth } from "../context/AuthContext";
 type TabType = "signin" | "signup";
 
 export default function AuthScreen() {
-  const { signIn, signUp, continueAsGuest } = useAuth();
+  const { signIn, signUp, continueAsGuest, resetPassword } = useAuth();
   const { t } = useTranslation();
   const [activeTab, setActiveTab] = useState<TabType>("signin");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [displayName, setDisplayName] = useState("");
   const [error, setError] = useState("");
+  const [info, setInfo] = useState("");
   const [loading, setLoading] = useState(false);
 
   // Refs for keyboard navigation (FIX 2)
@@ -49,6 +50,9 @@ export default function AuthScreen() {
         return t('auth.errors.invalidEmail');
       case "auth/too-many-requests":
         return t('auth.errors.tooManyRequests');
+      case "auth/operation-not-allowed":
+      case "auth/admin-restricted-operation":
+        return t('auth.errors.guestUnavailable');
       default:
         return t('auth.errors.default');
     }
@@ -56,8 +60,30 @@ export default function AuthScreen() {
 
   // FIX 7 - Announce errors to screen readers
   const showError = (message: string) => {
+    setInfo("");
     setError(message);
     AccessibilityInfo.announceForAccessibility(`Error: ${message}`);
+  };
+
+  const handleForgotPassword = async () => {
+    if (!email) {
+      showError(t('auth.enterEmailFirst'));
+      return;
+    }
+    setError("");
+    setInfo("");
+    setLoading(true);
+    try {
+      await resetPassword(email);
+      const msg = t('auth.resetSent', { email });
+      setInfo(msg);
+      AccessibilityInfo.announceForAccessibility(msg);
+    } catch (err: unknown) {
+      const firebaseError = err as { code?: string };
+      showError(cleanErrorMessage(firebaseError.code ?? ""));
+    } finally {
+      setLoading(false);
+    }
   };
 
   const handleSignIn = async () => {
@@ -140,6 +166,7 @@ export default function AuthScreen() {
               onPress={() => {
                 setActiveTab("signin");
                 setError("");
+                setInfo("");
               }}
               accessibilityLabel="Sign in tab"
               accessibilityRole="tab"
@@ -159,6 +186,7 @@ export default function AuthScreen() {
               onPress={() => {
                 setActiveTab("signup");
                 setError("");
+                setInfo("");
               }}
               accessibilityLabel="Sign up tab"
               accessibilityRole="tab"
@@ -227,6 +255,19 @@ export default function AuthScreen() {
               accessibilityHint="Enter your password"
             />
 
+            {/* Forgot password (sign-in only) */}
+            {activeTab === "signin" && (
+              <TouchableOpacity
+                style={styles.forgotButton}
+                onPress={handleForgotPassword}
+                disabled={loading}
+                accessibilityLabel="Reset your password"
+                accessibilityRole="button"
+              >
+                <Text style={styles.forgotText}>{t('auth.forgotPassword')}</Text>
+              </TouchableOpacity>
+            )}
+
             {/* Error Message */}
             {error ? (
               <Text
@@ -235,6 +276,17 @@ export default function AuthScreen() {
                 accessibilityLiveRegion="polite"
               >
                 {error}
+              </Text>
+            ) : null}
+
+            {/* Success / info Message */}
+            {info ? (
+              <Text
+                style={styles.infoText}
+                accessibilityRole="alert"
+                accessibilityLiveRegion="polite"
+              >
+                {info}
               </Text>
             ) : null}
 
@@ -294,8 +346,8 @@ const styles = StyleSheet.create({
     paddingBottom: Spacing.xxl,
   },
   logo: {
-    width: 160,
-    height: 56,
+    width: 300,
+    height: 105,
     alignSelf: "center",
     marginBottom: 48,
   },
@@ -342,6 +394,21 @@ const styles = StyleSheet.create({
     color: Colors.error, // FIX - Use theme color instead of hardcoded
     fontSize: Typography.caption,
     marginTop: -4,
+  },
+  infoText: {
+    color: Colors.accent,
+    fontSize: Typography.caption,
+    marginTop: -4,
+  },
+  forgotButton: {
+    alignSelf: "flex-end",
+    paddingVertical: 6,
+    minHeight: 32,
+  },
+  forgotText: {
+    color: Colors.accent,
+    fontSize: Typography.caption,
+    fontWeight: Typography.semibold,
   },
   mainButton: {
     backgroundColor: Colors.accent,

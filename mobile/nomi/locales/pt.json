@@ -41,6 +41,9 @@
     "emailPlaceholder": "Email",
     "passwordPlaceholder": "Palavra-passe",
     "fillAllFields": "Por favor preencha todos os campos",
+    "forgotPassword": "Esqueceste-te da palavra-passe?",
+    "enterEmailFirst": "Insere primeiro o teu email acima",
+    "resetSent": "Link de recuperação enviado para {{email}}",
     "errors": {
       "userNotFound": "Não foi encontrada nenhuma conta com este email",
       "wrongPassword": "Palavra-passe incorreta",
@@ -48,6 +51,7 @@
       "weakPassword": "A palavra-passe deve ter pelo menos 6 caracteres",
       "invalidEmail": "Por favor insira um endereço de email válido",
       "tooManyRequests": "Demasiadas tentativas. Por favor tente mais tarde",
+      "guestUnavailable": "O modo convidado está indisponível de momento. Cria conta ou tenta mais tarde.",
       "default": "Ocorreu um erro. Por favor tente novamente"
     },
     "verify": {
@@ -341,6 +345,8 @@
     "nextLevel": "{{points}} pts para Nível {{level}}",
     "nextLevelText": "Próximo: Nível {{level}} — {{title}}",
     "memberSince": "Membro desde {{date}}",
+    "emailVerified": "Email confirmado",
+    "emailNotVerified": "Email não confirmado",
     "savedRestaurants": "Restaurantes Guardados",
     "noSavedRestaurants": "Ainda sem restaurantes guardados",
     "startSwiping": "Começa a deslizar para guardar os teus favoritos!",
@@ -471,7 +477,14 @@
       "changeDisplayName": "Alterar nome de exibição",
       "enterNewName": "Insere novo nome",
       "save": "Guardar",
-      "signOut": "Sair"
+      "signOut": "Sair",
+      "guest": "Conta de convidado",
+      "signOutConfirmTitle": "Terminar sessão?",
+      "signOutConfirmMessage": "Terás de iniciar sessão novamente para aceder à tua conta.",
+      "changePassword": "Alterar palavra-passe",
+      "currentPassword": "Palavra-passe atual",
+      "newPassword": "Nova palavra-passe",
+      "passwordChanged": "Palavra-passe atualizada"
     },
     "notifications": {
       "groupInvites": "Convites de grupo",

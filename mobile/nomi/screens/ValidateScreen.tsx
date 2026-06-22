@@ -20,7 +20,6 @@ import LoadingOverlay from "../components/LoadingOverlay";
 import { recordValidation } from "../services/swipeService";
 import {
   getRestaurantsForValidation,
-  buildReason,
   getPhotoUrl,
   Restaurant,
 } from "../services/restaurantService";
@@ -354,8 +353,7 @@ export default function ValidateScreen({
           distance={item.distance}
           budget={item.budget_level}
           moods={(item.mood_tags || []).filter((m) => selectedMoods.includes(m)).slice(0, 3)}
-          reason={buildReason(item, selectedMoods)}
-          sentimentNuances={item.nlp_metrics?.primary_sentiment_nuances}
+          sentimentNuances={item.review_tags?.length ? item.review_tags : item.nlp_metrics?.primary_sentiment_nuances}
           translateX={translateX}
           rotate={rotate}
           scale={cardScale}
@@ -433,7 +431,9 @@ export default function ValidateScreen({
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: BG,
+    // Light-gray page background (matches the mood screen) so the white card
+    // visibly stands out instead of blending into a pure-white screen.
+    backgroundColor: "#F4F4F5",
   },
 
   // --- Header ---
@@ -464,8 +464,11 @@ const styles = StyleSheet.create({
   // --- Card ---
   cardWrapper: {
     flex: 1,
-    paddingHorizontal: 20,
-    maxHeight: SCREEN_HEIGHT * 0.5,
+    paddingHorizontal: 16, // match the suggestion (swipe) screen card width
+    paddingVertical: 8, // breathing room so the card shadow is never flush/clipped
+    // Cap by an absolute height too, so the card stays compact (and the photo
+    // does not stretch) on large phones — keeps it consistent with iPhone SE.
+    maxHeight: Math.min(SCREEN_HEIGHT * 0.5, 430),
   },
 
   // --- Points fly-up ---

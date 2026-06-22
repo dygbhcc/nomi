@@ -4,7 +4,11 @@ import {
   signOut as firebaseSignOut,
   signInAnonymously as firebaseSignInAnonymously,
   sendEmailVerification,
+  sendPasswordResetEmail,
   updateProfile,
+  updatePassword,
+  reauthenticateWithCredential,
+  EmailAuthProvider,
   reload,
   onAuthStateChanged,
   User
@@ -87,14 +91,57 @@ export const signUp = async (
   await updateProfile(result.user, { displayName });
   await ensureUserDocument(result.user, displayName);
 
-  // Send the verification email (best-effort; never block account creation).
-  await sendEmailVerification(result.user).catch(() => {});
+  // Send the verification email (best-effort; never block account creation),
+  // but surface the real error in dev so delivery failures are diagnosable
+  // instead of being silently swallowed.
+  try {
+    await sendEmailVerification(result.user);
+  } catch (e) {
+    if (__DEV__) console.error('sendEmailVerification (signUp) failed:', e);
+  }
 
   return result.user;
 };
 
 export const signOut = async (): Promise<void> => {
   await firebaseSignOut(auth);
+};
+
+/**
+ * Update the user's display name on both the auth profile and the Firestore
+ * user document so it stays consistent across the app.
+ */
+export const updateDisplayName = async (name: string): Promise<void> => {
+  const trimmed = name.trim();
+  if (!auth.currentUser || !trimmed) return;
+  await updateProfile(auth.currentUser, { displayName: trimmed });
+  await setDoc(
+    doc(db, 'users', auth.currentUser.uid),
+    { display_name: trimmed },
+    { merge: true }
+  );
+};
+
+/**
+ * Send a password-reset email to the given address.
+ */
+export const sendPasswordReset = async (email: string): Promise<void> => {
+  await sendPasswordResetEmail(auth, email);
+};
+
+/**
+ * Change the signed-in user's password. Re-authenticates with the current
+ * password first (Firebase requires a recent login for password changes).
+ */
+export const changePassword = async (
+  currentPassword: string,
+  newPassword: string
+): Promise<void> => {
+  const u = auth.currentUser;
+  if (!u || !u.email) throw { code: 'auth/no-current-user' };
+  const credential = EmailAuthProvider.credential(u.email, currentPassword);
+  await reauthenticateWithCredential(u, credential);
+  await updatePassword(u, newPassword);
 };
 
 export const signInAnonymously = async (): Promise<User> => {

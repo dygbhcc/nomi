@@ -349,9 +349,10 @@ export default function SwipeScreen({ selectedMoods, budgetLevel, selectedDistan
             native-driver nodes can keep a stale transform/opacity on Fabric */}
         <Animated.View
           key={restaurant.id}
-          style={[styles.card, { transform: [{ translateX }, { rotate }] }]}
+          style={[styles.cardShadow, { transform: [{ translateX }, { rotate }] }]}
           {...panResponder.panHandlers}
         >
+          <View style={styles.cardInner}>
           {/* Swipe indicators */}
           <Animated.View style={[styles.swipeLabel, styles.likeLabel, { opacity: likeOpacity }]}>
             <Text style={styles.swipeLabelText}>{t('swipe.like')}</Text>
@@ -396,15 +397,22 @@ export default function SwipeScreen({ selectedMoods, budgetLevel, selectedDistan
               <Text style={styles.reasonText}>{restaurant.reason}</Text>
             </View>
 
-            {restaurant.nlp_metrics?.primary_sentiment_nuances && restaurant.nlp_metrics.primary_sentiment_nuances.length > 0 && (
-              <View style={styles.sentimentRow}>
-                {restaurant.nlp_metrics.primary_sentiment_nuances.slice(0, 3).map((nuance: string) => (
-                  <View key={nuance} style={styles.sentimentPill}>
-                    <Text style={styles.sentimentPillText}>{nuance}</Text>
-                  </View>
-                ))}
-              </View>
-            )}
+            {(() => {
+              // B-21: prefer the short AI review_tags; fall back to sentiment nuances.
+              const tags = restaurant.review_tags?.length
+                ? restaurant.review_tags
+                : restaurant.nlp_metrics?.primary_sentiment_nuances;
+              return tags && tags.length > 0 ? (
+                <View style={styles.sentimentRow}>
+                  {tags.slice(0, 3).map((tag: string) => (
+                    <View key={tag} style={styles.sentimentPill}>
+                      <Text style={styles.sentimentPillText}>{tag}</Text>
+                    </View>
+                  ))}
+                </View>
+              ) : null;
+            })()}
+          </View>
           </View>
         </Animated.View>
       </View>
@@ -437,7 +445,9 @@ export default function SwipeScreen({ selectedMoods, budgetLevel, selectedDistan
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: BG,
+    // Light-gray page background (matches the mood screen) so the white cards
+    // visibly stand out instead of blending into a pure-white screen.
+    backgroundColor: "#F4F4F5",
     justifyContent: "space-between",
   },
   header: {
@@ -473,16 +483,26 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     paddingBottom: 0,
   },
-  card: {
+  // Outer wrapper carries the shadow and must NOT clip, or iOS clips the
+  // shadow. The inner view does the rounded clipping + hairline border.
+  cardShadow: {
+    flexShrink: 1,
+    backgroundColor: CARD_BG,
+    borderRadius: 20,
+    // Soft, diffuse float to match the web rendering.
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.18,
+    shadowRadius: 22,
+    elevation: 8,
+  },
+  cardInner: {
     flexShrink: 1,
     backgroundColor: CARD_BG,
     borderRadius: 20,
     overflow: "hidden",
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.08,
-    shadowRadius: 12,
-    elevation: 4,
+    borderWidth: 1,
+    borderColor: "#EFEFEF",
   },
   swipeLabel: {
     position: "absolute",

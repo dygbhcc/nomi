@@ -99,11 +99,26 @@ type Props = {
 
 export default function ProfileScreen({ onNavigate }: Props) {
   const { t } = useTranslation();
-  const { user: authUser, signOut } = useAuth();
+  const { user: authUser, signOut, resendVerification } = useAuth();
   const insets = useSafeAreaInsets();
   const [user, setUser] = useState<UserProfileData | null>(null);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
+  const [verifyNotice, setVerifyNotice] = useState("");
+
+  const isEmailUser = !!authUser && !authUser.isAnonymous && !!authUser.email;
+  const emailVerified = !!authUser?.emailVerified;
+
+  const handleResendVerification = async () => {
+    setVerifyNotice("");
+    try {
+      await resendVerification();
+      setVerifyNotice(t("auth.verify.resent"));
+    } catch (e) {
+      if (__DEV__) console.error("resendVerification (profile) failed:", e);
+      setVerifyNotice(t("auth.errors.default"));
+    }
+  };
 
   useEffect(() => {
     fetchProfile();
@@ -235,6 +250,22 @@ export default function ProfileScreen({ onNavigate }: Props) {
           <Text style={styles.memberSince}>
             {t('profile.memberSince', { date: user.memberSince })}
           </Text>
+
+          {/* Email verification badge */}
+          {isEmailUser && emailVerified && (
+            <View style={styles.verifiedBadge}>
+              <Text style={styles.verifiedBadgeText}>{"✓ "}{t('profile.emailVerified')}</Text>
+            </View>
+          )}
+          {isEmailUser && !emailVerified && (
+            <View style={styles.unverifiedBadge}>
+              <Text style={styles.unverifiedText}>{t('profile.emailNotVerified')}</Text>
+              <TouchableOpacity onPress={handleResendVerification} accessibilityRole="button">
+                <Text style={styles.unverifiedAction}>{t('auth.verify.resend')}</Text>
+              </TouchableOpacity>
+            </View>
+          )}
+          {verifyNotice ? <Text style={styles.verifyNotice}>{verifyNotice}</Text> : null}
           <Text style={styles.totalPoints}>{user.points}</Text>
           <Text style={styles.pointsLabel}>{t('profile.totalPoints')}</Text>
         </View>
@@ -450,6 +481,43 @@ const styles = StyleSheet.create({
     color: TEXT_SECONDARY,
     fontSize: 13,
     marginTop: 3,
+  },
+  verifiedBadge: {
+    marginTop: 6,
+    backgroundColor: "rgba(46, 204, 113, 0.12)",
+    paddingHorizontal: 10,
+    paddingVertical: 3,
+    borderRadius: 12,
+  },
+  verifiedBadgeText: {
+    color: "#27AE60",
+    fontSize: 12,
+    fontWeight: "700",
+  },
+  unverifiedBadge: {
+    marginTop: 6,
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+    backgroundColor: "rgba(243, 156, 18, 0.12)",
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 12,
+  },
+  unverifiedText: {
+    color: "#E67E22",
+    fontSize: 12,
+    fontWeight: "600",
+  },
+  unverifiedAction: {
+    color: ACCENT,
+    fontSize: 12,
+    fontWeight: "700",
+  },
+  verifyNotice: {
+    color: ACCENT,
+    fontSize: 12,
+    marginTop: 4,
   },
   totalPoints: {
     color: ACCENT,

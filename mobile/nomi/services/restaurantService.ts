@@ -67,6 +67,10 @@ export type Restaurant = {
   };
   nlp_review_count?: number;
   nlp_confidence_level?: 'low' | 'medium' | 'high';
+  // B-21: short AI keyword badges summarizing long reviews (quick-scan chips).
+  review_tags?: string[];
+  love_tags?: string[];   // short badges for "What People Love"
+  watch_tags?: string[];  // short badges for "Heads Up"
   place_id?: string;
 };
 

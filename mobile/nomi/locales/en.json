@@ -41,6 +41,9 @@
     "emailPlaceholder": "Email",
     "passwordPlaceholder": "Password",
     "fillAllFields": "Please fill in all fields",
+    "forgotPassword": "Forgot password?",
+    "enterEmailFirst": "Enter your email above first",
+    "resetSent": "Password reset link sent to {{email}}",
     "errors": {
       "userNotFound": "No account found with this email",
       "wrongPassword": "Incorrect password",
@@ -48,6 +51,7 @@
       "weakPassword": "Password must be at least 6 characters",
       "invalidEmail": "Please enter a valid email address",
       "tooManyRequests": "Too many attempts. Please try again later",
+      "guestUnavailable": "Guest mode is currently unavailable. Please sign up or try again later.",
       "default": "An error occurred. Please try again"
     },
     "verify": {
@@ -341,6 +345,8 @@
     "nextLevel": "{{points}} pts to Level {{level}}",
     "nextLevelText": "Next: Level {{level}} — {{title}}",
     "memberSince": "Member since {{date}}",
+    "emailVerified": "Email verified",
+    "emailNotVerified": "Email not verified",
     "savedRestaurants": "Saved Restaurants",
     "noSavedRestaurants": "No saved restaurants yet",
     "startSwiping": "Start swiping to save your favorites!",
@@ -471,7 +477,14 @@
       "changeDisplayName": "Change display name",
       "enterNewName": "Enter new name",
       "save": "Save",
-      "signOut": "Sign Out"
+      "signOut": "Sign Out",
+      "guest": "Guest account",
+      "signOutConfirmTitle": "Sign out?",
+      "signOutConfirmMessage": "You'll need to sign in again to access your account.",
+      "changePassword": "Change password",
+      "currentPassword": "Current password",
+      "newPassword": "New password",
+      "passwordChanged": "Password updated"
     },
     "notifications": {
       "groupInvites": "Group invites",

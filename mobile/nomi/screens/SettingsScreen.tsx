@@ -8,6 +8,7 @@ import {
   Switch,
   TextInput,
   Linking,
+  Alert,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { StatusBar } from "expo-status-bar";
@@ -16,6 +17,7 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 import { Colors } from "../theme/colors";
 import i18n, { changeLanguage } from "../i18n";
 import { useAuth } from "../context/AuthContext";
+import { updateDisplayName, changePassword } from "../services/authService";
 import { syncNotificationPreferences } from "../services/notificationService";
 
 const ACCENT = Colors.accent;
@@ -63,12 +65,84 @@ type Props = {
 
 export default function SettingsScreen({ onBack }: Props) {
   const { t } = useTranslation();
-  const { user } = useAuth();
+  const { user, signOut } = useAuth();
   const [currentLanguage, setCurrentLanguage] = useState(i18n.language);
 
-  // Account
-  const [displayName, setDisplayName] = useState("Duygu B.");
+  // Account — populated from the real signed-in user (not hardcoded).
+  const isGuest = !!user?.isAnonymous;
+  const accountEmail = user?.email || "";
+  const [displayName, setDisplayName] = useState("");
   const [editingName, setEditingName] = useState(false);
+
+  // Change password
+  const [showChangePassword, setShowChangePassword] = useState(false);
+  const [currentPassword, setCurrentPassword] = useState("");
+  const [newPassword, setNewPassword] = useState("");
+  const [pwBusy, setPwBusy] = useState(false);
+
+  // Seed the editable name from the auth profile / email.
+  useEffect(() => {
+    if (user?.displayName) setDisplayName(user.displayName);
+    else if (user?.email) setDisplayName(user.email.split("@")[0]);
+    else setDisplayName(isGuest ? "Guest" : "");
+  }, [user]);
+
+  const handleSaveName = async () => {
+    setEditingName(false);
+    try {
+      await updateDisplayName(displayName);
+    } catch (e) {
+      if (__DEV__) console.error("updateDisplayName failed:", e);
+      Alert.alert(t("common.error"), t("auth.errors.default"));
+    }
+  };
+
+  const handleChangePassword = async () => {
+    if (!currentPassword || !newPassword) {
+      Alert.alert(t("common.error"), t("auth.fillAllFields"));
+      return;
+    }
+    if (newPassword.length < 6) {
+      Alert.alert(t("common.error"), t("auth.errors.weakPassword"));
+      return;
+    }
+    setPwBusy(true);
+    try {
+      await changePassword(currentPassword, newPassword);
+      setShowChangePassword(false);
+      setCurrentPassword("");
+      setNewPassword("");
+      Alert.alert(t("settings.account.passwordChanged"));
+    } catch (e) {
+      const code = (e as { code?: string })?.code ?? "";
+      const msg =
+        code === "auth/wrong-password" || code === "auth/invalid-credential"
+          ? t("auth.errors.wrongPassword")
+          : code === "auth/weak-password"
+          ? t("auth.errors.weakPassword")
+          : code === "auth/too-many-requests"
+          ? t("auth.errors.tooManyRequests")
+          : t("auth.errors.default");
+      Alert.alert(t("common.error"), msg);
+    } finally {
+      setPwBusy(false);
+    }
+  };
+
+  const handleSignOut = () => {
+    Alert.alert(
+      t("settings.account.signOutConfirmTitle"),
+      t("settings.account.signOutConfirmMessage"),
+      [
+        { text: t("common.cancel"), style: "cancel" },
+        {
+          text: t("settings.account.signOut"),
+          style: "destructive",
+          onPress: () => signOut(),
+        },
+      ]
+    );
+  };
 
   // Notifications
   const [groupInvites, setGroupInvites] = useState(true);
@@ -187,38 +261,90 @@ export default function SettingsScreen({ onBack }: Props) {
               <Text style={styles.avatarText}>{initials}</Text>
             </View>
             <View style={styles.accountInfo}>
-              <Text style={styles.accountName}>{displayName}</Text>
-              <Text style={styles.accountEmail}>duygu@nomi.app</Text>
+              <Text style={styles.accountName}>{displayName || (isGuest ? "Guest" : "")}</Text>
+              <Text style={styles.accountEmail}>
+                {isGuest ? t("settings.account.guest") : accountEmail}
+              </Text>
             </View>
           </View>
 
-          <View style={styles.divider} />
+          {/* Change display name (not available for guests) */}
+          {!isGuest && (
+            <>
+              <View style={styles.divider} />
+              <TouchableOpacity
+                style={styles.row}
+                onPress={() => (editingName ? handleSaveName() : setEditingName(true))}
+              >
+                <Text style={styles.rowLabel}>{t("settings.account.changeDisplayName")}</Text>
+                <Text style={styles.rowChevron}>{editingName ? "\u2713" : "\u25BC"}</Text>
+              </TouchableOpacity>
+              {editingName && (
+                <View style={styles.inputRow}>
+                  <TextInput
+                    style={styles.textInput}
+                    value={displayName}
+                    onChangeText={setDisplayName}
+                    placeholderTextColor={TEXT_SECONDARY}
+                    onSubmitEditing={handleSaveName}
+                    returnKeyType="done"
+                    autoFocus
+                  />
+                </View>
+              )}
+            </>
+          )}
 
-          {/* Change display name */}
-          <TouchableOpacity
-            style={styles.row}
-            onPress={() => setEditingName(!editingName)}
-          >
-            <Text style={styles.rowLabel}>Change display name</Text>
-            <Text style={styles.rowChevron}>{editingName ? "\u25B2" : "\u25BC"}</Text>
-          </TouchableOpacity>
-          {editingName && (
-            <View style={styles.inputRow}>
-              <TextInput
-                style={styles.textInput}
-                value={displayName}
-                onChangeText={setDisplayName}
-                placeholderTextColor={TEXT_SECONDARY}
-                autoFocus
-              />
-            </View>
+          {/* Change password (email accounts only) */}
+          {!isGuest && (
+            <>
+              <View style={styles.divider} />
+              <TouchableOpacity
+                style={styles.row}
+                onPress={() => setShowChangePassword(!showChangePassword)}
+              >
+                <Text style={styles.rowLabel}>{t("settings.account.changePassword")}</Text>
+                <Text style={styles.rowChevron}>{showChangePassword ? "▲" : "▼"}</Text>
+              </TouchableOpacity>
+              {showChangePassword && (
+                <View style={styles.inputRow}>
+                  <TextInput
+                    style={[styles.textInput, { marginBottom: 8 }]}
+                    value={currentPassword}
+                    onChangeText={setCurrentPassword}
+                    placeholder={t("settings.account.currentPassword")}
+                    placeholderTextColor={TEXT_SECONDARY}
+                    secureTextEntry
+                    autoCapitalize="none"
+                  />
+                  <TextInput
+                    style={[styles.textInput, { marginBottom: 8 }]}
+                    value={newPassword}
+                    onChangeText={setNewPassword}
+                    placeholder={t("settings.account.newPassword")}
+                    placeholderTextColor={TEXT_SECONDARY}
+                    secureTextEntry
+                    autoCapitalize="none"
+                  />
+                  <TouchableOpacity
+                    style={[styles.saveButton, pwBusy && { opacity: 0.6 }]}
+                    onPress={handleChangePassword}
+                    disabled={pwBusy}
+                  >
+                    <Text style={styles.saveButtonText}>{t("settings.account.save")}</Text>
+                  </TouchableOpacity>
+                </View>
+              )}
+            </>
           )}
 
           <View style={styles.divider} />
 
           {/* Sign out */}
-          <TouchableOpacity style={styles.row}>
-            <Text style={[styles.rowLabel, { color: RED }]}>Sign out</Text>
+          <TouchableOpacity style={styles.row} onPress={handleSignOut}>
+            <Text style={[styles.rowLabel, { color: RED }]}>
+              {t("settings.account.signOut")}
+            </Text>
           </TouchableOpacity>
         </View>
 
@@ -594,6 +720,17 @@ const styles = StyleSheet.create({
     paddingHorizontal: 14,
     paddingVertical: 10,
     fontSize: 15,
+  },
+  saveButton: {
+    backgroundColor: ACCENT,
+    borderRadius: 10,
+    paddingVertical: 12,
+    alignItems: "center",
+  },
+  saveButtonText: {
+    color: "#FFFFFF",
+    fontSize: 15,
+    fontWeight: "700",
   },
 
   // --- City Picker ---

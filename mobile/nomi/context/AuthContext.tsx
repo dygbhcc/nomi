@@ -9,6 +9,7 @@ import {
   signInAnonymously,
   resendVerificationEmail,
   refreshEmailVerified,
+  sendPasswordReset,
 } from '../services/authService';
 import { removePushTokenFromFirestore } from '../services/notificationService';
 
@@ -22,6 +23,7 @@ type AuthContextType = {
   continueAsGuest: () => Promise<void>;
   resendVerification: () => Promise<void>;
   refreshVerification: () => Promise<boolean>;
+  resetPassword: (email: string) => Promise<void>;
 };
 
 const AuthContext = createContext<AuthContextType | null>(null);
@@ -78,6 +80,10 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     return verified;
   };
 
+  const resetPassword = async (email: string) => {
+    await sendPasswordReset(email);
+  };
+
   return (
     <AuthContext.Provider value={{
       user,
@@ -89,6 +95,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       continueAsGuest,
       resendVerification,
       refreshVerification,
+      resetPassword,
     }}>
       {children}
     </AuthContext.Provider>

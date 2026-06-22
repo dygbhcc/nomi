@@ -39,7 +39,8 @@ export default function VerifyEmailScreen() {
     try {
       await resendVerification();
       setNotice(t("auth.verify.resent"));
-    } catch {
+    } catch (e) {
+      if (__DEV__) console.error("resendVerification failed:", e);
       setNotice(t("auth.errors.default"));
     } finally {
       setResending(false);

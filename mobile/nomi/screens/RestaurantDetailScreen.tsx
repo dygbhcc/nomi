@@ -263,6 +263,17 @@ export default function RestaurantDetailScreen({ restaurant, selectedMoods, onBa
           </Text>
         </View>
 
+        {/* B-21: quick-scan review tags (AI keyword badges from long reviews) */}
+        {restaurant.review_tags && restaurant.review_tags.length > 0 && (
+          <View style={styles.reviewTagsRow}>
+            {restaurant.review_tags.slice(0, 6).map((tag) => (
+              <View key={tag} style={styles.reviewTagPill}>
+                <Text style={styles.reviewTagText}>{tag}</Text>
+              </View>
+            ))}
+          </View>
+        )}
+
         {/* What Guests Say — NLP summary + sentiment nuances */}
         {resolveLocalized(restaurant.nlp_insights?.general_summary) && (
           <View style={styles.nlpCard}>
@@ -292,9 +303,11 @@ export default function RestaurantDetailScreen({ restaurant, selectedMoods, onBa
           </View>
         )}
 
-        {/* What People Love — food admiration pills */}
+        {/* What People Love — short badges (love_tags), falls back to long text */}
         {(() => {
-          const raw = resolveLocalized<string[]>(restaurant.nlp_insights?.food_admiration) || [];
+          const raw = restaurant.love_tags?.length
+            ? restaurant.love_tags
+            : resolveLocalized<string[]>(restaurant.nlp_insights?.food_admiration) || [];
           const items = raw.filter((s: string) => s && s.trim() && !['N/A', 'n/a', 'null', 'None'].includes(s.trim()));
           return items.length > 0 ? (
             <View style={styles.nlpSection}>
@@ -310,9 +323,11 @@ export default function RestaurantDetailScreen({ restaurant, selectedMoods, onBa
           ) : null;
         })()}
 
-        {/* Heads Up — negative aspects pills */}
+        {/* Heads Up — short badges (watch_tags), falls back to long text */}
         {(() => {
-          const raw = resolveLocalized<string[]>(restaurant.nlp_insights?.negative_aspects) || [];
+          const raw = restaurant.watch_tags?.length
+            ? restaurant.watch_tags
+            : resolveLocalized<string[]>(restaurant.nlp_insights?.negative_aspects) || [];
           const items = raw.filter((s: string) => s && s.trim() && !['N/A', 'n/a', 'null', 'None'].includes(s.trim()));
           return items.length > 0 ? (
             <View style={styles.nlpSection}>
@@ -868,6 +883,24 @@ const styles = StyleSheet.create({
   headsUpPillText: {
     color: "#C0392B",
     fontSize: 11,
+    fontWeight: "600",
+  },
+  // B-21 review tag badges
+  reviewTagsRow: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: 6,
+    marginBottom: 14,
+  },
+  reviewTagPill: {
+    backgroundColor: "rgba(76, 175, 80, 0.10)",
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 20,
+  },
+  reviewTagText: {
+    color: "#4CAF50",
+    fontSize: 12,
     fontWeight: "600",
   },
 });
