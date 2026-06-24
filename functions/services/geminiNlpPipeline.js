@@ -27,6 +27,52 @@ const WEIGHTS = {
   swipe: 0.15,
 };
 
+// Review-aggregator source names the model sometimes leaks into a badge —
+// either glued on ("traffic noise thefork", "tight tables google") or as a
+// parenthetical citation ("traffic noise (TheFork review)"). Strip them so the
+// chips read as plain downsides/highlights.
+const TAG_SOURCE_WORDS = [
+  "restaurant guru", "thefork", "the fork", "google", "zomato", "tripadvisor",
+  "trip advisor", "foursquare", "facebook", "yelp", "instagram",
+];
+
+/**
+ * Clean a single tag: drop any parenthetical citation, strip leaked review
+ * source names, collapse whitespace. Returns "" if nothing meaningful remains.
+ * @param {string} tag Raw tag from the model.
+ * @return {string} Cleaned tag, or "" when empty after stripping.
+ */
+function sanitizeTag(tag) {
+  if (typeof tag !== "string") return "";
+  let s = tag.replace(/\([^)]*\)/g, " "); // remove "(TheFork review)" etc.
+  for (const w of TAG_SOURCE_WORDS) {
+    s = s.replace(new RegExp(`\\b${w}\\b`, "gi"), " ");
+  }
+  return s.replace(/\s+/g, " ").trim();
+}
+
+/**
+ * Sanitize + de-duplicate a tag array, capped at `max` entries.
+ * @param {Array<string>} arr Raw tag array from the model.
+ * @param {number} max Maximum number of tags to keep.
+ * @return {Array<string>} Cleaned, de-duplicated, capped tag list.
+ */
+function sanitizeTags(arr, max) {
+  if (!Array.isArray(arr)) return [];
+  const seen = new Set();
+  const out = [];
+  for (const raw of arr) {
+    const t = sanitizeTag(raw);
+    const key = t.toLowerCase();
+    if (t && !seen.has(key)) {
+      seen.add(key);
+      out.push(t);
+    }
+    if (out.length >= max) break;
+  }
+  return out;
+}
+
 /**
  * Maps Gemini NLP score (0-1) to confidence (0-100).
  * @param {number} score - NLP score between 0 and 1
@@ -93,6 +139,7 @@ All insight fields are bilingual objects with "en" and "${localeKey}" keys. Summ
 - review_tags: 3-6 very short English keyword chips (1-3 words each) summarizing what reviewers highlight (e.g. "cozy ambiance", "great service", "good value"). These are shown as quick-scan badges instead of long review text.
 - love_tags: 2-4 very short English chips (1-3 words) for the BEST things people love (e.g. "craft beers", "great value", "friendly staff"). Short badge form of food_admiration.
 - watch_tags: 2-4 very short English chips (1-3 words) for downsides to be aware of (e.g. "gets crowded", "slow service", "noisy"). Short badge form of negative_aspects. Empty array if none.
+- Tag rules (review_tags, love_tags, watch_tags): plain descriptive words ONLY. NEVER include a review source name (Google, TheFork, Zomato, TripAdvisor, Foursquare, Facebook, etc.), the word "review", or any parenthetical citation inside a tag. e.g. write "traffic noise", NOT "traffic noise (TheFork review)" or "traffic noise thefork". love_tags and review_tags must NOT be identical — love_tags is the best highlights only.
 
 # Output Rules — CRITICAL
 1. Your ENTIRE response must be a single valid JSON object. Start with { and end with }.
@@ -303,9 +350,9 @@ async function runGeminiNlpBatch(batchSize = 50) {
           nlp_review_count: geminiResult.review_count || 0,
           nlp_review_sources: geminiResult.review_sources || [],
           nlp_top_keywords: geminiResult.top_keywords || [],
-          review_tags: Array.isArray(geminiResult.review_tags) ? geminiResult.review_tags.slice(0, 6) : [],
-          love_tags: Array.isArray(geminiResult.love_tags) ? geminiResult.love_tags.slice(0, 4) : [],
-          watch_tags: Array.isArray(geminiResult.watch_tags) ? geminiResult.watch_tags.slice(0, 4) : [],
+          review_tags: sanitizeTags(geminiResult.review_tags, 6),
+          love_tags: sanitizeTags(geminiResult.love_tags, 4),
+          watch_tags: sanitizeTags(geminiResult.watch_tags, 4),
           nlp_confidence_level: geminiResult.confidence || "low",
         });
         console.log(`[Gemini] OK ${restaurant.name}: tags=[${newMoodTags.join(", ")}]`);
