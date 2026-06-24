@@ -3,6 +3,8 @@ import {
   query,
   where,
   getDocs,
+  getCountFromServer,
+  documentId,
   doc,
   getDoc,
 } from 'firebase/firestore';
@@ -33,17 +35,14 @@ export const getUserProfile = async (userId: string): Promise<UserProfile | null
 
     const data = userSnap.data();
 
-    // Count validations (votes)
-    const votesRef = collection(db, 'votes');
-    const votesQuery = query(votesRef, where('user_id', '==', userId));
-    const votesSnap = await getDocs(votesQuery);
-    const validationsCount = votesSnap.size;
-
-    // Count group sessions as organizer
-    const roomsRef = collection(db, 'rooms');
-    const roomsQuery = query(roomsRef, where('organizer_uid', '==', userId));
-    const roomsSnap = await getDocs(roomsQuery);
-    const groupSessionsCount = roomsSnap.size;
+    // Counts via server-side aggregation — reads ~1 instead of every matching
+    // vote/room doc (cost: a heavy user no longer costs N reads just to count).
+    const [votesAgg, roomsAgg] = await Promise.all([
+      getCountFromServer(query(collection(db, 'votes'), where('user_id', '==', userId))),
+      getCountFromServer(query(collection(db, 'rooms'), where('organizer_uid', '==', userId))),
+    ]);
+    const validationsCount = votesAgg.data().count;
+    const groupSessionsCount = roomsAgg.data().count;
 
     // Format member since date
     const createdAt = data.created_at?.toDate();
@@ -80,22 +79,26 @@ export const getUserProfile = async (userId: string): Promise<UserProfile | null
 export const getSavedRestaurants = async (restaurantIds: string[]): Promise<any[]> => {
   if (!restaurantIds || restaurantIds.length === 0) return [];
 
-  // Fetch in parallel and isolate failures per id, so one stale/missing id
-  // can no longer wipe out the entire saved list (previous version returned []
-  // on the first error). Skip empty/invalid ids defensively.
-  const results = await Promise.all(
-    restaurantIds
-      .filter((id) => typeof id === 'string' && id.length > 0)
-      .map(async (id) => {
-        try {
-          const snap = await getDoc(doc(db, 'restaurants', id));
-          return snap.exists() ? { id: snap.id, ...snap.data() } : null;
-        } catch (error) {
-          console.error('getSavedRestaurants item error:', id, error);
-          return null;
-        }
-      })
+  // Batch by documentId() `in` queries (max 30 per query) instead of one
+  // getDoc per id — fewer round-trips, same low read count. Failures are
+  // isolated per chunk so one bad id can't wipe the whole list.
+  const ids = restaurantIds.filter((id) => typeof id === 'string' && id.length > 0);
+  const chunks: string[][] = [];
+  for (let i = 0; i < ids.length; i += 30) chunks.push(ids.slice(i, i + 30));
+
+  const results: any[] = [];
+  await Promise.all(
+    chunks.map(async (chunk) => {
+      try {
+        const snap = await getDocs(
+          query(collection(db, 'restaurants'), where(documentId(), 'in', chunk))
+        );
+        snap.forEach((d) => results.push({ id: d.id, ...d.data() }));
+      } catch (error) {
+        console.error('getSavedRestaurants chunk error:', error);
+      }
+    })
   );
 
-  return results.filter((r) => r !== null);
+  return results;
 };

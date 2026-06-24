@@ -7,12 +7,12 @@ import {
   ScrollView,
   Animated,
   Dimensions,
-  Image,
   ImageSourcePropType,
   Linking,
   Alert,
   Share,
 } from "react-native";
+import { Image as ExpoImage } from "expo-image";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { StatusBar } from "expo-status-bar";
 import { useTranslation } from "react-i18next";
@@ -283,7 +283,13 @@ export default function ResultScreen({
         {/* --- Winner Card --- */}
         <View style={styles.winnerCard}>
           {restaurant.photo ? (
-            <Image source={restaurant.photo} style={styles.winnerPhoto} resizeMode="cover" />
+            <ExpoImage
+              source={restaurant.photo as any}
+              style={styles.winnerPhoto}
+              contentFit="cover"
+              cachePolicy="memory-disk"
+              transition={150}
+            />
           ) : (
             <View style={styles.winnerPhotoPlaceholder}>
               <Text style={styles.winnerPhotoText}>

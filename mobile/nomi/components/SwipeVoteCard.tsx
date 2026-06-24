@@ -4,10 +4,10 @@ import {
   Text,
   StyleSheet,
   Animated,
-  Image,
   ImageSourcePropType,
   PanResponderInstance,
 } from "react-native";
+import { Image as ExpoImage } from "expo-image";
 import { useTranslation } from "react-i18next";
 import { Colors } from "../theme/colors";
 
@@ -111,7 +111,13 @@ export default function SwipeVoteCard({
 
       {/* Photo */}
       {photo ? (
-        <Image source={photo} style={styles.photoImage} resizeMode="cover" />
+        <ExpoImage
+          source={photo as any}
+          style={styles.photoImage}
+          contentFit="cover"
+          cachePolicy="memory-disk"
+          transition={150}
+        />
       ) : (
         <View style={[styles.photoPlaceholder, { backgroundColor: photoColor }]}>
           <Text style={styles.photoInitial}>{name?.charAt(0) || '?'}</Text>

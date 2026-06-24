@@ -7,8 +7,8 @@ import {
   Dimensions,
   Animated,
   PanResponder,
-  Image,
 } from "react-native";
+import { Image as ExpoImage } from "expo-image";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { StatusBar } from "expo-status-bar";
 import { useTranslation } from "react-i18next";
@@ -83,11 +83,11 @@ export default function SwipeScreen({ selectedMoods, budgetLevel, selectedDistan
           reason: buildReason(r, selectedMoods),
         }));
         setRestaurants(withReasons);
-        // B-03/B-05: preload suggestion photos so cards render with the image
-        // already in place instead of loading one-by-one.
-        withReasons.forEach((r) => {
+        // B-03/B-05: preload only the next few photos (not all 6) so cards
+        // render instantly without pre-downloading images the user may skip.
+        withReasons.slice(0, 3).forEach((r) => {
           const url = getPhotoUrl(r);
-          if (url) Image.prefetch(url).catch(() => {});
+          if (url) ExpoImage.prefetch(url).catch(() => {});
         });
         transitionedRef.current = false; // Reset when new restaurants load
       } catch (e) {
@@ -363,9 +363,12 @@ export default function SwipeScreen({ selectedMoods, budgetLevel, selectedDistan
 
           {/* Photo */}
           {getPhotoUrl(restaurant) ? (
-            <Image
+            <ExpoImage
               source={{ uri: getPhotoUrl(restaurant)! }}
               style={styles.photoSection}
+              contentFit="cover"
+              cachePolicy="memory-disk"
+              transition={150}
             />
           ) : (
             <View style={[styles.photoSection, { backgroundColor: '#E8E8E8' }]} />

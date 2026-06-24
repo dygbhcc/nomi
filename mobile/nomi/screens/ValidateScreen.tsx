@@ -8,8 +8,8 @@ import {
   Dimensions,
   Animated,
   PanResponder,
-  Image,
 } from "react-native";
+import { Image as ExpoImage } from "expo-image";
 import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context";
 import { StatusBar } from "expo-status-bar";
 import * as Haptics from "expo-haptics";
@@ -128,11 +128,12 @@ export default function ValidateScreen({
         );
         if (active) {
           setQueue(restaurants);
-          // B-03/B-05: preload card photos so they appear instantly instead of
-          // trickling in one-by-one (or not at all) as each card is shown.
-          restaurants.forEach((r) => {
+          // B-03/B-05: preload only the next few card photos (not the whole
+          // queue) so they appear instantly without wasting bandwidth on cards
+          // the user may never reach.
+          restaurants.slice(0, 3).forEach((r) => {
             const url = getPhotoUrl(r);
-            if (url) Image.prefetch(url).catch(() => {});
+            if (url) ExpoImage.prefetch(url).catch(() => {});
           });
         }
       } catch (e) {

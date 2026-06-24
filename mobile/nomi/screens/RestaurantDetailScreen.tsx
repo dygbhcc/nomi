@@ -8,10 +8,10 @@ import {
   Share,
   Alert,
   Dimensions,
-  Image,
   ScrollView,
   FlatList,
 } from "react-native";
+import { Image as ExpoImage } from "expo-image";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { StatusBar } from "expo-status-bar";
 import { useTranslation } from "react-i18next";
@@ -168,9 +168,12 @@ export default function RestaurantDetailScreen({ restaurant, selectedMoods, onBa
                 return (
                   <View style={{ width: SCREEN_WIDTH, height: SCREEN_HEIGHT * 0.32 }}>
                     {photoUrl && (
-                      <Image
+                      <ExpoImage
                         source={{ uri: photoUrl }}
                         style={styles.heroImage}
+                        contentFit="cover"
+                        cachePolicy="memory-disk"
+                        transition={150}
                       />
                     )}
                   </View>

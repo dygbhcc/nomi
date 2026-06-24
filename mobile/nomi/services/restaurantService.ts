@@ -272,7 +272,7 @@ export const getRestaurantsForValidation = async (
     }
   };
 
-  const fetchLimit = Math.max(maxResults * 4, 40);
+  const fetchLimit = Math.max(maxResults * 3, 30); // cost: trimmed validation pool fetch
 
   // Tier 1: restaurants matching the selected moods
   try {
@@ -359,14 +359,32 @@ export const buildReason = (restaurant: Restaurant, selectedMoods: string[]): st
   return 'Great spot near you';
 };
 
-export const getPhotoUrl = (restaurant: Restaurant, photoIndex = 0): string | null => {
+// Default served width. Cards/detail rarely need more than this; the big
+// bandwidth win is f_auto (WebP/AVIF) + q_auto (auto quality) which typically
+// cut 50-70% off a raw JPEG — the Cloudinary monthly bandwidth cap is our
+// hardest free-tier limit, so every served image goes through this.
+const PHOTO_WIDTH = 800;
+
+function optimizeCloudinary(url: string, width: number): string {
+  // Inject transforms once, right after /upload/. Skip if already transformed.
+  if (!url.includes('/upload/') || /\/upload\/[^/]*(f_auto|q_auto|w_\d)/.test(url)) {
+    return url;
+  }
+  return url.replace('/upload/', `/upload/f_auto,q_auto,c_limit,w_${width}/`);
+}
+
+export const getPhotoUrl = (
+  restaurant: Restaurant,
+  photoIndex = 0,
+  width: number = PHOTO_WIDTH
+): string | null => {
   if (!restaurant.photos || restaurant.photos.length <= photoIndex) return null;
   const photo = restaurant.photos[photoIndex];
   if (photo.url) {
-    return photo.url;
+    return optimizeCloudinary(photo.url, width);
   }
   if (photo.photo_reference) {
-    return `https://maps.googleapis.com/maps/api/place/photo?maxwidth=800&photo_reference=${photo.photo_reference}&key=${process.env.EXPO_PUBLIC_GOOGLE_PLACES_API_KEY}`;
+    return `https://maps.googleapis.com/maps/api/place/photo?maxwidth=${width}&photo_reference=${photo.photo_reference}&key=${process.env.EXPO_PUBLIC_GOOGLE_PLACES_API_KEY}`;
   }
   return null;
 };
