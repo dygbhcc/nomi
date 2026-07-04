@@ -1,17 +1,12 @@
-import {
-  collection,
-  doc,
-  getDoc,
-  setDoc,
-  updateDoc,
-  onSnapshot,
-  increment,
-  Timestamp,
-  Unsubscribe,
-} from 'firebase/firestore';
+import { doc, onSnapshot, Timestamp, Unsubscribe } from 'firebase/firestore';
 import { httpsCallable } from 'firebase/functions';
-import { ref, set, update, onValue, off } from 'firebase/database';
+import { ref, onValue } from 'firebase/database';
 import { db, database, functions } from './firebase';
+import { callRoomApi } from './api';
+
+// All writes go through the roomApi callable — the backend derives the acting
+// user from request.auth. Only read-only realtime listeners talk to the
+// database directly (enforced by security rules).
 
 export type Room = {
   code: string;
@@ -30,68 +25,43 @@ export type Room = {
 
 export const createRoom = async (
   code: string,
-  organizerUid: string,
+  _organizerUid: string,
   organizerName: string,
   preferences?: { moods: string[]; budget: number; distance: number }
 ): Promise<void> => {
-  const roomRef = doc(db, 'rooms', code);
-  await setDoc(roomRef, {
-    code,
-    organizer_uid: organizerUid,
-    participants: {
-      [organizerUid]: {
-        name: organizerName,
-        joined_at: Timestamp.now(),
-      },
-    },
-    votes: {},
-    status: 'waiting',
-    created_at: Timestamp.now(),
-    ...(preferences && { preferences }),
-  });
+  await callRoomApi('create', { code, name: organizerName, preferences });
 };
 
 export const setRoomPreferences = async (
   code: string,
   preferences: { moods: string[]; budget: number; distance: number }
 ): Promise<void> => {
-  const roomRef = doc(db, 'rooms', code);
-  await updateDoc(roomRef, {
-    preferences,
-  });
+  await callRoomApi('setPreferences', { code, preferences });
 };
 
 export const getRoomPreferences = async (
   code: string
 ): Promise<{ moods: string[]; budget: number; distance: number } | null> => {
-  const roomRef = doc(db, 'rooms', code);
-  const roomSnap = await getDoc(roomRef);
-
-  if (!roomSnap.exists()) return null;
-
-  const room = roomSnap.data() as Room;
-  return room.preferences || null;
+  try {
+    const result = await callRoomApi<{ preferences: { moods: string[]; budget: number; distance: number } | null }>(
+      'getPreferences',
+      { code }
+    );
+    return result.preferences;
+  } catch (error) {
+    __DEV__ && console.error('getRoomPreferences error:', error);
+    return null;
+  }
 };
 
 export const joinRoom = async (
   code: string,
-  uid: string,
+  _uid: string,
   name: string
 ): Promise<boolean> => {
   try {
-    const roomRef = doc(db, 'rooms', code);
-    const roomSnap = await getDoc(roomRef);
-
-    if (!roomSnap.exists()) return false;
-
-    await updateDoc(roomRef, {
-      [`participants.${uid}`]: {
-        name,
-        joined_at: Timestamp.now(),
-      },
-    });
-
-    return true;
+    const result = await callRoomApi<{ ok: boolean }>('join', { code, name });
+    return result.ok;
   } catch (error) {
     __DEV__ && console.error('joinRoom error:', error);
     return false;
@@ -114,14 +84,11 @@ export const listenToRoom = (
 
 export const recordVote = async (
   roomCode: string,
-  uid: string,
+  _uid: string,
   restaurantId: string,
   vote: 'like' | 'pass'
 ): Promise<void> => {
-  const roomRef = doc(db, 'rooms', roomCode);
-  await updateDoc(roomRef, {
-    [`votes.${uid}.${restaurantId}`]: vote,
-  });
+  await callRoomApi('recordVote', { code: roomCode, restaurantId, vote });
 };
 
 export const calculateWinner = (
@@ -158,29 +125,18 @@ export const calculateWinner = (
 export const declareWinner = async (
   roomCode: string,
   winnerId: string,
-  organizerUid: string
+  _organizerUid: string
 ): Promise<void> => {
-  const roomRef = doc(db, 'rooms', roomCode);
-  await updateDoc(roomRef, {
-    winner_id: winnerId,
-    status: 'decided',
-  });
-
-  // Award points to organizer
-  const userRef = doc(db, 'users', organizerUid);
-  await setDoc(userRef, {
-    points: increment(100),
-  }, { merge: true });
+  await callRoomApi('declareWinner', { code: roomCode, winnerId });
 };
 
-// Final vote functions (using Realtime Database for real-time updates)
+// Final vote functions (Realtime Database listeners for real-time updates)
 export const recordFinalVote = async (
   roomCode: string,
-  userId: string,
+  _userId: string,
   restaurantId: string
 ): Promise<void> => {
-  const votesRef = ref(database, `rooms/${roomCode}/final_votes/${userId}`);
-  await set(votesRef, restaurantId);
+  await callRoomApi('recordFinalVote', { code: roomCode, restaurantId });
 };
 
 export const listenToFinalVotes = (
@@ -208,26 +164,15 @@ export const setEventDetails = async (
   roomCode: string,
   details: EventDetails
 ): Promise<void> => {
-  // Update Realtime Database for real-time sync
-  const eventRef = ref(database, `rooms/${roomCode}/event`);
-  await update(eventRef, details);
-
-  // Also update Firestore for persistence
-  const roomRef = doc(db, 'rooms', roomCode);
-  await updateDoc(roomRef, {
-    event_time: details.event_time,
-    restaurant_id: details.restaurant_id,
-    note: details.note,
-  });
+  await callRoomApi('setEventDetails', { code: roomCode, details });
 };
 
 export const updateAttendance = async (
   roomCode: string,
-  userId: string,
+  _userId: string,
   status: 'going' | 'not_going' | 'maybe'
 ): Promise<void> => {
-  const attendanceRef = ref(database, `rooms/${roomCode}/event/attendance/${userId}`);
-  await set(attendanceRef, status);
+  await callRoomApi('updateAttendance', { code: roomCode, status });
 };
 
 // Preference voting functions
@@ -239,11 +184,10 @@ export type PreferenceVote = {
 
 export const recordPreferenceVote = async (
   roomCode: string,
-  userId: string,
+  _userId: string,
   preferences: PreferenceVote
 ): Promise<void> => {
-  const voteRef = ref(database, `rooms/${roomCode}/preference_votes/${userId}`);
-  await set(voteRef, preferences);
+  await callRoomApi('recordPreferenceVote', { code: roomCode, preferences });
 };
 
 export const listenToPreferenceVotes = (

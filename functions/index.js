@@ -1808,3 +1808,10 @@ exports.notifyResultReady = onCall(
       return result;
     },
 );
+
+// Client-facing API callables — the mobile app never touches Firestore/RTDB
+// directly; all reads/writes go through these (see clientApi.js).
+const clientApi = require("./clientApi");
+exports.userApi = clientApi.userApi;
+exports.roomApi = clientApi.roomApi;
+exports.restaurantApi = clientApi.restaurantApi;

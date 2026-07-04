@@ -2,8 +2,7 @@ import * as Notifications from 'expo-notifications';
 import * as Device from 'expo-device';
 import Constants from 'expo-constants';
 import { Platform } from 'react-native';
-import { doc, setDoc } from 'firebase/firestore';
-import { db } from './firebase';
+import { callUserApi } from './api';
 
 // Show notifications even when app is in foreground
 Notifications.setNotificationHandler({
@@ -56,20 +55,14 @@ export async function registerForPushNotificationsAsync(): Promise<string | null
   return tokenData.data;
 }
 
-export async function savePushTokenToFirestore(uid: string, token: string): Promise<void> {
-  const userRef = doc(db, 'users', uid);
-  await setDoc(userRef, {
-    expo_push_token: token,
-    push_token_updated_at: new Date().toISOString(),
-  }, { merge: true });
+// Writes go through the userApi callable — the backend resolves the user from
+// auth, so the uid params are kept only for signature compatibility.
+export async function savePushTokenToFirestore(_uid: string, token: string): Promise<void> {
+  await callUserApi('updateSettings', { pushToken: token });
 }
 
-export async function removePushTokenFromFirestore(uid: string): Promise<void> {
-  const userRef = doc(db, 'users', uid);
-  await setDoc(userRef, {
-    expo_push_token: null,
-    push_token_updated_at: new Date().toISOString(),
-  }, { merge: true });
+export async function removePushTokenFromFirestore(_uid: string): Promise<void> {
+  await callUserApi('updateSettings', { pushToken: null });
 }
 
 export type NotificationPreferences = {
@@ -79,11 +72,8 @@ export type NotificationPreferences = {
 };
 
 export async function syncNotificationPreferences(
-  uid: string,
+  _uid: string,
   prefs: NotificationPreferences
 ): Promise<void> {
-  const userRef = doc(db, 'users', uid);
-  await setDoc(userRef, {
-    notification_preferences: prefs,
-  }, { merge: true });
+  await callUserApi('updateSettings', { notificationPreferences: prefs });
 }

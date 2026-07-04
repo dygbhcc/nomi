@@ -56,12 +56,28 @@
     },
     "verify": {
       "title": "Confirma o teu email",
-      "message": "Enviámos um link de confirmação para {{email}}. Abre-o e depois toca no botão abaixo para continuar.",
+      "message": "Enviámos um link de confirmação para {{email}}. Abre-o e depois toca no botão abaixo para continuar. Se não o vires, verifica a pasta de spam.",
       "checkButton": "Já confirmei",
       "resend": "Reenviar email",
-      "resent": "Email de confirmação enviado",
+      "resent": "Email de confirmação enviado — verifica a caixa de entrada e o spam",
       "stillNotVerified": "Ainda não confirmado — verifica a caixa de entrada e o spam.",
-      "signOut": "Usar outra conta"
+      "signOut": "Usar outra conta",
+      "tooMany": "Demasiados emails pedidos. Aguarda uns minutos e verifica a pasta de spam.",
+      "resendIn": "Reenviar disponível em {{seconds}}s"
+    },
+    "reset": {
+      "title": "Define uma nova palavra-passe",
+      "message": "Escolhe uma nova palavra-passe para {{email}}.",
+      "newPasswordPlaceholder": "Nova palavra-passe",
+      "confirmPasswordPlaceholder": "Confirma a nova palavra-passe",
+      "saveButton": "Guardar nova palavra-passe",
+      "mismatch": "As palavras-passe não coincidem",
+      "cancel": "Cancelar",
+      "doneTitle": "Palavra-passe atualizada",
+      "doneMessage": "A tua palavra-passe foi alterada. Inicia sessão com a nova palavra-passe.",
+      "invalidTitle": "Link expirado",
+      "invalidMessage": "Este link de recuperação é inválido ou expirou. Pede um novo no ecrã de início de sessão.",
+      "backToSignIn": "Voltar ao início de sessão"
     }
   },
   "onboarding": {

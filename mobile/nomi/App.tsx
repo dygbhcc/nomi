@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from "react";
-import { View, ActivityIndicator, Text } from "react-native";
+import { View, ActivityIndicator, Text, Linking } from "react-native";
 import { SafeAreaProvider } from "react-native-safe-area-context";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { I18nextProvider, useTranslation } from "react-i18next";
@@ -9,6 +9,8 @@ import ErrorBoundary from "./components/ErrorBoundary";
 import i18n, { initI18n } from "./i18n";
 import AuthScreen from "./screens/AuthScreen";
 import VerifyEmailScreen from "./screens/VerifyEmailScreen";
+import ResetPasswordScreen from "./screens/ResetPasswordScreen";
+import { applyVerificationCode } from "./services/authService";
 import OnboardingScreen from "./screens/OnboardingScreen";
 import MoodScreen from "./screens/MoodScreen";
 import BudgetDistanceScreen from "./screens/BudgetDistanceScreen";
@@ -51,6 +53,21 @@ const TEST_RESULT_RESTAURANT = {
   photo: require("./assets/images/restaurants/taberna-rua-das-flores.jpg"),
 };
 
+// Parse a Firebase auth-action deep link (nomi://auth-action?mode=...&oobCode=...)
+// forwarded by the hosted redirect page. Returns null for any other URL.
+function parseAuthActionUrl(url: string | null): { mode: string; oobCode: string } | null {
+  if (!url || !url.includes("auth-action")) return null;
+  const query = url.split("?")[1];
+  if (!query) return null;
+  const params: Record<string, string> = {};
+  for (const pair of query.split("&")) {
+    const [key, value] = pair.split("=");
+    if (key && value) params[key] = decodeURIComponent(value);
+  }
+  if (!params.mode || !params.oobCode) return null;
+  return { mode: params.mode, oobCode: params.oobCode };
+}
+
 type VotingResult = {
   restaurant: any;
   totalVoters: number;
@@ -77,7 +94,7 @@ type Screen =
   | "settings";
 
 function AppNavigator() {
-  const { user, loading, isGuest } = useAuth();
+  const { user, loading, isGuest, refreshVerification } = useAuth();
   const { t } = useTranslation();
   const [screen, setScreen] = useState<Screen | null>(null);
   const [previousScreen, setPreviousScreen] = useState<Screen>("mood");
@@ -96,7 +113,30 @@ function AppNavigator() {
   const [isGroupMode, setIsGroupMode] = useState(false);
   const [isHost, setIsHost] = useState(false);
   const [returnScreen, setReturnScreen] = useState<Screen>("mood");
+  const [resetPasswordCode, setResetPasswordCode] = useState<string | null>(null);
   const consensusCalculatedRef = useRef(false);
+
+  // Handle Firebase auth-action deep links (password reset / email verify)
+  // arriving via the nomi:// scheme, both on cold start and while running.
+  useEffect(() => {
+    const handleUrl = async (url: string | null) => {
+      const action = parseAuthActionUrl(url);
+      if (!action) return;
+      if (action.mode === "resetPassword") {
+        setResetPasswordCode(action.oobCode);
+      } else if (action.mode === "verifyEmail") {
+        try {
+          await applyVerificationCode(action.oobCode);
+          await refreshVerification();
+        } catch (e) {
+          if (__DEV__) console.error("applyVerificationCode failed:", e);
+        }
+      }
+    };
+    Linking.getInitialURL().then(handleUrl);
+    const sub = Linking.addEventListener("url", ({ url }) => handleUrl(url));
+    return () => sub.remove();
+  }, []);
 
   // Check onboarding status on startup
   useEffect(() => {
@@ -172,6 +212,16 @@ function AppNavigator() {
       <View style={{ flex: 1, alignItems: "center", justifyContent: "center", backgroundColor: Colors.background }}>
         <ActivityIndicator size="large" color={Colors.accent} />
       </View>
+    );
+  }
+
+  // Password-reset deep link takes priority — it arrives signed-out.
+  if (resetPasswordCode) {
+    return (
+      <ResetPasswordScreen
+        oobCode={resetPasswordCode}
+        onDone={() => setResetPasswordCode(null)}
+      />
     );
   }
 

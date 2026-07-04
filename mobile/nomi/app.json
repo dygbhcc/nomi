@@ -2,9 +2,10 @@
   "expo": {
     "name": "nomi",
     "slug": "nomi",
+    "scheme": "nomi",
     "version": "1.0.0",
     "orientation": "portrait",
-    "icon": "./assets/logo_store.png",
+    "icon": "./assets/icon.png",
     "userInterfaceStyle": "light",
     "newArchEnabled": true,
     "splash": {
@@ -25,8 +26,8 @@
     "android": {
       "package": "com.anonymous.nomi",
       "adaptiveIcon": {
-        "foregroundImage": "./assets/logo_store.png",
-        "backgroundColor": "#ffffff"
+        "foregroundImage": "./assets/adaptive-icon.png",
+        "backgroundColor": "#ff4a00"
       },
       "edgeToEdgeEnabled": true,
       "predictiveBackGestureEnabled": false

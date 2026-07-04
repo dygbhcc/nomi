@@ -73,35 +73,10 @@ function deriveReviewTags(d) {
   return dedupCap([...nuances, ...admiration, ...keywords].filter(isChip), MAX_TAGS);
 }
 
-// Heuristic: shorten a long "negative aspect" sentence into a 2-4 word chip.
-// Best-effort fallback for existing data; the nightly Gemini run produces
-// proper watch_tags going forward.
-// Filler/aux words stripped anywhere in the phrase so only content words remain.
-const NEG_STOP = new Set([
-  "it", "can", "get", "gets", "be", "is", "are", "was", "were", "the", "a", "an",
-  "some", "reviews", "suggest", "service", "sometimes", "may", "might", "there",
-  "this", "that", "place", "often", "quite", "very", "to", "of", "due", "for",
-  "its", "merely", "really", "on", "in", "at", "with", "also", "more", "less",
-  "not", "become", "becomes", "considered", "and", "or",
-]);
-function shortenNegative(sentence) {
-  if (!sentence) return "";
-  // Take the first clause, drop filler words anywhere, keep up to 3 content words.
-  const s = sentence.split(/[,;.]|\bespecially\b|\bdue to\b|\bbecause\b|\bbut\b|\balthough\b/i)[0];
-  const words = s
-      .toLowerCase()
-      .replace(/[^a-z\s]/g, "")
-      .trim()
-      .split(/\s+/)
-      .filter((w) => w && !NEG_STOP.has(w));
-  return words.slice(0, 3).join(" ").trim();
-}
-
-function deriveWatchTags(d) {
-  const negatives = clean(resolveEn(d.nlp_insights?.negative_aspects));
-  const short = negatives.map(shortenNegative).filter((s) => s.split(" ").length <= 4 && s.length > 2);
-  return dedupCap(short, 4);
-}
+// watch_tags is intentionally NOT derived here. The word-chopping heuristic
+// this script used to have produced meaningless chips ("visitors find bit").
+// The nightly Gemini run writes proper watch_tags going forward, and
+// scripts/rewriteWatchTags.js is the Gemini-based backfill for old docs.
 
 async function run() {
   const snap = await db.collection("restaurants").where("nlp_processed", "==", true).get();
@@ -120,13 +95,11 @@ async function run() {
 
     const update = {};
     const reviewTags = deriveReviewTags(d);
-    const watchTags = deriveWatchTags(d);
     // love_tags = the short positive set (reuse review_tags, already short).
     const loveTags = reviewTags;
 
     if ((FORCE || !d.review_tags?.length) && reviewTags.length) update.review_tags = reviewTags;
     if ((FORCE || !d.love_tags?.length) && loveTags.length) update.love_tags = loveTags;
-    if ((FORCE || !d.watch_tags?.length) && watchTags.length) update.watch_tags = watchTags;
 
     if (Object.keys(update).length === 0) {
       if (d.review_tags?.length || d.love_tags?.length) skippedExisting++;
@@ -135,7 +108,7 @@ async function run() {
     }
 
     if (samples.length < 10) {
-      samples.push(`${d.name}: love=[${(update.love_tags || d.love_tags || []).join(", ")}] watch=[${(update.watch_tags || d.watch_tags || []).join(", ")}]`);
+      samples.push(`${d.name}: love=[${(update.love_tags || d.love_tags || []).join(", ")}]`);
     }
 
     if (!DRY_RUN) {

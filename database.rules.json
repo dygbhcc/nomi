@@ -1,11 +1,9 @@
 {
   "rules": {
-    "active_votes": {
+    "rooms": {
       "$roomId": {
-        ".read": "auth != null && auth.provider !== 'anonymous'",
-        "$userId": {
-          ".write": "auth != null && auth.provider !== 'anonymous' && auth.uid === $userId"
-        }
+        ".read": "auth != null",
+        ".write": false
       }
     },
 
@@ -13,15 +11,6 @@
       "$roomId": {
         ".read": "auth != null",
         ".write": false
-      }
-    },
-
-    "typing_indicators": {
-      "$roomId": {
-        ".read": "auth != null",
-        "$userId": {
-          ".write": "auth != null && auth.uid === $userId"
-        }
       }
     },
 

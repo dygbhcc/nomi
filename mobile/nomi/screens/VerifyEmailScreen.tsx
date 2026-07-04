@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import {
   View,
   Text,
@@ -18,6 +18,15 @@ export default function VerifyEmailScreen() {
   const [checking, setChecking] = useState(false);
   const [resending, setResending] = useState(false);
   const [notice, setNotice] = useState("");
+  // Firebase rate-limits repeated verification emails (TOO_MANY_ATTEMPTS after
+  // ~2 sends in a short window), so throttle the resend button client-side.
+  const [cooldown, setCooldown] = useState(0);
+
+  useEffect(() => {
+    if (cooldown <= 0) return;
+    const timer = setInterval(() => setCooldown((s) => s - 1), 1000);
+    return () => clearInterval(timer);
+  }, [cooldown > 0]);
 
   const handleCheck = async () => {
     setNotice("");
@@ -39,9 +48,15 @@ export default function VerifyEmailScreen() {
     try {
       await resendVerification();
       setNotice(t("auth.verify.resent"));
-    } catch (e) {
+      setCooldown(60);
+    } catch (e: any) {
       if (__DEV__) console.error("resendVerification failed:", e);
-      setNotice(t("auth.errors.default"));
+      if (e?.code === "auth/too-many-requests") {
+        setNotice(t("auth.verify.tooMany"));
+        setCooldown(60);
+      } else {
+        setNotice(t("auth.errors.default"));
+      }
     } finally {
       setResending(false);
     }
@@ -75,11 +90,15 @@ export default function VerifyEmailScreen() {
         <TouchableOpacity
           style={styles.secondaryButton}
           onPress={handleResend}
-          disabled={resending}
+          disabled={resending || cooldown > 0}
           accessibilityRole="button"
         >
-          <Text style={styles.secondaryButtonText}>
-            {resending ? "…" : t("auth.verify.resend")}
+          <Text style={[styles.secondaryButtonText, cooldown > 0 && styles.secondaryButtonTextDisabled]}>
+            {resending
+              ? "…"
+              : cooldown > 0
+                ? t("auth.verify.resendIn", { seconds: cooldown })
+                : t("auth.verify.resend")}
           </Text>
         </TouchableOpacity>
 
@@ -155,6 +174,9 @@ const styles = StyleSheet.create({
     color: Colors.accent,
     fontSize: Typography.body,
     fontWeight: "600",
+  },
+  secondaryButtonTextDisabled: {
+    color: Colors.textSecondary,
   },
   textButton: {
     paddingVertical: 12,

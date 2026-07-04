@@ -56,12 +56,28 @@
     },
     "verify": {
       "title": "Verify your email",
-      "message": "We sent a verification link to {{email}}. Open it, then tap the button below to continue.",
+      "message": "We sent a verification link to {{email}}. Open it, then tap the button below to continue. If you don't see it, check your spam folder.",
       "checkButton": "I've verified",
       "resend": "Resend email",
-      "resent": "Verification email sent",
+      "resent": "Verification email sent — check your inbox and spam folder",
       "stillNotVerified": "Not verified yet — check your inbox and spam folder.",
-      "signOut": "Use another account"
+      "signOut": "Use another account",
+      "tooMany": "Too many emails requested. Please wait a few minutes and check your spam folder.",
+      "resendIn": "Resend available in {{seconds}}s"
+    },
+    "reset": {
+      "title": "Set a new password",
+      "message": "Choose a new password for {{email}}.",
+      "newPasswordPlaceholder": "New password",
+      "confirmPasswordPlaceholder": "Confirm new password",
+      "saveButton": "Save new password",
+      "mismatch": "Passwords don't match",
+      "cancel": "Cancel",
+      "doneTitle": "Password updated",
+      "doneMessage": "Your password has been changed. Sign in with your new password.",
+      "invalidTitle": "Link expired",
+      "invalidMessage": "This reset link is invalid or has expired. Request a new one from the sign-in screen.",
+      "backToSignIn": "Back to sign in"
     }
   },
   "onboarding": {

@@ -5,6 +5,9 @@ import {
   signInAnonymously as firebaseSignInAnonymously,
   sendEmailVerification,
   sendPasswordResetEmail,
+  verifyPasswordResetCode,
+  confirmPasswordReset,
+  applyActionCode,
   updateProfile,
   updatePassword,
   reauthenticateWithCredential,
@@ -13,8 +16,8 @@ import {
   onAuthStateChanged,
   User
 } from 'firebase/auth';
-import { doc, getDoc, setDoc, serverTimestamp } from 'firebase/firestore';
-import { auth, db } from './firebase';
+import { auth } from './firebase';
+import { callUserApi } from './api';
 
 /**
  * Derive a friendly display name from the auth profile or email local-part.
@@ -30,47 +33,17 @@ function deriveName(user: User, displayName?: string): string {
 
 /**
  * Guarantee that a `users/{uid}` document exists with the expected default
- * shape. Creates the full document when missing, otherwise backfills only the
- * fields that are absent. Idempotent — safe to call on every sign-in/sign-up.
- * This is the single source of truth for user-document creation so the profile
- * never ends up empty ("user not created") regardless of the entry path.
+ * shape. The backend callable creates the full document when missing,
+ * otherwise backfills only the fields that are absent. Idempotent — safe to
+ * call on every sign-in/sign-up. This is the single source of truth for
+ * user-document creation so the profile never ends up empty ("user not
+ * created") regardless of the entry path.
  */
 export const ensureUserDocument = async (
   user: User,
   displayName?: string
 ): Promise<void> => {
-  const ref = doc(db, 'users', user.uid);
-  const snap = await getDoc(ref);
-
-  if (!snap.exists()) {
-    await setDoc(ref, {
-      display_name: deriveName(user, displayName),
-      email: user.email || '',
-      points: 0,
-      badges: [],
-      segment: 'new',
-      preference_history: { moods: [], budget: 2, dist: 1 },
-      streak: 0,
-      notification_preferences: {
-        groupInvites: true,
-        newRestaurants: false,
-        validateReminders: true,
-      },
-      created_at: serverTimestamp(),
-    });
-    return;
-  }
-
-  // Backfill missing core fields on an existing doc without clobbering data.
-  const data = snap.data();
-  const patch: Record<string, unknown> = {};
-  if (!data.display_name && (displayName || user.displayName)) {
-    patch.display_name = displayName || user.displayName;
-  }
-  if (!data.email && user.email) patch.email = user.email;
-  if (Object.keys(patch).length > 0) {
-    await setDoc(ref, patch, { merge: true });
-  }
+  await callUserApi('ensureDocument', { displayName: deriveName(user, displayName) });
 };
 
 export const signIn = async (email: string, password: string): Promise<User> => {
@@ -115,11 +88,7 @@ export const updateDisplayName = async (name: string): Promise<void> => {
   const trimmed = name.trim();
   if (!auth.currentUser || !trimmed) return;
   await updateProfile(auth.currentUser, { displayName: trimmed });
-  await setDoc(
-    doc(db, 'users', auth.currentUser.uid),
-    { display_name: trimmed },
-    { merge: true }
-  );
+  await callUserApi('updateSettings', { displayName: trimmed });
 };
 
 /**
@@ -127,6 +96,32 @@ export const updateDisplayName = async (name: string): Promise<void> => {
  */
 export const sendPasswordReset = async (email: string): Promise<void> => {
   await sendPasswordResetEmail(auth, email);
+};
+
+/**
+ * Validate a password-reset oobCode (from the email deep link) and return the
+ * account email it belongs to. Throws if the code is invalid/expired.
+ */
+export const verifyResetCode = async (oobCode: string): Promise<string> => {
+  return verifyPasswordResetCode(auth, oobCode);
+};
+
+/**
+ * Complete an in-app password reset using the oobCode from the email link.
+ */
+export const completePasswordReset = async (
+  oobCode: string,
+  newPassword: string
+): Promise<void> => {
+  await confirmPasswordReset(auth, oobCode, newPassword);
+};
+
+/**
+ * Apply an email-verification oobCode from a deep link (marks the account
+ * verified without opening the web handler).
+ */
+export const applyVerificationCode = async (oobCode: string): Promise<void> => {
+  await applyActionCode(auth, oobCode);
 };
 
 /**

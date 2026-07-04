@@ -1,0 +1,98 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>nomi</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      background: #FFF8F3;
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 24px;
+    }
+    .card {
+      background: #fff;
+      border-radius: 16px;
+      box-shadow: 0 4px 24px rgba(0, 0, 0, 0.08);
+      padding: 40px 32px;
+      max-width: 420px;
+      width: 100%;
+      text-align: center;
+    }
+    .logo { font-size: 32px; font-weight: 800; color: #F25D0D; margin-bottom: 24px; }
+    h1 { font-size: 20px; color: #222; margin-bottom: 12px; }
+    p { font-size: 15px; color: #666; line-height: 1.5; margin-bottom: 28px; }
+    .btn {
+      display: block;
+      width: 100%;
+      padding: 15px;
+      border-radius: 12px;
+      font-size: 16px;
+      font-weight: 700;
+      text-decoration: none;
+      margin-bottom: 12px;
+    }
+    .btn-primary { background: #F25D0D; color: #fff; }
+    .btn-secondary { background: transparent; color: #888; font-weight: 500; font-size: 14px; }
+  </style>
+</head>
+<body>
+  <div class="card">
+    <div class="logo">nomi</div>
+    <h1 id="title">Continue in the nomi app</h1>
+    <p id="message">Tap the button below to open the app and finish.</p>
+    <a class="btn btn-primary" id="openApp" href="#">Open nomi app</a>
+    <a class="btn btn-secondary" id="openWeb" href="#">Continue in browser instead</a>
+  </div>
+  <script>
+    (function () {
+      var query = window.location.search;
+      var appLink = "nomi://auth-action" + query;
+      // Firebase's default hosted handler still works as the browser fallback
+      // (desktop, or app not installed) — forward the untouched query string.
+      var webLink = "https://nomi-mvp.firebaseapp.com/__/auth/action" + query;
+
+      var params = new URLSearchParams(query);
+      var lang = (params.get("lang") || "en").slice(0, 2);
+      var mode = params.get("mode") || "";
+
+      var i18n = {
+        en: {
+          resetPassword: ["Reset your password", "Tap the button below to set a new password in the nomi app."],
+          verifyEmail: ["Verify your email", "Tap the button below to confirm your email in the nomi app."],
+          fallback: ["Continue in the nomi app", "Tap the button below to open the app and finish."],
+          open: "Open nomi app",
+          web: "Continue in browser instead"
+        },
+        pt: {
+          resetPassword: ["Recupera a tua palavra-passe", "Toca no botão abaixo para definir uma nova palavra-passe na app nomi."],
+          verifyEmail: ["Confirma o teu email", "Toca no botão abaixo para confirmar o teu email na app nomi."],
+          fallback: ["Continua na app nomi", "Toca no botão abaixo para abrir a app e concluir."],
+          open: "Abrir a app nomi",
+          web: "Continuar no navegador"
+        }
+      };
+      var texts = i18n[lang] || i18n.en;
+      var copy = texts[mode] || texts.fallback;
+      document.getElementById("title").textContent = copy[0];
+      document.getElementById("message").textContent = copy[1];
+      var openBtn = document.getElementById("openApp");
+      var webBtn = document.getElementById("openWeb");
+      openBtn.textContent = texts.open;
+      webBtn.textContent = texts.web;
+      openBtn.href = appLink;
+      webBtn.href = webLink;
+
+      // Auto-attempt the app on mobile; desktop browsers just show the buttons.
+      if (/iPhone|iPad|iPod|Android/i.test(navigator.userAgent)) {
+        window.location.href = appLink;
+      }
+    })();
+  </script>
+</body>
+</html>
