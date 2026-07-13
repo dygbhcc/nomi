@@ -1,7 +1,18 @@
-import { Timestamp } from 'firebase/firestore';
+import {
+  collection,
+  query,
+  where,
+  limit,
+  getDocs,
+  doc,
+  getDoc,
+  arrayUnion,
+  arrayRemove,
+  updateDoc,
+  Timestamp
+} from 'firebase/firestore';
 import { httpsCallable } from 'firebase/functions';
-import { functions } from './firebase';
-import { callRestaurantApi } from './api';
+import { db, functions } from './firebase';
 import i18n from '../i18n';
 
 /**
@@ -63,8 +74,16 @@ export type Restaurant = {
   place_id?: string;
 };
 
-// All restaurant queries run server-side in the restaurantApi callable
-// (distance sorting and filtering included) — no direct Firestore access.
+function haversineDistance(lat1: number, lng1: number, lat2: number, lng2: number): number {
+  const R = 6371000;
+  const toRad = (d: number) => d * Math.PI / 180;
+  const dLat = toRad(lat2 - lat1);
+  const dLng = toRad(lng2 - lng1);
+  const a = Math.sin(dLat / 2) ** 2 +
+    Math.cos(toRad(lat1)) * Math.cos(toRad(lat2)) * Math.sin(dLng / 2) ** 2;
+  return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+}
+
 export const getRestaurantsByMood = async (
   moods: string[],
   budgetLevel: number,
@@ -73,20 +92,95 @@ export const getRestaurantsByMood = async (
   userLng?: number | null,
   maxDistance?: number | null
 ): Promise<Restaurant[]> => {
+  const seen = new Set<string>();
+  let restaurants: Restaurant[] = [];
+
+  const addDocs = (snap: any) => {
+    for (const d of snap.docs) {
+      if (!seen.has(d.id)) {
+        seen.add(d.id);
+        restaurants.push({ id: d.id, ...d.data() } as Restaurant);
+      }
+    }
+  };
+
+  const pool = maxResults * 3;
+
+  // Tier 1: mood + budget
   try {
-    const result = await callRestaurantApi<{ restaurants: Restaurant[] }>('getByMood', {
-      moods,
-      budgetLevel,
-      maxResults,
-      userLat,
-      userLng,
-      maxDistance,
-    });
-    return result.restaurants;
-  } catch (error) {
-    __DEV__ && console.error('getRestaurantsByMood error:', error);
-    return [];
+    if (moods.length > 0) {
+      const snap = await getDocs(query(
+        collection(db, 'restaurants'),
+        where('mood_tags', 'array-contains-any', moods),
+        where('budget_level', '==', budgetLevel),
+        limit(pool)
+      ));
+      addDocs(snap);
+    }
+  } catch (_) { /* index missing, skip */ }
+
+  // Tier 2: mood only
+  if (restaurants.length < pool && moods.length > 0) {
+    try {
+      const snap = await getDocs(query(
+        collection(db, 'restaurants'),
+        where('mood_tags', 'array-contains-any', moods),
+        limit(pool)
+      ));
+      addDocs(snap);
+    } catch (_) { /* skip */ }
   }
+
+  // Tier 3: budget only
+  if (restaurants.length < pool) {
+    try {
+      const snap = await getDocs(query(
+        collection(db, 'restaurants'),
+        where('budget_level', '==', budgetLevel),
+        limit(pool)
+      ));
+      addDocs(snap);
+    } catch (_) { /* skip */ }
+  }
+
+  // Tier 4: all restaurants
+  if (restaurants.length < maxResults) {
+    try {
+      const snap = await getDocs(query(
+        collection(db, 'restaurants'),
+        limit(pool)
+      ));
+      addDocs(snap);
+    } catch (_) { /* skip */ }
+  }
+
+  // Compute metre distances for sorting & filtering
+  if (userLat != null && userLng != null) {
+    for (const r of restaurants) {
+      const lat = r.location?.lat;
+      const lng = r.location?.lng;
+      if (lat != null && lng != null) {
+        const dist = haversineDistance(userLat, userLng, lat, lng);
+        (r as any)._m = dist;
+        r.distance = dist < 1000 ? `${Math.round(dist)} m` : `${(dist / 1000).toFixed(1)} km`;
+      }
+    }
+
+    // Sort closest first
+    restaurants.sort((a, b) => ((a as any)._m ?? Infinity) - ((b as any)._m ?? Infinity));
+
+    // Prefer within maxDistance, fill if not enough
+    if (maxDistance) {
+      const inside = restaurants.filter(r => (r as any)._m == null || (r as any)._m <= maxDistance);
+      const outside = restaurants.filter(r => (r as any)._m != null && (r as any)._m > maxDistance);
+      restaurants = [...inside, ...outside];
+    }
+
+    // Clean up temp field
+    for (const r of restaurants) delete (r as any)._m;
+  }
+
+  return restaurants.slice(0, maxResults);
 };
 
 export type SmartRecommendationsMeta = {
@@ -122,7 +216,7 @@ export const getSmartRecommendations = async (
     };
   } catch (error) {
     __DEV__ && console.error('getSmartRecommendations error, falling back:', error);
-    // Fallback to the plain mood query (also server-side)
+    // Fallback to direct Firestore query with client-side distance
     const restaurants = await getRestaurantsByMood(moods, budgetLevel, 6, userLat, userLng, distance);
     return {
       restaurants,
@@ -138,37 +232,116 @@ export const getSmartRecommendations = async (
 
 /**
  * Build a validation queue: restaurants the user has NOT voted on yet,
- * shuffled randomly so each session shows a fresh, unordered set. Runs
- * entirely server-side; the backend resolves the user from auth.
+ * shuffled randomly so each session shows a fresh, unordered set.
+ * Prefers restaurants that match the selected moods, then fills from the
+ * general pool. Distances are computed for display only (no filtering).
  */
 export const getRestaurantsForValidation = async (
-  _userId: string | null,
+  userId: string | null,
   moods: string[],
   maxResults: number = 10,
   userLat?: number | null,
   userLng?: number | null
 ): Promise<Restaurant[]> => {
-  try {
-    const result = await callRestaurantApi<{ restaurants: Restaurant[] }>('getForValidation', {
-      moods,
-      maxResults,
-      userLat,
-      userLng,
-    });
-    return result.restaurants;
-  } catch (error) {
-    __DEV__ && console.error('getRestaurantsForValidation error:', error);
-    return [];
+  // 1. Collect restaurant ids this user has already voted on
+  const votedIds = new Set<string>();
+  if (userId) {
+    try {
+      const votesSnap = await getDocs(query(
+        collection(db, 'votes'),
+        where('user_id', '==', userId)
+      ));
+      votesSnap.forEach((d) => {
+        const rid = d.data().restaurant_id;
+        if (rid) votedIds.add(rid);
+      });
+    } catch (e) {
+      __DEV__ && console.error('getRestaurantsForValidation votes error:', e);
+    }
   }
+
+  // 2. Build a candidate pool, excluding already-voted restaurants
+  const seen = new Set<string>();
+  const pool: Restaurant[] = [];
+  const addDocs = (snap: any) => {
+    for (const d of snap.docs) {
+      if (!seen.has(d.id) && !votedIds.has(d.id)) {
+        seen.add(d.id);
+        pool.push({ id: d.id, ...d.data() } as Restaurant);
+      }
+    }
+  };
+
+  const fetchLimit = Math.max(maxResults * 3, 30); // cost: trimmed validation pool fetch
+
+  // Tier 1: restaurants matching the selected moods
+  try {
+    if (moods.length > 0) {
+      const snap = await getDocs(query(
+        collection(db, 'restaurants'),
+        where('mood_tags', 'array-contains-any', moods),
+        limit(fetchLimit)
+      ));
+      addDocs(snap);
+    }
+  } catch (_) { /* index missing, skip */ }
+
+  // Tier 2: fill from the general pool
+  if (pool.length < maxResults) {
+    try {
+      const snap = await getDocs(query(
+        collection(db, 'restaurants'),
+        limit(fetchLimit)
+      ));
+      addDocs(snap);
+    } catch (_) { /* skip */ }
+  }
+
+  // 3. Compute display distances
+  if (userLat != null && userLng != null) {
+    for (const r of pool) {
+      const lat = r.location?.lat;
+      const lng = r.location?.lng;
+      if (lat != null && lng != null) {
+        const dist = haversineDistance(userLat, userLng, lat, lng);
+        r.distance = dist < 1000 ? `${Math.round(dist)} m` : `${(dist / 1000).toFixed(1)} km`;
+      }
+    }
+  }
+
+  // 4. Shuffle (Fisher-Yates) so the order is random every session
+  for (let i = pool.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [pool[i], pool[j]] = [pool[j], pool[i]];
+  }
+
+  return pool.slice(0, maxResults);
 };
 
 export const getRestaurantById = async (id: string): Promise<Restaurant | null> => {
   try {
-    return await callRestaurantApi<Restaurant | null>('getById', { id });
+    const docRef = doc(db, 'restaurants', id);
+    const docSnap = await getDoc(docRef);
+    if (!docSnap.exists()) return null;
+    return { id: docSnap.id, ...docSnap.data() } as Restaurant;
   } catch (error) {
     __DEV__ && console.error('getRestaurantById error:', error);
     return null;
   }
+};
+
+export const saveRestaurant = async (userId: string, restaurantId: string): Promise<void> => {
+  const userRef = doc(db, 'users', userId);
+  await updateDoc(userRef, {
+    liked_restaurants: arrayUnion(restaurantId)
+  });
+};
+
+export const unsaveRestaurant = async (userId: string, restaurantId: string): Promise<void> => {
+  const userRef = doc(db, 'users', userId);
+  await updateDoc(userRef, {
+    liked_restaurants: arrayRemove(restaurantId)
+  });
 };
 
 export const buildReason = (restaurant: Restaurant, selectedMoods: string[]): string => {
