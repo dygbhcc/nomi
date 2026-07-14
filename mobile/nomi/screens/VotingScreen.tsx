@@ -442,6 +442,7 @@ export default function VotingScreen({ roomCode, selectedMoods, budgetLevel, onV
       {/* Card */}
       <View style={styles.cardWrapper}>
         <SwipeVoteCard
+          key={restaurant.id}
           name={restaurant.name}
           photo={getPhotoUrl(restaurant)
             ? { uri: getPhotoUrl(restaurant)! }

@@ -349,6 +349,7 @@ export default function ValidateScreen({
       {/* --- Card (identical to the swipe card) --- */}
       <View style={styles.cardWrapper}>
         <SwipeVoteCard
+          key={item.id}
           name={item.name}
           photo={getPhotoUrl(item) ? { uri: getPhotoUrl(item)! } : undefined}
           distance={item.distance}
