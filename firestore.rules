@@ -22,13 +22,17 @@ service cloud.firestore {
       allow read, write: if isOwner(userId);
     }
 
-    // ── rooms (authenticated read, creator-only mutate) ──────────────
+    // ── rooms ─────────────────────────────────────────────────────────
+    // Create checks organizer_uid (the field the client actually writes;
+    // the old createdBy check rejected every create). Update stays open to
+    // any authenticated user because participants join (participants.{uid})
+    // and voters write votes.{uid} onto the room doc — spark-mode only.
     match /rooms/{roomId} {
       allow read: if isAuthenticated();
       allow create: if isAuthenticated()
-                    && request.resource.data.createdBy == request.auth.uid;
-      allow update, delete: if isAuthenticated()
-                            && resource.data.createdBy == request.auth.uid;
+                    && request.resource.data.organizer_uid == request.auth.uid;
+      allow update: if isAuthenticated();
+      allow delete: if false;
     }
 
     // ── votes (immutable after creation) ─────────────────────────────
