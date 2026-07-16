@@ -4,6 +4,7 @@ const admin = require("firebase-admin");
 const logger = require("firebase-functions/logger");
 const {onCall, onRequest, HttpsError} = require("firebase-functions/v2/https");
 const {onSchedule} = require("firebase-functions/v2/scheduler");
+const {onMessagePublished} = require("firebase-functions/v2/pubsub");
 const {defineSecret} = require("firebase-functions/params");
 
 // Cloudinary credentials from Secret Manager (not .env)
@@ -238,7 +239,22 @@ async function writeRegionCache(regionKey, restaurants) {
   await batch.commit();
 }
 
-async function fetchAndCacheByCoordinates({lat, lng, radius = 800, maxResults = MAX_RESULTS_DEFAULT}) {
+/**
+ * Global kill-switch for scheduled jobs, flipped automatically by
+ * onBudgetAlert the moment real (credit-exhausted) spend appears.
+ * Missing doc defaults to enabled so a fresh project still runs.
+ */
+async function getScheduleConfig() {
+  const snap = await db.collection("config").doc("schedules").get();
+  const data = snap.exists ? snap.data() : {};
+  return {
+    enabled: data.enabled !== false,
+    discoveryEndDate: data.discovery_end_date || null, // "YYYY-MM-DD"
+    discoveryCursor: Number(data.discovery_cursor) || 0,
+  };
+}
+
+async function fetchAndCacheByCoordinates({lat, lng, radius = 800, maxResults = MAX_RESULTS_DEFAULT, force = false}) {
   const latNumber = Number(lat);
   const lngNumber = Number(lng);
   const radiusNumber = Number(radius);
@@ -249,9 +265,11 @@ async function fetchAndCacheByCoordinates({lat, lng, radius = 800, maxResults = 
   }
 
   const regionKey = normalizeRegionKey(latNumber, lngNumber, radiusNumber);
-  const cachedRestaurants = await readRegionCache(regionKey);
-  if (cachedRestaurants) {
-    return {source: "cache", count: cachedRestaurants.length, restaurants: cachedRestaurants};
+  if (!force) {
+    const cachedRestaurants = await readRegionCache(regionKey);
+    if (cachedRestaurants) {
+      return {source: "cache", count: cachedRestaurants.length, restaurants: cachedRestaurants};
+    }
   }
 
   const nearby = await nearbySearch({
@@ -385,6 +403,11 @@ exports.scheduledDemandUpdate = onSchedule(
       region: "europe-west1",
     },
     async () => {
+      const config = await getScheduleConfig();
+      if (!config.enabled) {
+        logger.warn("[scheduledDemandUpdate] Schedules disabled (kill switch) — skipping.");
+        return;
+      }
       logger.info("[scheduledDemandUpdate] Starting daily demand forecast...");
       try {
         const forecast = await calculateDemandForecast();
@@ -400,56 +423,134 @@ exports.scheduledDemandUpdate = onSchedule(
 );
 
 /**
- * Monthly restaurant refresh — runs on the 1st of each month at 03:00 Lisbon.
- * Iterates all neighborhoods and refreshes expired caches via Google Places API.
- * Cache TTL is 30 days, so each monthly run only fetches neighborhoods whose
- * cache has expired. Estimated usage: ~39 nearbySearch + ~200 placeDetails/month.
+ * Daily restaurant discovery — runs every day at 03:00 Lisbon while the
+ * Blaze trial credit lasts (config/schedules.discovery_end_date, then the
+ * job goes dormant and the 30-day cache TTL governs again).
+ *
+ * Force-refreshes NEIGHBORHOODS_PER_DAY neighborhoods in rotation (cursor in
+ * config/schedules), so all 39 neighborhoods are re-crawled roughly every
+ * 20 days and newly opened restaurants appear within that window.
+ *
+ * cost: ~2 nearbySearch + ~80 placeDetails per day (~60 + ~2400/month),
+ * enforced by monthly counters in api_usage/places_{YYYY-MM} with hard caps
+ * far below the Places API free-SKU limits — the job stops itself rather
+ * than spill into paid usage.
  */
+const NEIGHBORHOODS_PER_DAY = 2;
+const NEARBY_MONTHLY_CAP = 4000;
+const DETAILS_MONTHLY_CAP = 3500;
+
 exports.scheduledMonthlyRefresh = onSchedule(
     {
-      schedule: "0 3 1 * *",
+      schedule: "0 3 * * *",
       timeZone: "Europe/Lisbon",
       region: "europe-west1",
       timeoutSeconds: 540,
       memory: "512MiB",
     },
     async () => {
-      logger.info("[scheduledMonthlyRefresh] Starting monthly restaurant refresh...");
-      const results = [];
+      const config = await getScheduleConfig();
+      if (!config.enabled) {
+        logger.warn("[dailyDiscovery] Schedules disabled (kill switch) — skipping.");
+        return;
+      }
+      const today = new Date().toISOString().slice(0, 10);
+      if (config.discoveryEndDate && today > config.discoveryEndDate) {
+        logger.info("[dailyDiscovery] Past discovery_end_date — skipping.", {
+          endDate: config.discoveryEndDate,
+        });
+        return;
+      }
+
+      const monthKey = `places_${today.slice(0, 7)}`;
+      const usageRef = db.collection("api_usage").doc(monthKey);
+      const usageSnap = await usageRef.get();
+      const usage = usageSnap.exists ? usageSnap.data() : {};
+      let nearbyCalls = Number(usage.nearby_calls) || 0;
+      let detailCalls = Number(usage.detail_calls) || 0;
+
+      let cursor = config.discoveryCursor % neighborhoods.length;
       let refreshed = 0;
-      let cached = 0;
+      let found = 0;
       let errors = 0;
 
-      for (const neighborhood of neighborhoods) {
+      for (let i = 0; i < NEIGHBORHOODS_PER_DAY; i++) {
+        // Stop before any call that could break the monthly free-tier caps.
+        if (nearbyCalls + 1 > NEARBY_MONTHLY_CAP || detailCalls + 40 > DETAILS_MONTHLY_CAP) {
+          logger.warn("[dailyDiscovery] Monthly Places cap reached — stopping early.", {
+            nearbyCalls, detailCalls,
+          });
+          break;
+        }
+
+        const neighborhood = neighborhoods[cursor];
+        cursor = (cursor + 1) % neighborhoods.length;
+
         try {
           const response = await fetchAndCacheByCoordinates({
             lat: neighborhood.lat,
             lng: neighborhood.lng,
             radius: neighborhood.radius,
             maxResults: 40,
+            force: true,
           });
-          results.push({
-            neighborhood: neighborhood.name,
-            source: response.source,
+          refreshed++;
+          found += response.count;
+          nearbyCalls += 1;
+          detailCalls += response.count;
+          logger.info(`[dailyDiscovery] Refreshed ${neighborhood.name}`, {
             count: response.count,
           });
-          if (response.source === "google_places") {
-            refreshed++;
-          } else {
-            cached++;
-          }
         } catch (error) {
-          logger.error(`[scheduledMonthlyRefresh] Failed for ${neighborhood.name}:`, error);
+          logger.error(`[dailyDiscovery] Failed for ${neighborhood.name}:`, error);
           errors++;
         }
       }
 
-      logger.info("[scheduledMonthlyRefresh] Done.", {
-        total: neighborhoods.length,
-        refreshed,
-        cached,
-        errors,
-      });
+      await usageRef.set({
+        nearby_calls: nearbyCalls,
+        detail_calls: detailCalls,
+        updated_at: admin.firestore.FieldValue.serverTimestamp(),
+      }, {merge: true});
+      await db.collection("config").doc("schedules").set({
+        discovery_cursor: cursor,
+      }, {merge: true});
+
+      logger.info("[dailyDiscovery] Done.", {refreshed, found, errors, cursor});
+    },
+);
+
+/**
+ * Budget kill switch. The billing budget (credits included) publishes spend
+ * snapshots to the budget-alerts topic; the instant real cost appears the
+ * scheduled jobs are disabled via config/schedules.enabled = false.
+ */
+exports.onBudgetAlert = onMessagePublished(
+    {
+      topic: "budget-alerts",
+      region: "europe-west1",
+    },
+    async (event) => {
+      try {
+        const data = event.data.message.json;
+        const cost = Number(data.costAmount) || 0;
+        if (cost <= 0.5) return; // ignore rounding noise while credits cover everything
+
+        const snap = await db.collection("config").doc("schedules").get();
+        if (snap.exists && snap.data().enabled === false) return; // already off
+
+        await db.collection("config").doc("schedules").set({
+          enabled: false,
+          disabled_reason: `budget alert: cost ${cost} ${data.currencyCode || ""}`,
+          disabled_at: admin.firestore.FieldValue.serverTimestamp(),
+        }, {merge: true});
+        logger.error("[onBudgetAlert] Real spend detected — scheduled jobs DISABLED.", {
+          costAmount: cost,
+          budgetAmount: data.budgetAmount,
+        });
+      } catch (error) {
+        logger.error("[onBudgetAlert] Failed to process budget message:", error);
+      }
     },
 );
 
@@ -1649,6 +1750,11 @@ exports.scheduledGeminiNlp = onSchedule(
       memory: "512MiB",
     },
     async () => {
+      const config = await getScheduleConfig();
+      if (!config.enabled) {
+        logger.warn("[scheduledGeminiNlp] Schedules disabled (kill switch) — skipping.");
+        return;
+      }
       // Step 1: Fetch up to 20 new restaurants not yet in Firestore
       logger.info("[scheduledGeminiNlp] Step 1: Fetching new restaurants...");
       const fetchResult = await fetchNewRestaurants(20);
