@@ -11,6 +11,7 @@ import {
   getDoc
 } from 'firebase/firestore';
 import { db } from './firebase';
+import { markRestaurantSeen } from './seenRestaurants';
 
 export const recordSwipe = async (
   userId: string,
@@ -18,6 +19,9 @@ export const recordSwipe = async (
   direction: 'like' | 'pass',
   moods: string[]
 ): Promise<void> => {
+  // Local seen-history feeds the fallback deck's repeat filter; fire and
+  // forget so it never blocks or fails the Firestore write.
+  markRestaurantSeen(restaurantId).catch(() => {});
   try {
     await addDoc(collection(db, 'swipes'), {
       user_id: userId,

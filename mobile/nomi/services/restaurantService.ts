@@ -13,6 +13,7 @@ import {
 } from 'firebase/firestore';
 import { httpsCallable } from 'firebase/functions';
 import { db, functions } from './firebase';
+import { getSeenRestaurantIds } from './seenRestaurants';
 import i18n from '../i18n';
 
 /**
@@ -84,13 +85,21 @@ function haversineDistance(lat1: number, lng1: number, lat2: number, lng2: numbe
   return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
 }
 
+function shuffleInPlace<T>(arr: T[]): void {
+  for (let i = arr.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [arr[i], arr[j]] = [arr[j], arr[i]];
+  }
+}
+
 export const getRestaurantsByMood = async (
   moods: string[],
   budgetLevel: number,
   maxResults: number = 6,
   userLat?: number | null,
   userLng?: number | null,
-  maxDistance?: number | null
+  maxDistance?: number | null,
+  excludeSeen: boolean = false
 ): Promise<Restaurant[]> => {
   const seen = new Set<string>();
   let restaurants: Restaurant[] = [];
@@ -104,7 +113,9 @@ export const getRestaurantsByMood = async (
     }
   };
 
-  const pool = maxResults * 3;
+  // cost: pool raised from maxResults*3 (18) to 30 docs per tier for deck
+  // variety — worst case ~120 reads/session, still far inside the free quota.
+  const pool = Math.max(maxResults * 3, 30);
 
   // Tier 1: mood + budget
   try {
@@ -154,7 +165,16 @@ export const getRestaurantsByMood = async (
     } catch (_) { /* skip */ }
   }
 
-  // Compute metre distances for sorting & filtering
+  // Swipe-deck variety: drop restaurants already seen on this device, but
+  // backfill with seen ones (second chance) so the deck never comes up short.
+  if (excludeSeen) {
+    const seenIds = await getSeenRestaurantIds();
+    const fresh = restaurants.filter(r => !seenIds.has(r.id));
+    const repeats = restaurants.filter(r => seenIds.has(r.id));
+    restaurants = fresh.length >= maxResults ? fresh : [...fresh, ...repeats];
+  }
+
+  // Compute metre distances for display & range grouping
   if (userLat != null && userLng != null) {
     for (const r of restaurants) {
       const lat = r.location?.lat;
@@ -166,18 +186,23 @@ export const getRestaurantsByMood = async (
       }
     }
 
-    // Sort closest first
-    restaurants.sort((a, b) => ((a as any)._m ?? Infinity) - ((b as any)._m ?? Infinity));
-
-    // Prefer within maxDistance, fill if not enough
+    // Prefer within maxDistance, but shuffle within each group instead of a
+    // strict nearest-first sort — deterministic ordering made every session
+    // serve the identical deck.
     if (maxDistance) {
       const inside = restaurants.filter(r => (r as any)._m == null || (r as any)._m <= maxDistance);
       const outside = restaurants.filter(r => (r as any)._m != null && (r as any)._m > maxDistance);
+      shuffleInPlace(inside);
+      shuffleInPlace(outside);
       restaurants = [...inside, ...outside];
+    } else {
+      shuffleInPlace(restaurants);
     }
 
     // Clean up temp field
     for (const r of restaurants) delete (r as any)._m;
+  } else {
+    shuffleInPlace(restaurants);
   }
 
   return restaurants.slice(0, maxResults);
@@ -216,8 +241,9 @@ export const getSmartRecommendations = async (
     };
   } catch (error) {
     __DEV__ && console.error('getSmartRecommendations error, falling back:', error);
-    // Fallback to direct Firestore query with client-side distance
-    const restaurants = await getRestaurantsByMood(moods, budgetLevel, 6, userLat, userLng, distance);
+    // Fallback to direct Firestore query with client-side distance.
+    // excludeSeen keeps the deck fresh across sessions (device-local history).
+    const restaurants = await getRestaurantsByMood(moods, budgetLevel, 6, userLat, userLng, distance, true);
     return {
       restaurants,
       meta: {
