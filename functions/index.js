@@ -216,15 +216,34 @@ async function readRegionCache(regionKey) {
   return docs.filter((doc) => doc.exists).map((doc) => ({id: doc.id, ...doc.data()}));
 }
 
+// Fields owned by enrichment (NLP pipeline, validation votes, Cloudinary
+// uploads, manual curation) — a Places refresh must never clobber them on
+// documents that already exist. buildRestaurantDocument emits empty/default
+// values for these, and set({merge:true}) overwrites any field present in
+// the payload, so they are stripped for existing docs.
+const ENRICHMENT_FIELDS = [
+  "mood_tags", "confidence_scores", "nlp_processed",
+  "photos", "is_local_concept", "noise_level",
+];
+
 async function writeRegionCache(regionKey, restaurants) {
   const regionRef = db.collection("cache_regions").doc(regionKey);
   const batch = db.batch();
   const restaurantIds = [];
 
+  const refs = restaurants.map((r) => db.collection("restaurants").doc(r.place_id));
+  const existingSnaps = refs.length ? await db.getAll(...refs) : [];
+  const existingIds = new Set(existingSnaps.filter((s) => s.exists).map((s) => s.id));
+
   restaurants.forEach((restaurant) => {
     const docId = restaurant.place_id;
     restaurantIds.push(docId);
-    batch.set(db.collection("restaurants").doc(docId), restaurant, {merge: true});
+    let payload = restaurant;
+    if (existingIds.has(docId)) {
+      payload = {...restaurant};
+      for (const field of ENRICHMENT_FIELDS) delete payload[field];
+    }
+    batch.set(db.collection("restaurants").doc(docId), payload, {merge: true});
   });
 
   batch.set(
