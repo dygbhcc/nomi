@@ -297,6 +297,7 @@ async function fetchAndCacheByCoordinates({lat, lng, radius = 800, maxResults = 
     radius: radiusNumber,
     type: "restaurant",
     force,
+    maxResults: maxResultsNumber,
   });
   // Skip permanently closed restaurants — no need to spend effort on them
   const filtered = nearby.filter((p) => p.business_status !== "CLOSED_PERMANENTLY");
@@ -332,6 +333,12 @@ async function fetchAndCacheByCoordinates({lat, lng, radius = 800, maxResults = 
             }
           }),
   )).filter(Boolean).filter((restaurant) => restaurant.place_id);
+
+  // If nearby returned places but every detail fetch failed (e.g. quota
+  // exhausted mid-run), do not overwrite the region cache with an empty list.
+  if (selected.length > 0 && restaurants.length === 0) {
+    throw new Error("All place detail fetches failed — keeping existing region cache.");
+  }
 
   await writeRegionCache(regionKey, restaurants);
 
@@ -448,15 +455,21 @@ exports.scheduledDemandUpdate = onSchedule(
  * job goes dormant and the 30-day cache TTL governs again).
  *
  * Force-refreshes NEIGHBORHOODS_PER_DAY neighborhoods in rotation (cursor in
- * config/schedules), so all 39 neighborhoods are re-crawled roughly every
- * 20 days and newly opened restaurants appear within that window.
+ * config/schedules), so all 44 neighborhoods are re-crawled roughly every
+ * 22 days and newly opened restaurants appear within that window.
  *
- * cost: ~2 nearbySearch + ~80 placeDetails per day (~60 + ~2400/month),
- * enforced by monthly counters in api_usage/places_{YYYY-MM} with hard caps
- * far below the Places API free-SKU limits — the job stops itself rather
- * than spill into paid usage.
+ * Each neighborhood is crawled up to DISCOVERY_MAX_RESULTS deep (3 paginated
+ * nearbySearch pages), so discovery is not limited to the top-20 most
+ * prominent places.
+ *
+ * cost: ~6 nearbySearch pages + ~120 placeDetails per day worst case
+ * (~180 + ~3600/month), enforced by monthly counters in
+ * api_usage/places_{YYYY-MM} with hard caps below the Places API free-SKU
+ * limits — the job stops itself rather than spill into paid usage.
  */
 const NEIGHBORHOODS_PER_DAY = 2;
+const DISCOVERY_MAX_RESULTS = 60;
+const NEARBY_PAGES_PER_NEIGHBORHOOD = 3;
 const NEARBY_MONTHLY_CAP = 4000;
 const DETAILS_MONTHLY_CAP = 3500;
 
@@ -496,7 +509,8 @@ exports.scheduledMonthlyRefresh = onSchedule(
 
       for (let i = 0; i < NEIGHBORHOODS_PER_DAY; i++) {
         // Stop before any call that could break the monthly free-tier caps.
-        if (nearbyCalls + 1 > NEARBY_MONTHLY_CAP || detailCalls + 40 > DETAILS_MONTHLY_CAP) {
+        if (nearbyCalls + NEARBY_PAGES_PER_NEIGHBORHOOD > NEARBY_MONTHLY_CAP ||
+            detailCalls + DISCOVERY_MAX_RESULTS > DETAILS_MONTHLY_CAP) {
           logger.warn("[dailyDiscovery] Monthly Places cap reached — stopping early.", {
             nearbyCalls, detailCalls,
           });
@@ -504,26 +518,31 @@ exports.scheduledMonthlyRefresh = onSchedule(
         }
 
         const neighborhood = neighborhoods[cursor];
-        cursor = (cursor + 1) % neighborhoods.length;
 
         try {
           const response = await fetchAndCacheByCoordinates({
             lat: neighborhood.lat,
             lng: neighborhood.lng,
             radius: neighborhood.radius,
-            maxResults: 40,
+            maxResults: DISCOVERY_MAX_RESULTS,
             force: true,
           });
           refreshed++;
           found += response.count;
-          nearbyCalls += 1;
+          // Conservative overcount: reserve the pagination worst case.
+          nearbyCalls += NEARBY_PAGES_PER_NEIGHBORHOOD;
           detailCalls += response.count;
           logger.info(`[dailyDiscovery] Refreshed ${neighborhood.name}`, {
             count: response.count,
           });
+          // Advance only on success so a failed neighborhood (transient API
+          // error, quota exhaustion) is retried tomorrow instead of waiting
+          // a full rotation cycle.
+          cursor = (cursor + 1) % neighborhoods.length;
         } catch (error) {
           logger.error(`[dailyDiscovery] Failed for ${neighborhood.name}:`, error);
           errors++;
+          break;
         }
       }
 

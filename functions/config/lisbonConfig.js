@@ -37,6 +37,12 @@ module.exports = {
     {name: "Cascais Centro", lat: 38.6972, lng: -9.4213, radius: 1000},
     {name: "Estoril", lat: 38.7058, lng: -9.3957, radius: 800},
     {name: "Monte Estoril", lat: 38.7040, lng: -9.3930, radius: 600},
+    // Cascais coastline (Oeiras-Cascais corridor)
+    {name: "São João do Estoril", lat: 38.7005, lng: -9.3721, radius: 600},
+    {name: "Parede", lat: 38.6926, lng: -9.3573, radius: 700},
+    {name: "Carcavelos", lat: 38.6858, lng: -9.3339, radius: 900},
+    {name: "Cascais Marina", lat: 38.6916, lng: -9.4204, radius: 600},
+    {name: "Guincho", lat: 38.7326, lng: -9.4726, radius: 1000},
     // Sintra
     {name: "Sintra Centro", lat: 38.7980, lng: -9.3899, radius: 1000},
     // Oeiras
