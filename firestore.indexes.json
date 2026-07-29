@@ -9,6 +9,23 @@
       ]
     },
     {
+      "collectionGroup": "swipes",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "user_id", "order": "ASCENDING" },
+        { "fieldPath": "direction", "order": "ASCENDING" },
+        { "fieldPath": "moods", "arrayConfig": "CONTAINS" }
+      ]
+    },
+    {
+      "collectionGroup": "swipes",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "user_id", "order": "ASCENDING" },
+        { "fieldPath": "hour", "order": "ASCENDING" }
+      ]
+    },
+    {
       "collectionGroup": "restaurants",
       "queryScope": "COLLECTION",
       "fields": [

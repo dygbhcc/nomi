@@ -54,6 +54,51 @@ function formatDistance(meters) {
   return meters < 1000 ? `${Math.round(meters)} m` : `${(meters / 1000).toFixed(1)} km`;
 }
 
+// ── Badge system ─────────────────────────────────────────────────────
+
+// Badge thresholds (must stay in sync with ProfileScreen ALL_BADGES):
+//   romantic_scout    — 5 likes while in "romantic" mood
+//   local_expert      — 10 validation votes
+//   connector         — 3 group rooms organised
+//   night_owl         — 3 swipes recorded after 22:00 UTC
+//   trendsetter       — first to like 3 different restaurants (tracked on users.trendsetter_count)
+//   hidden_gem_hunter — 3 likes on restaurants with google_rating < 3.8 (tracked on users.hidden_gem_count)
+
+async function computeAndUpdateBadges(uid) {
+  const [userSnap, romanticLikesAgg, votesAgg, roomsAgg, nightOwlAgg] = await Promise.all([
+    db.collection("users").doc(uid).get(),
+    db.collection("swipes")
+        .where("user_id", "==", uid)
+        .where("direction", "==", "like")
+        .where("moods", "array-contains", "romantic")
+        .count().get(),
+    db.collection("votes").where("user_id", "==", uid).count().get(),
+    db.collection("rooms").where("organizer_uid", "==", uid).count().get(),
+    db.collection("swipes")
+        .where("user_id", "==", uid)
+        .where("hour", ">=", 22)
+        .count().get(),
+  ]);
+
+  if (!userSnap.exists) return;
+  const userData = userSnap.data();
+
+  const earned = [];
+  if (romanticLikesAgg.data().count >= 5) earned.push("romantic_scout");
+  if (votesAgg.data().count >= 10) earned.push("local_expert");
+  if (roomsAgg.data().count >= 3) earned.push("connector");
+  if (nightOwlAgg.data().count >= 3) earned.push("night_owl");
+  if ((userData.trendsetter_count || 0) >= 3) earned.push("trendsetter");
+  if ((userData.hidden_gem_count || 0) >= 3) earned.push("hidden_gem_hunter");
+
+  if (earned.length === 0) return;
+  const existing = userData.badges || [];
+  const toAdd = earned.filter((b) => !existing.includes(b));
+  if (toAdd.length > 0) {
+    await db.collection("users").doc(uid).update({badges: FieldValue.arrayUnion(...toAdd)});
+  }
+}
+
 // ── User actions ─────────────────────────────────────────────────────
 
 async function ensureUserDocument(uid, email, displayName) {
@@ -182,21 +227,49 @@ async function recordSwipe(uid, restaurantId, direction, moods) {
     moods.filter((m) => CANONICAL_MOODS.includes(m)) :
     [];
 
+  // UTC hour is stored so night_owl badge can be computed via a count query.
+  const hour = new Date().getUTCHours();
+
   const batch = db.batch();
   batch.set(db.collection("swipes").doc(), {
     user_id: uid,
     restaurant_id: restaurantId,
     direction,
     moods: safeMoods,
+    hour,
     timestamp: FieldValue.serverTimestamp(),
   });
+
   if (direction === "like") {
-    batch.set(db.collection("users").doc(uid), {
+    const userUpdate = {
       liked_restaurants: FieldValue.arrayUnion(restaurantId),
       points: FieldValue.increment(2),
-    }, {merge: true});
+    };
+
+    // Read restaurant once to derive badge signals.
+    const restaurantSnap = await db.collection("restaurants").doc(restaurantId).get();
+    if (restaurantSnap.exists) {
+      const r = restaurantSnap.data();
+
+      // hidden_gem_hunter: liked a restaurant with a below-average rating.
+      if (typeof r.google_rating === "number" && r.google_rating < 3.8) {
+        userUpdate.hidden_gem_count = FieldValue.increment(1);
+      }
+
+      // trendsetter: first user to like this restaurant (best-effort, no transaction).
+      if (!r.first_liker) {
+        batch.update(db.collection("restaurants").doc(restaurantId), {first_liker: uid});
+        userUpdate.trendsetter_count = FieldValue.increment(1);
+      }
+    }
+
+    batch.set(db.collection("users").doc(uid), userUpdate, {merge: true});
   }
+
   await batch.commit();
+  computeAndUpdateBadges(uid).catch((e) =>
+    logger.error("badge compute error", {uid, error: e.message}),
+  );
   return {ok: true};
 }
 
@@ -228,6 +301,9 @@ async function recordValidation(uid, restaurantId, moodTag, direction) {
     }, {merge: true});
   }
   await batch.commit();
+  computeAndUpdateBadges(uid).catch((e) =>
+    logger.error("badge compute error", {uid, error: e.message}),
+  );
   return {ok: true};
 }
 
@@ -286,6 +362,9 @@ async function createRoom(uid, code, name, preferences) {
     created_at: admin.firestore.Timestamp.now(),
     ...(preferences && {preferences}),
   });
+  computeAndUpdateBadges(uid).catch((e) =>
+    logger.error("badge compute error", {uid, error: e.message}),
+  );
   return {ok: true};
 }
 
