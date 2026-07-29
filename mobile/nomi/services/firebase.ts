@@ -1,8 +1,17 @@
 import { initializeApp, getApps } from 'firebase/app';
-import { getAuth } from 'firebase/auth';
+import { initializeAuth, getAuth } from 'firebase/auth';
 import { getFirestore } from 'firebase/firestore';
 import { getDatabase } from 'firebase/database';
 import { getFunctions as getFirebaseFunctions } from 'firebase/functions';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+
+// Metro resolves @firebase/auth to its RN bundle which exports getReactNativePersistence;
+// the browser typings don't include it so we require() to skip the tsc module check.
+// eslint-disable-next-line @typescript-eslint/no-require-imports
+const { getReactNativePersistence } = require('@firebase/auth') as {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  getReactNativePersistence: (storage: typeof AsyncStorage) => any;
+};
 
 const firebaseConfig = {
   apiKey: process.env.EXPO_PUBLIC_FIREBASE_API_KEY,
@@ -15,7 +24,19 @@ const firebaseConfig = {
 };
 
 const app = getApps().length === 0 ? initializeApp(firebaseConfig) : getApps()[0];
-export const auth = getAuth(app);
+
+// Use LOCAL persistence via AsyncStorage so the session survives app restarts.
+// initializeAuth throws if called twice (hot reload) — fall back to getAuth().
+let auth: ReturnType<typeof getAuth>;
+try {
+  auth = initializeAuth(app, {
+    persistence: getReactNativePersistence(AsyncStorage),
+  });
+} catch {
+  auth = getAuth(app);
+}
+
+export { auth };
 export const db = getFirestore(app);
 export const database = getDatabase(app);
 export const functions = getFirebaseFunctions(app, 'europe-west1');
