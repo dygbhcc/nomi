@@ -24,7 +24,7 @@
       }
     },
     "android": {
-      "package": "com.anonymous.nomi",
+      "package": "com.nomiapp.nomi",
       "adaptiveIcon": {
         "foregroundImage": "./assets/adaptive-icon.png",
         "backgroundColor": "#ff4a00"
