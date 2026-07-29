@@ -296,6 +296,7 @@ async function fetchAndCacheByCoordinates({lat, lng, radius = 800, maxResults = 
     lng: lngNumber,
     radius: radiusNumber,
     type: "restaurant",
+    force,
   });
   // Skip permanently closed restaurants — no need to spend effort on them
   const filtered = nearby.filter((p) => p.business_status !== "CLOSED_PERMANENTLY");
