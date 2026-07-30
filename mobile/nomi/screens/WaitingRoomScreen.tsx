@@ -12,6 +12,7 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { StatusBar } from "expo-status-bar";
 import { useTranslation } from "react-i18next";
 import { Colors } from "../theme/colors";
+import { buildGroupInviteMessage } from "../config/links";
 
 type Participant = {
   id: string;
@@ -78,7 +79,7 @@ export default function WaitingRoomScreen({ roomCode, onBack, onStartVoting }: P
 
   const handleShare = async () => {
     await Share.share({
-      message: t('waitingRoom.shareMessage', { code: roomCode }),
+      message: buildGroupInviteMessage(t, roomCode),
     });
   };
 

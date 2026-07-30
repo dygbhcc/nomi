@@ -299,7 +299,8 @@
     "shareCode": "Share this code with friends:",
     "startVoting": "Start Voting",
     "leaveRoom": "Leave Room",
-    "shareMessage": "Join my Nomi group! Code: {{code}}"
+    "shareMessage": "Join my Nomi group! Code: {{code}}",
+    "shareMessageWithLink": "Join my Nomi group! Code: {{code}}\nDon't have the app yet? Get it here: {{link}}"
   },
   "voting": {
     "loading": "Loading restaurants...",

@@ -299,7 +299,8 @@
     "shareCode": "Partilha este código com amigos:",
     "startVoting": "Começar a Votar",
     "leaveRoom": "Sair da Sala",
-    "shareMessage": "Entra no meu grupo Nomi! Código: {{code}}"
+    "shareMessage": "Entra no meu grupo Nomi! Código: {{code}}",
+    "shareMessageWithLink": "Entra no meu grupo Nomi! Código: {{code}}\nAinda não tens a app? Descarrega aqui: {{link}}"
   },
   "voting": {
     "loading": "A carregar restaurantes...",

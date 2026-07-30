@@ -9,6 +9,7 @@ import { useTranslation } from 'react-i18next';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as Haptics from 'expo-haptics';
 import { Colors } from '../theme/colors';
+import { buildGroupInviteMessage } from '../config/links';
 import { createRoom, joinRoom, notifyGroupJoin } from '../services/roomService';
 import { useAuth } from '../context/AuthContext';
 
@@ -146,7 +147,7 @@ export default function GroupScreen({ onStartVoting, onJoinRoom, onBack, onNavig
     if (!roomCode) return;
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     await Share.share({
-      message: t('waitingRoom.shareMessage', { code: roomCode }),
+      message: buildGroupInviteMessage(t, roomCode),
     });
   };
 
