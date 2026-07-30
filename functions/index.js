@@ -450,9 +450,13 @@ exports.scheduledDemandUpdate = onSchedule(
 );
 
 /**
- * Daily restaurant discovery — runs every day at 03:00 Lisbon while the
+ * Daily restaurant discovery — runs every day at 09:00 Lisbon while the
  * Blaze trial credit lasts (config/schedules.discovery_end_date, then the
  * job goes dormant and the 30-day cache TTL governs again).
+ *
+ * 09:00 is deliberate: the Places API daily quota resets at midnight
+ * Pacific (07:00/08:00 Lisbon), so the job always starts a fresh quota day
+ * instead of consuming the tail of the previous one.
  *
  * Force-refreshes NEIGHBORHOODS_PER_DAY neighborhoods in rotation (cursor in
  * config/schedules), so all 44 neighborhoods are re-crawled roughly every
@@ -475,7 +479,7 @@ const DETAILS_MONTHLY_CAP = 3500;
 
 exports.scheduledMonthlyRefresh = onSchedule(
     {
-      schedule: "0 3 * * *",
+      schedule: "0 9 * * *",
       timeZone: "Europe/Lisbon",
       region: "europe-west1",
       timeoutSeconds: 540,
