@@ -29,6 +29,8 @@ const db = admin.firestore();
 
 const ZONES = {
   "Cascais Centro": "Cascais", "Estoril": "Cascais", "Monte Estoril": "Cascais",
+  "São João do Estoril": "Cascais", "Parede": "Cascais", "Carcavelos": "Cascais",
+  "Cascais Marina": "Cascais", "Guincho": "Cascais",
   "Sintra Centro": "Sintra",
   "Oeiras": "Oeiras",
   "Almada": "South Bank", "Barreiro": "South Bank",
