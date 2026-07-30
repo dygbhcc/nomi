@@ -17,6 +17,7 @@ import { StatusBar } from "expo-status-bar";
 import { Colors } from "../theme/colors";
 import BottomNavigationBar from "../components/BottomNavigationBar";
 import { getUserProfile, getSavedRestaurants } from "../services/userService";
+import { Restaurant, getPhotoUrl } from "../services/restaurantService";
 import { useAuth } from "../context/AuthContext";
 
 const ACCENT = Colors.accent;
@@ -70,6 +71,8 @@ type SavedRestaurant = {
   distance: string;
   budget: number;
   photo?: ImageSourcePropType;
+  // Full document, passed through to the detail screen on tap.
+  restaurant: Restaurant;
 };
 
 const ALL_BADGES: Badge[] = [
@@ -95,9 +98,10 @@ function budgetSymbol(level: number): string {
 
 type Props = {
   onNavigate: (screen: string) => void;
+  onSelectRestaurant: (restaurant: Restaurant) => void;
 };
 
-export default function ProfileScreen({ onNavigate }: Props) {
+export default function ProfileScreen({ onNavigate, onSelectRestaurant }: Props) {
   const { t } = useTranslation();
   const { user: authUser, signOut, resendVerification } = useAuth();
   const insets = useSafeAreaInsets();
@@ -140,15 +144,20 @@ export default function ProfileScreen({ onNavigate }: Props) {
         // Map restaurants to SavedRestaurant format. Restaurant docs store a
         // `location`, not a precomputed `distance_meters`, so guard against NaN
         // and only show a distance when one is actually available.
-        const savedRestaurants: SavedRestaurant[] = restaurants.map((r) => ({
-          id: r.id,
-          name: r.name || 'Unknown',
-          distance:
-            typeof r.distance_meters === 'number' && !isNaN(r.distance_meters)
-              ? `${(r.distance_meters / 1000).toFixed(1)} km`
-              : '',
-          budget: r.budget_level || 2,
-        }));
+        const savedRestaurants: SavedRestaurant[] = restaurants.map((r) => {
+          const photoUrl = getPhotoUrl(r);
+          return {
+            id: r.id,
+            name: r.name || 'Unknown',
+            distance:
+              typeof r.distance_meters === 'number' && !isNaN(r.distance_meters)
+                ? `${(r.distance_meters / 1000).toFixed(1)} km`
+                : '',
+            budget: r.budget_level || 2,
+            photo: photoUrl ? { uri: photoUrl } : undefined,
+            restaurant: r as Restaurant,
+          };
+        });
 
         setUser({
           name: profile.displayName,
@@ -354,7 +363,13 @@ export default function ProfileScreen({ onNavigate }: Props) {
             contentContainerStyle={styles.savedRow}
           >
             {user.savedRestaurants.map((r: SavedRestaurant) => (
-              <View key={r.id} style={styles.savedCard}>
+              <TouchableOpacity
+                key={r.id}
+                style={styles.savedCard}
+                onPress={() => onSelectRestaurant(r.restaurant)}
+                accessibilityLabel={`Open ${r.name} details`}
+                accessibilityRole="button"
+              >
                 {r.photo ? (
                   <Image source={r.photo} style={styles.savedPhoto} resizeMode="cover" />
                 ) : (
@@ -370,7 +385,7 @@ export default function ProfileScreen({ onNavigate }: Props) {
                 <Text style={styles.savedMeta}>
                   {r.distance ? `${r.distance} · ` : ''}{budgetSymbol(r.budget)}
                 </Text>
-              </View>
+              </TouchableOpacity>
             ))}
           </ScrollView>
         ) : (

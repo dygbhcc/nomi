@@ -529,6 +529,11 @@ function AppNavigator() {
       {screen === "profile" && (
         <ProfileScreen
           onNavigate={(s) => setScreen(s as Screen)}
+          onSelectRestaurant={(restaurant) => {
+            setDetailRestaurant(restaurant);
+            setPreviousScreen("profile");
+            setScreen("detail");
+          }}
         />
       )}
       {screen === "validate" && (
