@@ -1456,8 +1456,11 @@ exports.getSmartRecommendations = onCall(
         const CACHE_TTL_MS = 6 * 60 * 60 * 1000; // 6h
         const round = (n) => Math.round(n * 100) / 100; // ~1.1km grid cell
         const moodKey = [...normalizedMoods].sort().join("-") || "any";
+        // Distance is part of the key: the location-first pool below depends
+        // on the selected range, so a 500m pool must not be served to a 10km
+        // request in the same grid cell.
         const regionKey = (userLat != null && userLng != null) ?
-          `${round(userLat)}_${round(userLng)}_${budgetLevel || "any"}_${moodKey}` :
+          `${round(userLat)}_${round(userLng)}_${budgetLevel || "any"}_${moodKey}_${distance || "any"}` :
           null;
 
         let cacheHit = false;
@@ -1478,8 +1481,49 @@ exports.getSmartRecommendations = onCall(
           }
         }
 
-        // Primary query: mood_tags + business_status OPERATIONAL + budget_level
-        if (!cacheHit && normalizedMoods.length > 0 && budgetLevel) {
+        // --- 1a. Location-first pool ---
+        // The user's position and selected range are the primary signal: pull
+        // restaurants around them from the crawl region caches and hard-filter
+        // to the selected range. The city-wide mood/budget queries below only
+        // top up when this local list is thin, so a "Nearby/500m" user in
+        // Cascais is never handed a Lisbon restaurant while closer ones exist.
+        const LOCAL_DOC_CAP = 200;
+        if (!cacheHit && userLat != null && userLng != null) {
+          const searchRadius = distance || 10000;
+          const nearbyHoods = neighborhoods.filter((n) =>
+            haversineDistance(userLat, userLng, n.lat, n.lng) <= searchRadius + n.radius);
+          if (nearbyHoods.length > 0) {
+            const regionRefs = nearbyHoods.map((n) =>
+              db.collection("cache_regions").doc(normalizeRegionKey(n.lat, n.lng, n.radius)));
+            const regionSnaps = await db.getAll(...regionRefs);
+            const localIds = new Set();
+            regionSnaps.forEach((s) => {
+              if (s.exists) {
+                (s.data().restaurant_ids || []).forEach((id) => localIds.add(id));
+              }
+            });
+            const idList = [...localIds].slice(0, LOCAL_DOC_CAP);
+            if (idList.length > 0) {
+              const docs = await db.getAll(
+                  ...idList.map((id) => db.collection("restaurants").doc(id)));
+              candidates = docs
+                  .filter((d) => d.exists)
+                  .map((d) => ({id: d.id, ...d.data(), _local: true}))
+                  .filter((c) => {
+                    const lat = c.location?.lat;
+                    const lng = c.location?.lng;
+                    if (lat == null || lng == null) return false;
+                    if (c.business_status && c.business_status !== "OPERATIONAL") return false;
+                    return haversineDistance(userLat, userLng, lat, lng) <= searchRadius;
+                  });
+              meta.localCount = candidates.length;
+            }
+          }
+        }
+
+        // Primary query: mood_tags + business_status OPERATIONAL + budget_level.
+        // Only tops up when the location-first pool is thin.
+        if (!cacheHit && candidates.length < 10 && normalizedMoods.length > 0 && budgetLevel) {
           const primaryQuery = db.collection("restaurants")
               .where("mood_tags", "array-contains-any", normalizedMoods)
               .where("business_status", "==", "OPERATIONAL")
@@ -1487,7 +1531,13 @@ exports.getSmartRecommendations = onCall(
               .orderBy("google_rating", "desc")
               .limit(CANDIDATE_LIMIT);
           const primarySnap = await primaryQuery.get();
-          candidates = primarySnap.docs.map((doc) => ({id: doc.id, ...doc.data()}));
+          const existingIds = new Set(candidates.map((c) => c.id));
+          primarySnap.docs.forEach((doc) => {
+            if (!existingIds.has(doc.id)) {
+              candidates.push({id: doc.id, ...doc.data()});
+              existingIds.add(doc.id);
+            }
+          });
         }
 
         // Fallback tier 0: mood + business_status (no budget filter)
@@ -1595,6 +1645,12 @@ exports.getSmartRecommendations = onCall(
             const inRange = candidates.filter(
                 (c) => c._distanceMetres == null || c._distanceMetres <= distance,
             );
+            // Anything within the selected range counts as local, wherever it
+            // came from — the location-first sort must rank it above far
+            // backfills.
+            inRange.forEach((c) => {
+              if (c._distanceMetres != null) c._local = true;
+            });
             if (inRange.length >= TARGET) {
               candidates = inRange;
             } else {
@@ -1698,8 +1754,12 @@ exports.getSmartRecommendations = onCall(
           return {...c, _selectionScore: selectionScore};
         });
 
-        // Sort by score descending
-        scored.sort((a, b) => b._selectionScore - a._selectionScore);
+        // Sort location-first: candidates from the user's selected range beat
+        // city-wide pool top-ups regardless of score; score orders within
+        // each group.
+        scored.sort((a, b) =>
+          ((b._local ? 1 : 0) - (a._local ? 1 : 0)) ||
+          (b._selectionScore - a._selectionScore));
 
         // --- 6. Diversity enforcement ---
         const selected = [];
@@ -1710,7 +1770,12 @@ exports.getSmartRecommendations = onCall(
           const hood = candidate.neighborhood || "unknown";
           const bLevel = candidate.budget_level || 0;
 
-          if ((neighborhoodCount[hood] || 0) >= 2) return false;
+          // Neighborhood diversity only makes sense for city-wide pools:
+          // within a selected range everything shares a neighborhood, so
+          // capping would push far backfills into the deck. Unknown hoods are
+          // not a real group either.
+          const hoodCapApplies = !candidate._local && hood !== "unknown";
+          if (hoodCapApplies && (neighborhoodCount[hood] || 0) >= 2) return false;
           if ((budgetCount[bLevel] || 0) >= 5) return false;
 
           selected.push(candidate);
@@ -1773,6 +1838,7 @@ exports.getSmartRecommendations = onCall(
           delete c._selectionScore;
           delete c._secondChance;
           delete c._distanceMetres;
+          delete c._local;
           return c;
         });
 
