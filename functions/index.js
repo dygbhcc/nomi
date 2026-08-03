@@ -12,6 +12,7 @@ const cloudinaryCloudName = defineSecret("CLOUDINARY_CLOUD_NAME");
 const cloudinaryApiKey = defineSecret("CLOUDINARY_API_KEY");
 const cloudinaryApiSecret = defineSecret("CLOUDINARY_API_SECRET");
 const {nearbySearch, placeDetails} = require("./services/googlePlacesService");
+const {getOrUploadPhoto} = require("./services/cloudinaryService");
 const {calculateDemandForecast} = require("./services/demandScoringService");
 const {runFullPipeline} = require("./services/fullPipelineService");
 const {neighborhoods, filters} = require("./config/lisbonConfig");
@@ -226,7 +227,7 @@ const ENRICHMENT_FIELDS = [
   "photos", "is_local_concept", "noise_level",
 ];
 
-async function writeRegionCache(regionKey, restaurants) {
+async function writeRegionCache(regionKey, restaurants, uploadNewPhotos = false) {
   const regionRef = db.collection("cache_regions").doc(regionKey);
   const batch = db.batch();
   const restaurantIds = [];
@@ -235,16 +236,29 @@ async function writeRegionCache(regionKey, restaurants) {
   const existingSnaps = refs.length ? await db.getAll(...refs) : [];
   const existingIds = new Set(existingSnaps.filter((s) => s.exists).map((s) => s.id));
 
-  restaurants.forEach((restaurant) => {
+  for (const restaurant of restaurants) {
     const docId = restaurant.place_id;
     restaurantIds.push(docId);
     let payload = restaurant;
     if (existingIds.has(docId)) {
       payload = {...restaurant};
       for (const field of ENRICHMENT_FIELDS) delete payload[field];
+    } else if (uploadNewPhotos && payload.photos?.[0]?.photo_reference) {
+      // New restaurant discovered by the crawl: put its primary photo on
+      // Cloudinary right away so clients never depend on the Google photo
+      // endpoint (which shares the tight Places daily quota). Failure keeps
+      // the Google reference as fallback.
+      const first = payload.photos[0];
+      const url = await getOrUploadPhoto(first.photo_reference, docId, 0);
+      if (url) {
+        payload.photos = [
+          {url, source: "cloudinary", width: first.width, height: first.height},
+          ...payload.photos.slice(1),
+        ];
+      }
     }
     batch.set(db.collection("restaurants").doc(docId), payload, {merge: true});
-  });
+  }
 
   batch.set(
       regionRef,
@@ -340,7 +354,9 @@ async function fetchAndCacheByCoordinates({lat, lng, radius = 800, maxResults = 
     throw new Error("All place detail fetches failed — keeping existing region cache.");
   }
 
-  await writeRegionCache(regionKey, restaurants);
+  // Photo uploads only on force (scheduled crawl) — client-facing calls
+  // must not pay the upload latency.
+  await writeRegionCache(regionKey, restaurants, force);
 
   return {
     source: "google_places",
@@ -484,6 +500,7 @@ exports.scheduledMonthlyRefresh = onSchedule(
       region: "europe-west1",
       timeoutSeconds: 540,
       memory: "512MiB",
+      secrets: [cloudinaryCloudName, cloudinaryApiKey, cloudinaryApiSecret],
     },
     async () => {
       const config = await getScheduleConfig();
