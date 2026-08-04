@@ -11,10 +11,12 @@ function configureCloudinary() {
     throw new Error("Cloudinary credentials not set in environment");
   }
 
+  // trim(): the stored secret values carry a trailing newline, which Secret
+  // Manager injects verbatim — Cloudinary then rejects the key as invalid.
   cloudinary.config({
-    cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
-    api_key: process.env.CLOUDINARY_API_KEY,
-    api_secret: process.env.CLOUDINARY_API_SECRET,
+    cloud_name: process.env.CLOUDINARY_CLOUD_NAME.trim(),
+    api_key: process.env.CLOUDINARY_API_KEY.trim(),
+    api_secret: process.env.CLOUDINARY_API_SECRET.trim(),
   });
 }
 
