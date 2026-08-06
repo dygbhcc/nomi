@@ -83,6 +83,25 @@ export default function VotingScreen({ roomCode, selectedMoods, budgetLevel, isH
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  // Participant fallback: if host hasn't stored restaurant_ids after 12s, fetch independently
+  useEffect(() => {
+    if (isHost) return;
+    const timer = setTimeout(() => {
+      if (!participantLoadStartedRef.current) {
+        participantLoadStartedRef.current = true;
+        getRestaurantsByMood(selectedMoods, budgetLevel, 6)
+          .then(data => {
+            const withReasons = data.map(r => ({ ...r, reason: buildReason(r, selectedMoods) }));
+            setRestaurants(withReasons);
+          })
+          .catch(() => setError(t('swipe.errorLoading')))
+          .finally(() => setLoading(false));
+      }
+    }, 12000);
+    return () => clearTimeout(timer);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   // Room listener: realtime votes + participant restaurant loading
   useEffect(() => {
     if (!roomCode) return;
@@ -92,7 +111,6 @@ export default function VotingScreen({ roomCode, selectedMoods, budgetLevel, isH
       // Participant: load restaurants from room when host has stored them
       if (!isHost && !participantLoadStartedRef.current && roomData?.restaurant_ids?.length) {
         participantLoadStartedRef.current = true;
-        setLoading(true);
         getRestaurantsByIds(roomData.restaurant_ids)
           .then(data => {
             const withReasons = data.map(r => ({ ...r, reason: buildReason(r, selectedMoods) }));

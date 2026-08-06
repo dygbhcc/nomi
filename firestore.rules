@@ -4,8 +4,15 @@ service cloud.firestore {
 
     // All client reads and writes go through Cloud Functions (Admin SDK
     // bypasses these rules). The only direct access left is the read-only
-    // realtime room listener used during group voting.
+    // realtime room listener used during group voting, and restaurant reads
+    // used to synchronize the shared voting list across participants.
     match /rooms/{roomId} {
+      allow read: if request.auth != null;
+      allow write: if false;
+    }
+
+    // Restaurants are public catalogue data — reads allowed, writes blocked.
+    match /restaurants/{restaurantId} {
       allow read: if request.auth != null;
       allow write: if false;
     }
