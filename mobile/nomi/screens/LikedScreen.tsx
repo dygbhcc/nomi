@@ -26,18 +26,15 @@ export default function LikedScreen({ likedRestaurants, onSelect, onStartOver }:
   const [showConfirmModal, setShowConfirmModal] = useState(false);
 
   const handleStartOver = () => {
-    console.log('🔴 handleStartOver called - showing modal');
     setShowConfirmModal(true);
   };
 
   const handleConfirm = () => {
-    console.log('🟢 User confirmed Start Over');
     setShowConfirmModal(false);
     onStartOver();
   };
 
   const handleCancel = () => {
-    console.log('🟡 User cancelled');
     setShowConfirmModal(false);
   };
 
