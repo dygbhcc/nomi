@@ -26,6 +26,40 @@ const db = admin.firestore();
 const CACHE_TTL_DAYS = 30;
 const MAX_RESULTS_DEFAULT = 40;
 
+/**
+ * Best-effort in-memory rate limiter for expensive callables. State lives per
+ * function instance, so with maxInstances N the effective ceiling is up to
+ * N × maxRequests — a burst brake against abuse and runaway clients, not an
+ * exact global limit.
+ */
+const RATE_LIMIT = new Map();
+
+function checkRateLimit(callerId, maxRequests = 10, windowMs = 60000) {
+  const now = Date.now();
+  const key = callerId || "anonymous";
+  const entry = RATE_LIMIT.get(key);
+
+  if (!entry || now > entry.resetAt) {
+    RATE_LIMIT.set(key, {count: 1, resetAt: now + windowMs});
+    return true;
+  }
+  if (entry.count >= maxRequests) {
+    return false;
+  }
+  entry.count++;
+  return true;
+}
+
+function rateLimitCallerId(request) {
+  return request.auth?.uid || request.rawRequest?.ip || "anonymous";
+}
+
+function enforceRateLimit(request, maxRequests, windowMs = 60000) {
+  if (!checkRateLimit(rateLimitCallerId(request), maxRequests, windowMs)) {
+    throw new HttpsError("resource-exhausted", "Rate limit exceeded. Please wait before retrying.");
+  }
+}
+
 function normalizeRegionKey(lat, lng, radius) {
   const latBucket = Number(lat).toFixed(3);
   const lngBucket = Number(lng).toFixed(3);
@@ -368,8 +402,13 @@ async function fetchAndCacheByCoordinates({lat, lng, radius = 800, maxResults = 
 exports.fetchAndCacheRestaurants = onCall(
     {
       region: "europe-west1",
+      maxInstances: 10,
+      minInstances: 0,
+      concurrency: 1,
+      timeoutSeconds: 60,
     },
     async (request) => {
+      enforceRateLimit(request, 10);
       if (process.env.PIPELINES_DISABLED === "true") {
         return {disabled: true, message: "Pipelines disabled — use cached data only"};
       }
@@ -386,6 +425,11 @@ exports.fetchAndCacheRestaurants = onCall(
 exports.warmupLisbonRestaurants = onCall(
     {
       region: "europe-west1",
+      // Crawls every neighborhood — one admin invocation at a time is plenty.
+      maxInstances: 1,
+      minInstances: 0,
+      concurrency: 1,
+      timeoutSeconds: 300,
     },
     async () => {
       if (process.env.PIPELINES_DISABLED === "true") {
@@ -420,8 +464,13 @@ exports.warmupLisbonRestaurants = onCall(
 exports.getDemandForecast = onCall(
     {
       region: "europe-west1",
+      maxInstances: 10,
+      minInstances: 0,
+      concurrency: 1,
+      timeoutSeconds: 60,
     },
-    async () => {
+    async (request) => {
+      enforceRateLimit(request, 5);
       try {
         const cached = await db.collection("demand_forecasts").doc("latest").get();
         if (cached.exists) {
@@ -444,6 +493,7 @@ exports.scheduledDemandUpdate = onSchedule(
       schedule: "0 8 * * *",
       timeZone: "Europe/Lisbon",
       region: "europe-west1",
+      maxInstances: 1,
     },
     async () => {
       const config = await getScheduleConfig();
@@ -500,6 +550,7 @@ exports.scheduledMonthlyRefresh = onSchedule(
       region: "europe-west1",
       timeoutSeconds: 540,
       memory: "512MiB",
+      maxInstances: 1,
       secrets: [cloudinaryCloudName, cloudinaryApiKey, cloudinaryApiSecret],
     },
     async () => {
@@ -589,6 +640,7 @@ exports.onBudgetAlert = onMessagePublished(
     {
       topic: "budget-alerts",
       region: "europe-west1",
+      maxInstances: 1,
     },
     async (event) => {
       try {
@@ -619,6 +671,7 @@ exports.runFullLisbonPipeline = onCall(
       region: "europe-west1",
       timeoutSeconds: 540,
       memory: "1GiB",
+      maxInstances: 1,
       secrets: [cloudinaryCloudName, cloudinaryApiKey, cloudinaryApiSecret],
     },
     async () => {
@@ -638,6 +691,7 @@ exports.markClosedRestaurants = onCall(
       region: "europe-west1",
       timeoutSeconds: 540,
       memory: "512MiB",
+      maxInstances: 1,
     },
     async (request) => {
       if (process.env.PIPELINES_DISABLED === "true") {
@@ -746,6 +800,10 @@ exports.markClosedRestaurants = onCall(
 exports.checkRestaurantById = onCall(
     {
       region: "europe-west1",
+      maxInstances: 10,
+      minInstances: 0,
+      concurrency: 1,
+      timeoutSeconds: 60,
     },
     async (request) => {
       const placeId = request.data?.placeId;
@@ -808,6 +866,10 @@ exports.checkRestaurantById = onCall(
 exports.getRestaurantStatusBreakdown = onCall(
     {
       region: "europe-west1",
+      maxInstances: 10,
+      minInstances: 0,
+      concurrency: 1,
+      timeoutSeconds: 60,
     },
     async () => {
       const snapshot = await db.collection("restaurants").get();
@@ -859,6 +921,7 @@ exports.importManualScoresFromExcel = onCall(
       region: "europe-west1",
       timeoutSeconds: 540,
       memory: "1GiB",
+      maxInstances: 1,
     },
     async (request) => {
       const {fileData} = request.data;
@@ -1000,6 +1063,7 @@ exports.fixManualScoringFlags = onCall(
     {
       region: "europe-west1",
       timeoutSeconds: 300,
+      maxInstances: 1,
     },
     async () => {
       logger.info("Fixing manual scoring flags...");
@@ -1068,6 +1132,7 @@ exports.deleteLowRatingRestaurants = onCall(
     {
       region: "europe-west1",
       timeoutSeconds: 300,
+      maxInstances: 1,
     },
     async () => {
       logger.info("Starting to delete low rating restaurants...");
@@ -1155,6 +1220,7 @@ exports.deleteClosedPermanentlyRestaurants = onCall(
     {
       region: "europe-west1",
       timeoutSeconds: 300,
+      maxInstances: 1,
     },
     async () => {
       logger.info("Deleting all CLOSED_PERMANENTLY restaurants...");
@@ -1214,6 +1280,10 @@ exports.deleteClosedPermanentlyRestaurants = onCall(
 exports.getRestaurantRatingStats = onCall(
     {
       region: "europe-west1",
+      maxInstances: 10,
+      minInstances: 0,
+      concurrency: 1,
+      timeoutSeconds: 60,
     },
     async () => {
       const snapshot = await db.collection("restaurants").get();
@@ -1267,6 +1337,7 @@ exports.exportAllRestaurants = onRequest(
       region: "europe-west1",
       timeoutSeconds: 300,
       memory: "512MiB",
+      maxInstances: 1,
     },
     async (req, res) => {
       const secret = req.headers["x-nomi-secret"];
@@ -1336,8 +1407,13 @@ exports.exportAllRestaurants = onRequest(
 exports.getPhotoUrls = onCall(
     {
       region: "europe-west1",
+      maxInstances: 10,
+      minInstances: 0,
+      concurrency: 1,
+      timeoutSeconds: 60,
     },
     async (request) => {
+      enforceRateLimit(request, 20);
       const {photoReferences, maxWidth = 400} = request.data || {};
 
       if (!photoReferences || !Array.isArray(photoReferences)) {
@@ -1361,6 +1437,7 @@ exports.exportRestaurantsWithoutScoring = onCall(
       region: "europe-west1",
       timeoutSeconds: 300,
       memory: "512MiB",
+      maxInstances: 1,
     },
     async () => {
       logger.info("Exporting restaurants without manual scoring...");
@@ -1446,8 +1523,12 @@ exports.getSmartRecommendations = onCall(
     {
       region: "europe-west1",
       timeoutSeconds: 30,
+      maxInstances: 10,
+      minInstances: 0,
+      concurrency: 1,
     },
     async (request) => {
+      enforceRateLimit(request, 15);
       const {userId, moods = [], budgetLevel, distance, userLat, userLng} = request.data || {};
 
       // Normalize moods: "hungry&quick" → "hungry_quick"
@@ -1874,6 +1955,7 @@ exports.scheduledGeminiNlp = onSchedule(
       region: "europe-west1",
       timeoutSeconds: 540,
       memory: "512MiB",
+      maxInstances: 1,
     },
     async () => {
       const config = await getScheduleConfig();
@@ -1898,6 +1980,7 @@ exports.manualGeminiNlp = onRequest(
       region: "europe-west1",
       timeoutSeconds: 540,
       memory: "256MiB",
+      maxInstances: 1,
     },
     async (req, res) => {
       if (process.env.PIPELINES_DISABLED === "true") {
@@ -1920,6 +2003,7 @@ exports.initNlpFlags = onRequest(
     {
       region: "europe-west1",
       timeoutSeconds: 300,
+      maxInstances: 1,
     },
     async (req, res) => {
       const secret = req.headers["x-nomi-secret"];
@@ -1965,6 +2049,10 @@ exports.initNlpFlags = onRequest(
 exports.notifyGroupInvite = onCall(
     {
       region: "europe-west1",
+      maxInstances: 10,
+      minInstances: 0,
+      concurrency: 1,
+      timeoutSeconds: 60,
     },
     async (request) => {
       const {roomCode, inviterName} = request.data || {};
@@ -1991,6 +2079,10 @@ exports.notifyGroupInvite = onCall(
 exports.notifyVotingStarted = onCall(
     {
       region: "europe-west1",
+      maxInstances: 10,
+      minInstances: 0,
+      concurrency: 1,
+      timeoutSeconds: 60,
     },
     async (request) => {
       const {roomCode} = request.data || {};
@@ -2017,6 +2109,10 @@ exports.notifyVotingStarted = onCall(
 exports.notifyResultReady = onCall(
     {
       region: "europe-west1",
+      maxInstances: 10,
+      minInstances: 0,
+      concurrency: 1,
+      timeoutSeconds: 60,
     },
     async (request) => {
       const {roomCode, restaurantName} = request.data || {};

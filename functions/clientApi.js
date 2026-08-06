@@ -310,6 +310,10 @@ async function recordValidation(uid, restaurantId, moodTag, direction) {
 exports.userApi = onCall(
     {
       region: REGION,
+      maxInstances: 10,
+      minInstances: 0,
+      concurrency: 1,
+      timeoutSeconds: 60,
     },
     async (request) => {
       const uid = requireAuth(request);
@@ -474,6 +478,10 @@ async function recordPreferenceVote(uid, code, preferences) {
 exports.roomApi = onCall(
     {
       region: REGION,
+      maxInstances: 10,
+      minInstances: 0,
+      concurrency: 1,
+      timeoutSeconds: 60,
     },
     async (request) => {
       const uid = requireAuth(request);
@@ -671,6 +679,10 @@ async function getRestaurantsForValidation(uid, data) {
 exports.restaurantApi = onCall(
     {
       region: REGION,
+      maxInstances: 10,
+      minInstances: 0,
+      concurrency: 1,
+      timeoutSeconds: 60,
     },
     async (request) => {
       const uid = requireAuth(request);
