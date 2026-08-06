@@ -28,7 +28,7 @@ import GroupLikedScreen from "./screens/GroupLikedScreen";
 import GroupVoteScreen from "./screens/GroupVoteScreen";
 import EventPlanScreen from "./screens/EventPlanScreen";
 import { Colors } from "./theme/colors";
-import { getRoomPreferences } from "./services/roomService";
+import { getRoomPreferences, leaveRoom } from "./services/roomService";
 import { notifyVotingStarted, notifyResultReady } from "./services/roomService";
 import {
   registerForPushNotificationsAsync,
@@ -344,7 +344,14 @@ function AppNavigator() {
       )}
       {screen === "group" && (
         <GroupScreen
-          onBack={() => setScreen("mood")}
+          onBack={() => {
+            // Backing out of the group hub returns to the solo flow — group
+            // mode must not leak into it.
+            setIsGroupMode(false);
+            setIsHost(false);
+            setRoomCode("");
+            setScreen("mood");
+          }}
           onStartVoting={(code, moods, budget, distanceMeters) => {
             setRoomCode(code);
             setIsGroupMode(true);
@@ -366,7 +373,15 @@ function AppNavigator() {
       {screen === "waitingRoom" && (
         <WaitingRoomScreen
           roomCode={roomCode}
-          onBack={() => setScreen("group")}
+          onBack={() => {
+            // Leaving the room: remove ourselves server-side and drop all
+            // room-scoped state so a later solo flow cannot re-enter it.
+            if (roomCode) leaveRoom(roomCode);
+            setRoomCode("");
+            setParticipants([]);
+            setIsHost(false);
+            setScreen("group");
+          }}
           onStartVoting={async (names) => {
             setParticipants(names);
 

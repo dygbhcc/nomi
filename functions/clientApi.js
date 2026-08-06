@@ -386,6 +386,17 @@ async function joinRoom(uid, code, name) {
   return {ok: true};
 }
 
+async function leaveRoom(uid, code) {
+  const roomRef = db.collection("rooms").doc(code);
+  const snap = await roomRef.get();
+  if (!snap.exists) return {ok: true};
+
+  await roomRef.update({
+    [`participants.${uid}`]: FieldValue.delete(),
+  });
+  return {ok: true};
+}
+
 async function setRoomPreferences(code, preferences) {
   if (!preferences || typeof preferences !== "object") {
     throw new HttpsError("invalid-argument", "preferences is required");
@@ -495,6 +506,8 @@ exports.roomApi = onCall(
             return await createRoom(uid, code, data.name, data.preferences);
           case "join":
             return await joinRoom(uid, code, data.name);
+          case "leave":
+            return await leaveRoom(uid, code);
           case "setPreferences":
             return await setRoomPreferences(code, data.preferences);
           case "getPreferences":

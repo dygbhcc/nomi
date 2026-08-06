@@ -68,6 +68,14 @@ export const joinRoom = async (
   }
 };
 
+export const leaveRoom = async (code: string): Promise<void> => {
+  try {
+    await callRoomApi('leave', { code });
+  } catch (error) {
+    __DEV__ && console.error('leaveRoom error:', error);
+  }
+};
+
 export const listenToRoom = (
   code: string,
   callback: (room: Room | null) => void
