@@ -316,9 +316,21 @@ async function getScheduleConfig() {
   const data = snap.exists ? snap.data() : {};
   return {
     enabled: data.enabled !== false,
+    hardDisabled: data.hard_disabled === true,
     discoveryEndDate: data.discovery_end_date || null, // "YYYY-MM-DD"
     discoveryCursor: Number(data.discovery_cursor) || 0,
   };
+}
+
+/**
+ * Budget hard stop: once the billing budget is exceeded, every path that
+ * spends on external APIs must refuse until manually re-enabled.
+ */
+async function assertSpendingAllowed() {
+  const config = await getScheduleConfig();
+  if (config.hardDisabled) {
+    throw new HttpsError("failed-precondition", "Service temporarily disabled by budget guard.");
+  }
 }
 
 async function fetchAndCacheByCoordinates({lat, lng, radius = 800, maxResults = MAX_RESULTS_DEFAULT, force = false}) {
@@ -409,6 +421,7 @@ exports.fetchAndCacheRestaurants = onCall(
     },
     async (request) => {
       enforceRateLimit(request, 10);
+      await assertSpendingAllowed();
       if (process.env.PIPELINES_DISABLED === "true") {
         return {disabled: true, message: "Pipelines disabled — use cached data only"};
       }
@@ -432,6 +445,7 @@ exports.warmupLisbonRestaurants = onCall(
       timeoutSeconds: 300,
     },
     async () => {
+      await assertSpendingAllowed();
       if (process.env.PIPELINES_DISABLED === "true") {
         return {disabled: true, message: "Pipelines disabled for launch"};
       }
@@ -646,20 +660,37 @@ exports.onBudgetAlert = onMessagePublished(
       try {
         const data = event.data.message.json;
         const cost = Number(data.costAmount) || 0;
-        if (cost <= 0.5) return; // ignore rounding noise while credits cover everything
+        // The console budget amount is the line. Fallback guard if the
+        // message ever arrives without one.
+        const budget = Number(data.budgetAmount) || 50;
 
-        const snap = await db.collection("config").doc("schedules").get();
-        if (snap.exists && snap.data().enabled === false) return; // already off
-
-        await db.collection("config").doc("schedules").set({
-          enabled: false,
-          disabled_reason: `budget alert: cost ${cost} ${data.currencyCode || ""}`,
-          disabled_at: admin.firestore.FieldValue.serverTimestamp(),
-        }, {merge: true});
-        logger.error("[onBudgetAlert] Real spend detected — scheduled jobs DISABLED.", {
-          costAmount: cost,
-          budgetAmount: data.budgetAmount,
-        });
+        if (cost >= budget) {
+          // 100%: full stop — schedulers skip and every external-API path
+          // (Places, Gemini, photo uploads) refuses via assertSpendingAllowed.
+          await db.collection("config").doc("schedules").set({
+            enabled: false,
+            hard_disabled: true,
+            disabled_reason: `budget exceeded: cost ${cost}/${budget} ${data.currencyCode || ""}`,
+            disabled_at: admin.firestore.FieldValue.serverTimestamp(),
+          }, {merge: true});
+          logger.error("[onBudgetAlert] BUDGET EXCEEDED — system spending HARD-DISABLED.", {
+            costAmount: cost, budgetAmount: budget,
+          });
+        } else if (cost >= budget * 0.9) {
+          // 90%: stop discretionary scheduled spend, keep serving users.
+          await db.collection("config").doc("schedules").set({
+            enabled: false,
+            disabled_reason: `budget at 90%: cost ${cost}/${budget} ${data.currencyCode || ""}`,
+            disabled_at: admin.firestore.FieldValue.serverTimestamp(),
+          }, {merge: true});
+          logger.warn("[onBudgetAlert] Budget at 90% — scheduled jobs disabled.", {
+            costAmount: cost, budgetAmount: budget,
+          });
+        } else {
+          logger.info("[onBudgetAlert] Spend update within budget.", {
+            costAmount: cost, budgetAmount: budget,
+          });
+        }
       } catch (error) {
         logger.error("[onBudgetAlert] Failed to process budget message:", error);
       }
@@ -675,6 +706,7 @@ exports.runFullLisbonPipeline = onCall(
       secrets: [cloudinaryCloudName, cloudinaryApiKey, cloudinaryApiSecret],
     },
     async () => {
+      await assertSpendingAllowed();
       if (process.env.PIPELINES_DISABLED === "true") {
         return {disabled: true, message: "Pipelines disabled for launch"};
       }
@@ -1414,6 +1446,7 @@ exports.getPhotoUrls = onCall(
     },
     async (request) => {
       enforceRateLimit(request, 20);
+      await assertSpendingAllowed();
       const {photoReferences, maxWidth = 400} = request.data || {};
 
       if (!photoReferences || !Array.isArray(photoReferences)) {
@@ -1983,6 +2016,10 @@ exports.manualGeminiNlp = onRequest(
       maxInstances: 1,
     },
     async (req, res) => {
+      const config = await getScheduleConfig();
+      if (config.hardDisabled) {
+        return res.status(503).json({error: "Service temporarily disabled by budget guard."});
+      }
       if (process.env.PIPELINES_DISABLED === "true") {
         return res.json({disabled: true, message: "Pipelines disabled for launch"});
       }
