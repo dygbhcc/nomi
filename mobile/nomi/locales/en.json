@@ -302,7 +302,10 @@
     "you": "You",
     "host": "host",
     "shareMessage": "Join my Nomi group! Code: {{code}}",
-    "shareMessageWithLink": "Join my Nomi group! Code: {{code}}\nDon't have the app yet? Get it here: {{link}}"
+    "shareMessageWithLink": "Join my Nomi group! Code: {{code}}\nDon't have the app yet? Get it here: {{link}}",
+    "tapToCopy": "Tap the code to copy",
+    "copied": "Copied!",
+    "moreOptions": "More options"
   },
   "voting": {
     "loading": "Loading restaurants...",

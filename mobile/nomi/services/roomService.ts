@@ -16,6 +16,7 @@ export type Room = {
   status: 'waiting' | 'voting' | 'decided';
   winner_id?: string;
   created_at: Timestamp;
+  restaurant_ids?: string[];
   preferences?: {
     moods: string[];
     budget: number;
@@ -66,6 +67,10 @@ export const joinRoom = async (
     __DEV__ && console.error('joinRoom error:', error);
     return false;
   }
+};
+
+export const setRoomRestaurantList = async (code: string, restaurantIds: string[]): Promise<void> => {
+  await callRoomApi('setRestaurantList', { code, restaurantIds });
 };
 
 export const leaveRoom = async (code: string): Promise<void> => {

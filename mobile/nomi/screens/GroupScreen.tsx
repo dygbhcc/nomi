@@ -1,7 +1,8 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
   View, Text, TouchableOpacity, StyleSheet,
-  ScrollView, Share, Alert, TextInput, Image, Modal,
+  ScrollView, Share, TextInput, Image, Modal,
+  KeyboardAvoidingView, Platform, Linking, Clipboard,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { StatusBar } from 'expo-status-bar';
@@ -63,6 +64,7 @@ export default function GroupScreen({ onStartVoting, onJoinRoom, onBack, onNavig
   const [showGuestModal, setShowGuestModal] = useState(false);
   const [showErrorModal, setShowErrorModal] = useState(false);
   const [errorMessage, setErrorMessage] = useState('');
+  const [copied, setCopied] = useState(false);
 
   // Load defaults from settings on mount
   useEffect(() => {
@@ -100,8 +102,8 @@ export default function GroupScreen({ onStartVoting, onJoinRoom, onBack, onNavig
     __DEV__ && console.log('Is guest:', isGuest);
     __DEV__ && console.log('User:', user);
 
-    if (isGuest) {
-      __DEV__ && console.log('⚠️ User is guest, showing modal');
+    if (isGuest || user?.isAnonymous) {
+      __DEV__ && console.log('⚠️ User is guest/anonymous, showing modal');
       setShowGuestModal(true);
       return;
     }
@@ -143,12 +145,31 @@ export default function GroupScreen({ onStartVoting, onJoinRoom, onBack, onNavig
     __DEV__ && console.log('🔘 Button disabled?', selectedMoods.length === 0 || loading);
   }, [selectedMoods, loading]);
 
+  const handleCopyCode = () => {
+    if (!roomCode) return;
+    Clipboard.setString(roomCode);
+    Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
+  };
+
   const handleShare = async () => {
     if (!roomCode) return;
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-    await Share.share({
-      message: buildGroupInviteMessage(t, roomCode),
-    });
+    await Share.share({ message: buildGroupInviteMessage(t, roomCode) });
+  };
+
+  const handleShareWhatsApp = async () => {
+    if (!roomCode) return;
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+    const message = buildGroupInviteMessage(t, roomCode);
+    const url = `whatsapp://send?text=${encodeURIComponent(message)}`;
+    const canOpen = await Linking.canOpenURL(url).catch(() => false);
+    if (canOpen) {
+      await Linking.openURL(url);
+    } else {
+      await Share.share({ message });
+    }
   };
 
   const handleStart = () => {
@@ -160,7 +181,7 @@ export default function GroupScreen({ onStartVoting, onJoinRoom, onBack, onNavig
   const handleJoin = async () => {
     if (joinCode.length !== 6 || !user) return;
 
-    if (isGuest) {
+    if (isGuest || user?.isAnonymous) {
       setShowGuestModal(true);
       return;
     }
@@ -186,9 +207,16 @@ export default function GroupScreen({ onStartVoting, onJoinRoom, onBack, onNavig
     }
   };
 
+  const scrollRef = useRef<ScrollView>(null);
+
   return (
     <SafeAreaView style={styles.container}>
       <StatusBar style="dark" />
+      <KeyboardAvoidingView
+        style={styles.flex}
+        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+        keyboardVerticalOffset={0}
+      >
 
       {/* Header */}
       <View style={styles.header}>
@@ -199,7 +227,12 @@ export default function GroupScreen({ onStartVoting, onJoinRoom, onBack, onNavig
         <View style={{ width: 60 }} />
       </View>
 
-      <ScrollView contentContainerStyle={styles.scroll} showsVerticalScrollIndicator={false}>
+      <ScrollView
+        ref={scrollRef}
+        contentContainerStyle={styles.scroll}
+        showsVerticalScrollIndicator={false}
+        keyboardShouldPersistTaps="handled"
+      >
 
         {/* Step indicator */}
         <View style={styles.stepIndicator}>
@@ -291,23 +324,46 @@ export default function GroupScreen({ onStartVoting, onJoinRoom, onBack, onNavig
         {/* Room code card - only visible after room created */}
         {roomCode && (
           <View style={styles.roomCodeCard}>
-            <View style={styles.roomCodeRow}>
-              <View>
-                <Text style={styles.roomCodeLabel}>{t('waitingRoom.shareCode')}</Text>
-                <Text style={styles.roomCode} selectable>{roomCode}</Text>
-              </View>
+            <Text style={styles.roomCodeLabel}>{t('waitingRoom.shareCode')}</Text>
+
+            {/* Character boxes — tap to copy code */}
+            <TouchableOpacity
+              style={styles.codeBoxRow}
+              onPress={handleCopyCode}
+              activeOpacity={0.75}
+              accessibilityLabel="Tap to copy room code"
+              accessibilityRole="button"
+            >
+              {roomCode.split('').map((char, i) => (
+                <View key={i} style={[styles.codeBox, copied && styles.codeBoxCopied]}>
+                  <Text style={styles.codeBoxChar}>{char}</Text>
+                </View>
+              ))}
+            </TouchableOpacity>
+
+            <Text style={styles.tapHint}>
+              {copied ? `✓ ${t('waitingRoom.copied')}` : `📋 ${t('waitingRoom.tapToCopy')}`}
+            </Text>
+
+            {/* Quick-share buttons */}
+            <View style={styles.shareButtons}>
               <TouchableOpacity
-                style={styles.shareButton}
-                onPress={handleShare}
-                accessibilityLabel="Share room link"
+                style={styles.whatsappButton}
+                onPress={handleShareWhatsApp}
+                accessibilityLabel="Share via WhatsApp"
                 accessibilityRole="button"
               >
-                <Text style={styles.shareButtonText}>📤 {t('common.share')}</Text>
+                <Text style={styles.whatsappButtonText}>💬 WhatsApp</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={styles.shareMoreButton}
+                onPress={handleShare}
+                accessibilityLabel="More share options"
+                accessibilityRole="button"
+              >
+                <Text style={styles.shareMoreButtonText}>📤 {t('waitingRoom.moreOptions')}</Text>
               </TouchableOpacity>
             </View>
-            <Text style={styles.waitingHint}>
-              {t('waitingRoom.shareCode')}
-            </Text>
           </View>
         )}
 
@@ -358,6 +414,7 @@ export default function GroupScreen({ onStartVoting, onJoinRoom, onBack, onNavig
             maxLength={6}
             autoCapitalize="characters"
             accessibilityLabel="Enter room code"
+            onFocus={() => setTimeout(() => scrollRef.current?.scrollToEnd({ animated: true }), 100)}
           />
           <TouchableOpacity
             style={[styles.joinButton, (joinCode.length !== 6 || joining) && styles.joinButtonDisabled]}
@@ -424,12 +481,14 @@ export default function GroupScreen({ onStartVoting, onJoinRoom, onBack, onNavig
           </View>
         </View>
       </Modal>
+      </KeyboardAvoidingView>
     </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: Colors.background },
+  flex: { flex: 1 },
   header: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -557,46 +616,85 @@ const styles = StyleSheet.create({
 
   // Room code card
   roomCodeCard: {
-    backgroundColor: 'rgba(224, 106, 79, 0.08)',
-    borderRadius: 14,
-    padding: 16,
+    backgroundColor: 'rgba(224, 106, 79, 0.06)',
+    borderRadius: 16,
+    padding: 20,
     marginBottom: 16,
     borderWidth: 1.5,
     borderColor: Colors.accent,
-  },
-  roomCodeRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: 8,
   },
   roomCodeLabel: {
-    fontSize: 11,
-    color: Colors.accent,
-    fontWeight: '600',
-    marginBottom: 2,
-  },
-  roomCode: {
-    fontSize: 28,
-    fontWeight: '800',
-    color: Colors.textPrimary,
-    letterSpacing: 4,
-  },
-  shareButton: {
-    backgroundColor: Colors.accent,
-    borderRadius: 10,
-    paddingHorizontal: 16,
-    paddingVertical: 8,
-  },
-  shareButtonText: {
-    color: '#fff',
-    fontSize: 13,
-    fontWeight: '700',
-  },
-  waitingHint: {
     fontSize: 12,
     color: Colors.accent,
-    lineHeight: 18,
+    fontWeight: '600',
+    marginBottom: 14,
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
+  },
+  codeBoxRow: {
+    flexDirection: 'row',
+    gap: 8,
+    justifyContent: 'center',
+    marginBottom: 10,
+  },
+  codeBox: {
+    width: 44,
+    height: 52,
+    borderRadius: 10,
+    backgroundColor: '#fff',
+    borderWidth: 2,
+    borderColor: Colors.accent,
+    alignItems: 'center',
+    justifyContent: 'center',
+    shadowColor: Colors.accent,
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.15,
+    shadowRadius: 4,
+    elevation: 3,
+  },
+  codeBoxCopied: {
+    borderColor: '#4CAF50',
+    backgroundColor: '#F1FBF2',
+  },
+  codeBoxChar: {
+    fontSize: 22,
+    fontWeight: '800',
+    color: Colors.textPrimary,
+  },
+  tapHint: {
+    fontSize: 11,
+    color: Colors.textSecondary,
+    marginBottom: 16,
+  },
+  shareButtons: {
+    flexDirection: 'row',
+    gap: 10,
+    width: '100%',
+  },
+  whatsappButton: {
+    flex: 1,
+    backgroundColor: '#25D366',
+    borderRadius: 12,
+    paddingVertical: 13,
+    alignItems: 'center',
+  },
+  whatsappButtonText: {
+    color: '#fff',
+    fontSize: 14,
+    fontWeight: '700',
+  },
+  shareMoreButton: {
+    flex: 1,
+    backgroundColor: Colors.textPrimary,
+    borderRadius: 12,
+    paddingVertical: 13,
+    alignItems: 'center',
+  },
+  shareMoreButtonText: {
+    color: '#fff',
+    fontSize: 14,
+    fontWeight: '700',
   },
 
   // Hint and CTA

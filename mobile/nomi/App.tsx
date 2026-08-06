@@ -419,6 +419,7 @@ function AppNavigator() {
           roomCode={roomCode}
           selectedMoods={selectedMoods}
           budgetLevel={selectedBudget}
+          isHost={isHost}
           onVotingComplete={(restaurants, votes) => {
             setGroupRestaurants(restaurants);
             setGroupVotes(votes);

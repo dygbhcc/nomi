@@ -302,7 +302,10 @@
     "you": "Tu",
     "host": "anfitrião",
     "shareMessage": "Entra no meu grupo Nomi! Código: {{code}}",
-    "shareMessageWithLink": "Entra no meu grupo Nomi! Código: {{code}}\nAinda não tens a app? Descarrega aqui: {{link}}"
+    "shareMessageWithLink": "Entra no meu grupo Nomi! Código: {{code}}\nAinda não tens a app? Descarrega aqui: {{link}}",
+    "tapToCopy": "Toca no código para copiar",
+    "copied": "Copiado!",
+    "moreOptions": "Mais opções"
   },
   "voting": {
     "loading": "A carregar restaurantes...",

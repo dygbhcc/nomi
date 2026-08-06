@@ -1,6 +1,6 @@
-import { Timestamp } from 'firebase/firestore';
+import { Timestamp, doc, getDoc } from 'firebase/firestore';
 import { httpsCallable } from 'firebase/functions';
-import { functions } from './firebase';
+import { db, functions } from './firebase';
 import { callRestaurantApi } from './api';
 import i18n from '../i18n';
 
@@ -87,6 +87,14 @@ export const getRestaurantsByMood = async (
     __DEV__ && console.error('getRestaurantsByMood error:', error);
     return [];
   }
+};
+
+export const getRestaurantsByIds = async (ids: string[]): Promise<Restaurant[]> => {
+  if (ids.length === 0) return [];
+  const snaps = await Promise.all(ids.map(id => getDoc(doc(db, 'restaurants', id))));
+  return snaps
+    .filter(s => s.exists())
+    .map(s => ({ id: s.id, ...s.data() } as Restaurant));
 };
 
 export type SmartRecommendationsMeta = {

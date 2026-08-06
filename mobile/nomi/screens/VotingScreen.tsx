@@ -15,8 +15,8 @@ import { useTranslation } from "react-i18next";
 import * as Haptics from "expo-haptics";
 import { Colors } from "../theme/colors";
 import SwipeVoteCard from "../components/SwipeVoteCard";
-import { recordVote, calculateWinner, declareWinner, listenToRoom, Room } from '../services/roomService';
-import { getRestaurantsByMood, Restaurant, buildReason, getPhotoUrl } from '../services/restaurantService';
+import { recordVote, calculateWinner, declareWinner, listenToRoom, Room, setRoomRestaurantList } from '../services/roomService';
+import { getRestaurantsByMood, getRestaurantsByIds, Restaurant, buildReason, getPhotoUrl } from '../services/restaurantService';
 import { useAuth } from '../context/AuthContext';
 
 export { type Restaurant };
@@ -42,12 +42,13 @@ type Props = {
   roomCode: string;
   selectedMoods: string[];
   budgetLevel: number;
+  isHost: boolean;
   onVotingComplete: (restaurants: Restaurant[], votes: Record<string, Record<string, string>>) => void;
   onBack: () => void;
   onDetail: (restaurant: Restaurant) => void;
 };
 
-export default function VotingScreen({ roomCode, selectedMoods, budgetLevel, onVotingComplete, onBack, onDetail }: Props) {
+export default function VotingScreen({ roomCode, selectedMoods, budgetLevel, isHost, onVotingComplete, onBack, onDetail }: Props) {
   const { t } = useTranslation();
   const { user } = useAuth();
   const [restaurants, setRestaurants] = useState<Restaurant[]>([]);
@@ -57,86 +58,57 @@ export default function VotingScreen({ roomCode, selectedMoods, budgetLevel, onV
   const [error, setError] = useState<string | null>(null);
   const [myVotes, setMyVotes] = useState<Record<string, 'like' | 'pass'>>({});
 
-  // Debug log
+  // Refs so room listener and panResponder always see latest values without stale closures
+  const restaurantsRef = useRef<Restaurant[]>([]);
+  restaurantsRef.current = restaurants;
+  const participantLoadStartedRef = useRef(false);
+
+  // Host: fetch restaurants by mood → store IDs in room so all participants load the same list
   useEffect(() => {
-    __DEV__ && console.log('VotingScreen mounted', {
-      roomCode,
-      selectedMoods,
-      budgetLevel,
-      hasUser: !!user,
-    });
+    if (!isHost) return;
+    setLoading(true);
+    setError(null);
+    getRestaurantsByMood(selectedMoods, budgetLevel, 6)
+      .then(data => {
+        const withReasons = data.map(r => ({ ...r, reason: buildReason(r, selectedMoods) }));
+        setRestaurants(withReasons);
+        if (data.length > 0) {
+          setRoomRestaurantList(roomCode, data.map(r => r.id)).catch(e => {
+            __DEV__ && console.error('setRoomRestaurantList error:', e);
+          });
+        }
+      })
+      .catch(() => setError(t('swipe.errorLoading')))
+      .finally(() => setLoading(false));
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // Fetch restaurants on mount
+  // Room listener: realtime votes + participant restaurant loading
   useEffect(() => {
-    const fetchRestaurants = async () => {
-      setLoading(true);
-      setError(null);
-      try {
-        // TESTING: Uncomment to simulate delay
-        // await new Promise(resolve => setTimeout(resolve, 3000));
-
-        // TESTING: Uncomment to simulate error
-        // throw new Error('Failed to load restaurants');
-
-        const data = await getRestaurantsByMood(selectedMoods, budgetLevel, 6);
-
-        // TESTING: Uncomment to simulate empty results
-        // const data = [];
-
-        const withReasons = data.map(r => ({
-          ...r,
-          reason: buildReason(r, selectedMoods),
-        }));
-        __DEV__ && console.log('🍽️ Fetched restaurants:', withReasons);
-        __DEV__ && withReasons.length > 0 && console.log('First restaurant FULL OBJECT:', JSON.stringify(withReasons[0], null, 2));
-        __DEV__ && withReasons.length > 0 && console.log('Restaurant keys:', Object.keys(withReasons[0]));
-        __DEV__ && withReasons.length > 0 && console.log('Restaurant name field:', withReasons[0].name);
-        setRestaurants(withReasons);
-      } catch (error) {
-        __DEV__ && console.error('Failed to fetch restaurants:', error);
-        setError(t('swipe.errorLoading'));
-      } finally {
-        setLoading(false);
-      }
-    };
-    fetchRestaurants();
-  }, [selectedMoods, budgetLevel]);
-
-  // Debug: Log when myVotes changes
-  useEffect(() => {
-    __DEV__ && console.log('🔄 myVotes state changed:', myVotes);
-    __DEV__ && console.log('  Total votes:', Object.keys(myVotes).length);
-  }, [myVotes]);
-
-  // Listen to room for realtime votes
-  useEffect(() => {
-    if (!roomCode) {
-      __DEV__ && console.log('No room code for listener');
-      return;
-    }
-
-    __DEV__ && console.log('Setting up room listener for:', roomCode);
-
+    if (!roomCode) return;
     const unsubscribe = listenToRoom(roomCode, (roomData) => {
-      __DEV__ && console.log('🔄 Room data update:', {
-        status: roomData?.status,
-        voteCount: Object.keys(roomData?.votes || {}).length,
-        participantCount: Object.keys(roomData?.participants || {}).length,
-      });
-      __DEV__ && console.log('  Full votes object:', roomData?.votes);
-      __DEV__ && console.log('  Participants:', roomData?.participants);
-
       setRoom(roomData);
 
+      // Participant: load restaurants from room when host has stored them
+      if (!isHost && !participantLoadStartedRef.current && roomData?.restaurant_ids?.length) {
+        participantLoadStartedRef.current = true;
+        setLoading(true);
+        getRestaurantsByIds(roomData.restaurant_ids)
+          .then(data => {
+            const withReasons = data.map(r => ({ ...r, reason: buildReason(r, selectedMoods) }));
+            setRestaurants(withReasons);
+          })
+          .catch(() => setError(t('swipe.errorLoading')))
+          .finally(() => setLoading(false));
+      }
+
       if (roomData?.status === 'decided' && roomData.votes) {
-        __DEV__ && console.log('Room decided, navigating to group liked screen');
-        // All votes are in, navigate to group liked screen
-        onVotingComplete(restaurants, roomData.votes);
+        onVotingComplete(restaurantsRef.current, roomData.votes);
       }
     });
     return unsubscribe;
-  }, [roomCode, restaurants, onVotingComplete]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [roomCode]);
 
   const translateX = useRef(new Animated.Value(0)).current;
   const rotate = translateX.interpolate({
@@ -240,6 +212,10 @@ export default function VotingScreen({ roomCode, selectedMoods, budgetLevel, onV
     });
   };
 
+  // Keep ref to latest animateOut so the pan responder (created once) always calls the current version
+  const animateOutRef = useRef<(direction: "left" | "right") => void>(() => {});
+  useEffect(() => { animateOutRef.current = animateOut; });
+
   const panResponder = useRef(
     PanResponder.create({
       onMoveShouldSetPanResponder: (_, gesture) => Math.abs(gesture.dx) > 10,
@@ -248,9 +224,9 @@ export default function VotingScreen({ roomCode, selectedMoods, budgetLevel, onV
       },
       onPanResponderRelease: (_, gesture) => {
         if (gesture.dx > SWIPE_THRESHOLD) {
-          animateOut("right");
+          animateOutRef.current("right");
         } else if (gesture.dx < -SWIPE_THRESHOLD) {
-          animateOut("left");
+          animateOutRef.current("left");
         } else {
           Animated.spring(translateX, {
             toValue: 0,

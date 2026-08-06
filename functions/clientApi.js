@@ -372,7 +372,10 @@ async function createRoom(uid, code, name, preferences) {
   return {ok: true};
 }
 
-async function joinRoom(uid, code, name) {
+async function joinRoom(uid, code, name, token) {
+  if (token?.firebase?.sign_in_provider === "anonymous") {
+    throw new HttpsError("permission-denied", "Sign in with an account to join group rooms");
+  }
   const roomRef = db.collection("rooms").doc(code);
   const snap = await roomRef.get();
   if (!snap.exists) return {ok: false};
@@ -383,6 +386,20 @@ async function joinRoom(uid, code, name) {
       joined_at: admin.firestore.Timestamp.now(),
     },
   });
+  return {ok: true};
+}
+
+async function setRoomRestaurantList(uid, code, restaurantIds) {
+  if (!Array.isArray(restaurantIds) || restaurantIds.length === 0) {
+    throw new HttpsError("invalid-argument", "restaurantIds must be a non-empty array");
+  }
+  const roomRef = db.collection("rooms").doc(code);
+  const snap = await roomRef.get();
+  if (!snap.exists) throw new HttpsError("not-found", "Room not found");
+  if (snap.data().organizer_uid !== uid) {
+    throw new HttpsError("permission-denied", "Only organizer can set restaurant list");
+  }
+  await roomRef.update({restaurant_ids: restaurantIds});
   return {ok: true};
 }
 
@@ -505,7 +522,9 @@ exports.roomApi = onCall(
           case "create":
             return await createRoom(uid, code, data.name, data.preferences);
           case "join":
-            return await joinRoom(uid, code, data.name);
+            return await joinRoom(uid, code, data.name, request.auth.token);
+          case "setRestaurantList":
+            return await setRoomRestaurantList(uid, code, data.restaurantIds);
           case "leave":
             return await leaveRoom(uid, code);
           case "setPreferences":
