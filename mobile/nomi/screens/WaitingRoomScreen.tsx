@@ -13,6 +13,8 @@ import { StatusBar } from "expo-status-bar";
 import { useTranslation } from "react-i18next";
 import { Colors } from "../theme/colors";
 import { buildGroupInviteMessage } from "../config/links";
+import { listenToRoom } from "../services/roomService";
+import { useAuth } from "../context/AuthContext";
 
 type Participant = {
   id: string;
@@ -23,12 +25,6 @@ type Participant = {
 };
 
 const AVATAR_COLORS = ["#E06A4F", "#C25A41", "#FF8A3D", "#B54F3A"];
-
-const INITIAL_PARTICIPANTS: Participant[] = [
-  { id: "1", name: "You (host)", initials: "Y", ready: true, color: AVATAR_COLORS[0] },
-  { id: "2", name: "Ana", initials: "A", ready: true, color: AVATAR_COLORS[1] },
-  { id: "3", name: "Miguel", initials: "M", ready: false, color: AVATAR_COLORS[2] },
-];
 
 const ACCENT = Colors.accent;
 const BG = Colors.background;
@@ -62,19 +58,39 @@ function PulsingDot() {
 
 export default function WaitingRoomScreen({ roomCode, onBack, onStartVoting }: Props) {
   const { t } = useTranslation();
-  const [participants, setParticipants] = useState<Participant[]>(INITIAL_PARTICIPANTS);
+  const { user } = useAuth();
+  const [participants, setParticipants] = useState<Participant[]>([]);
 
-  // Simulate participant becoming ready after 3 seconds
+  // Live participant list from the room document.
   useEffect(() => {
-    const timer = setTimeout(() => {
-      setParticipants((prev) =>
-        prev.map((p) => (p.id === "3" ? { ...p, ready: true } : p))
+    if (!roomCode) return;
+    const unsubscribe = listenToRoom(roomCode, (room) => {
+      if (!room) {
+        setParticipants([]);
+        return;
+      }
+      const entries = Object.entries(room.participants || {}).sort(
+        (a, b) => (a[1].joined_at?.toMillis?.() || 0) - (b[1].joined_at?.toMillis?.() || 0)
       );
-    }, 3000);
-    return () => clearTimeout(timer);
-  }, []);
+      setParticipants(
+        entries.map(([uid, p], index) => {
+          const baseName = uid === user?.uid ? t("waitingRoom.you") : p.name || "Guest";
+          const name =
+            uid === room.organizer_uid ? `${baseName} (${t("waitingRoom.host")})` : baseName;
+          return {
+            id: uid,
+            name,
+            initials: (p.name || baseName).charAt(0).toUpperCase(),
+            ready: true, // present in the room = joined
+            color: AVATAR_COLORS[index % AVATAR_COLORS.length],
+          };
+        })
+      );
+    });
+    return unsubscribe;
+  }, [roomCode, user?.uid, t]);
 
-  const readyCount = participants.filter((p) => p.ready).length;
+  const readyCount = participants.length;
   const canStart = readyCount >= 2;
 
   const handleShare = async () => {
