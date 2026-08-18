@@ -42,17 +42,6 @@ const ONBOARDED_KEY = "nomi_has_onboarded";
 // Guests (anonymous) are exempt. Flip to false to disable enforcement.
 const REQUIRE_EMAIL_VERIFICATION = true;
 
-// Fallback restaurant for the result screen when opened via the dev test shortcut
-const TEST_RESULT_RESTAURANT = {
-  id: "test-1",
-  name: "Taberna da Rua das Flores",
-  distance: "5 min walk",
-  budget: 2,
-  moods: ["romantic", "chill"],
-  reason: "Perfect cozy atmosphere for a relaxed evening with Portuguese charm",
-  photo: require("./assets/images/restaurants/taberna-rua-das-flores.jpg"),
-};
-
 // Parse a Firebase auth-action deep link (nomi://auth-action?mode=...&oobCode=...)
 // forwarded by the hosted redirect page. Returns null for any other URL.
 function parseAuthActionUrl(url: string | null): { mode: string; oobCode: string } | null {
@@ -184,9 +173,12 @@ function AppNavigator() {
           }
           break;
         case 'result_ready':
+          // Participants already reach the real winner in-app through the room's
+          // final-vote listener (GroupVoteScreen -> eventPlan). Tapping the push
+          // only needs to bring the app forward — navigating to the result screen
+          // here would render it without any winner data.
           if (data.roomCode) {
             setRoomCode(data.roomCode as string);
-            setScreen("result");
           }
           break;
         case 'validate_reminder':
@@ -514,12 +506,12 @@ function AppNavigator() {
           }}
         />
       )}
-      {screen === "result" && (
+      {screen === "result" && votingResult && (
         <ResultScreen
-          restaurant={votingResult?.restaurant || TEST_RESULT_RESTAURANT}
-          totalVoters={votingResult?.totalVoters || 4}
-          likedBy={votingResult?.likedBy || 3}
-          roomCode={votingResult?.roomCode || "TEST123"}
+          restaurant={votingResult.restaurant}
+          totalVoters={votingResult.totalVoters}
+          likedBy={votingResult.likedBy}
+          roomCode={votingResult.roomCode}
           onStartOver={() => {
             setVotingResult(null);
             setIsGroupMode(false);
@@ -533,7 +525,7 @@ function AppNavigator() {
           }}
           onNavigate={(s) => {
             if (s === "detail") {
-              setDetailRestaurant((votingResult?.restaurant || TEST_RESULT_RESTAURANT) as Restaurant);
+              setDetailRestaurant(votingResult.restaurant as Restaurant);
               setPreviousScreen("result");
               setScreen("detail");
             } else {

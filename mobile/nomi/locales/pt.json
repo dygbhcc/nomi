@@ -226,6 +226,7 @@
   "restaurantDetail": {
     "openNow": "Aberto",
     "closed": "Fechado",
+    "open24h": "Aberto 24 horas",
     "hours": "Horário",
     "distance": "{{distance}} min a pé",
     "seeReviews": "Ver avaliações →",

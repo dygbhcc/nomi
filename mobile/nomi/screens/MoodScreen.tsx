@@ -79,7 +79,6 @@ export default function MoodScreen({ onContinue, onSkip, onProfile, onNavigate }
   const { t } = useTranslation();
   const insets = useSafeAreaInsets();
   const [selectedMoods, setSelectedMoods] = useState<string[]>([]);
-  const [showTestButtons, setShowTestButtons] = useState(false);
 
   const toggleMood = (id: string) => {
     setSelectedMoods((prev) =>
@@ -213,30 +212,6 @@ export default function MoodScreen({ onContinue, onSkip, onProfile, onNavigate }
         </View>
 
         <View style={[styles.bottomContainer, { marginBottom: 64 + insets.bottom }]}>
-          {/* TEST BUTTONS - Only visible in development */}
-          {__DEV__ && showTestButtons && (
-            <>
-              <TouchableOpacity
-                style={[styles.testButton]}
-                onPress={() => onNavigate('result')}
-              >
-                <Text style={styles.testButtonText}>🧪 Test Result Screen</Text>
-              </TouchableOpacity>
-              <TouchableOpacity
-                style={[styles.testButton, { backgroundColor: '#059669' }]}
-                onPress={() => onNavigate('onboarding')}
-              >
-                <Text style={styles.testButtonText}>👋 Show Onboarding</Text>
-              </TouchableOpacity>
-              <TouchableOpacity
-                style={[styles.testButton, { backgroundColor: '#dc2626' }]}
-                onPress={() => onNavigate('validate')}
-              >
-                <Text style={styles.testButtonText}>✅ Validate Screen</Text>
-              </TouchableOpacity>
-            </>
-          )}
-
           <TouchableOpacity
             style={[styles.continueButton, !hasSelection && styles.continueButtonDisabled]}
             disabled={!hasSelection}
@@ -249,17 +224,6 @@ export default function MoodScreen({ onContinue, onSkip, onProfile, onNavigate }
             <Text style={styles.continueText}>{t('common.continue')}</Text>
           </TouchableOpacity>
 
-          {/* Toggle test buttons with triple tap on title */}
-          {__DEV__ && (
-            <TouchableOpacity
-              style={styles.testToggle}
-              onPress={() => setShowTestButtons(!showTestButtons)}
-            >
-              <Text style={styles.testToggleText}>
-                {showTestButtons ? '🧪 Hide Test' : 'Tap 3x for Test'}
-              </Text>
-            </TouchableOpacity>
-          )}
         </View>
       </View>
 
@@ -454,28 +418,5 @@ const styles = StyleSheet.create({
     color: "#FFFFFF",
     fontSize: 17,
     fontWeight: "700",
-  },
-  testButton: {
-    backgroundColor: '#9333ea',
-    borderRadius: 12,
-    paddingVertical: 12,
-    paddingHorizontal: 20,
-    alignItems: 'center',
-    marginBottom: 8,
-  },
-  testButtonText: {
-    color: '#fff',
-    fontSize: 14,
-    fontWeight: '600',
-  },
-  testToggle: {
-    alignItems: 'center',
-    paddingVertical: 8,
-    marginTop: 8,
-  },
-  testToggleText: {
-    color: TEXT_SECONDARY,
-    fontSize: 11,
-    opacity: 0.5,
   },
 });

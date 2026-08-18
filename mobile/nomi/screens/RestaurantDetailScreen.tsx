@@ -29,15 +29,56 @@ type DayHours = {
   closed: boolean;
 };
 
-const MOCK_HOURS: DayHours[] = [
-  { day: "monday", hours: "Closed", closed: true },
-  { day: "tuesday", hours: "12:00 – 15:00, 19:00 – 23:00", closed: false },
-  { day: "wednesday", hours: "12:00 – 15:00, 19:00 – 23:00", closed: false },
-  { day: "thursday", hours: "12:00 – 15:00, 19:00 – 23:00", closed: false },
-  { day: "friday", hours: "12:00 – 15:00, 19:00 – 00:00", closed: false },
-  { day: "saturday", hours: "12:00 – 00:00", closed: false },
-  { day: "sunday", hours: "12:00 – 16:00", closed: false },
+// Display order is Monday-first (matches getTodayIndex); Google Places numbers
+// days Sunday-first, so map each display slot to its Places day number.
+const DAY_ORDER: { day: string; placesDay: number }[] = [
+  { day: "monday", placesDay: 1 },
+  { day: "tuesday", placesDay: 2 },
+  { day: "wednesday", placesDay: 3 },
+  { day: "thursday", placesDay: 4 },
+  { day: "friday", placesDay: 5 },
+  { day: "saturday", placesDay: 6 },
+  { day: "sunday", placesDay: 0 },
 ];
+
+type Period = Restaurant["opening_hours"]["periods"][number];
+
+// Google Places encodes times as "HHMM" strings.
+function formatTime(time: string): string {
+  if (!/^\d{4}$/.test(time)) return time;
+  return `${time.slice(0, 2)}:${time.slice(2)}`;
+}
+
+// Build the week's opening hours from the Places periods stored on the
+// restaurant. Returns null when the place has no hours data, so the caller can
+// hide the section rather than show invented times.
+function buildWeekHours(
+  periods: Period[] | undefined,
+  closedLabel: string,
+  open24Label: string
+): DayHours[] | null {
+  if (!Array.isArray(periods) || periods.length === 0) return null;
+
+  // A lone open-at-00:00 period with no close means the place never shuts.
+  const alwaysOpen =
+    periods.length === 1 && !periods[0]?.close && periods[0]?.open?.time === "0000";
+
+  return DAY_ORDER.map(({ day, placesDay }) => {
+    if (alwaysOpen) return { day, hours: open24Label, closed: false };
+
+    const ranges = periods
+      .filter((p) => p?.open?.day === placesDay && p?.open?.time)
+      .map((p) =>
+        p.close?.time
+          ? `${formatTime(p.open.time)} \u2013 ${formatTime(p.close.time)}`
+          : `${formatTime(p.open.time)} \u2013 ${open24Label}`
+      );
+
+    return ranges.length > 0
+      ? { day, hours: ranges.join(", "), closed: false }
+      : { day, hours: closedLabel, closed: true };
+  });
+}
 
 const ACCENT = Colors.accent;
 const BG = Colors.background;
@@ -84,6 +125,15 @@ export default function RestaurantDetailScreen({ restaurant, selectedMoods, onBa
   }, [user, restaurant.id]);
   const [currentPhotoIndex, setCurrentPhotoIndex] = useState(0);
   const todayIndex = getTodayIndex();
+  const weekHours = React.useMemo(
+    () =>
+      buildWeekHours(
+        restaurant.opening_hours?.periods,
+        t("restaurantDetail.closed"),
+        t("restaurantDetail.open24h")
+      ),
+    [restaurant.opening_hours?.periods, t]
+  );
   const photos = (restaurant.photos || []).slice(0, 5);
 
   const onViewRef = React.useRef(({ viewableItems }: any) => {
@@ -326,9 +376,10 @@ export default function RestaurantDetailScreen({ restaurant, selectedMoods, onBa
           ) : null;
         })()}
 
-        {/* Opening hours */}
+        {/* Opening hours — omitted entirely when the place has no hours data */}
+        {weekHours && (
         <View style={styles.hoursContainer}>
-          {MOCK_HOURS.map((entry, index) => {
+          {weekHours.map((entry, index) => {
             const isToday = index === todayIndex;
             return (
               <View key={entry.day} style={[styles.hoursRow, isToday && styles.hoursRowToday]}>
@@ -354,6 +405,7 @@ export default function RestaurantDetailScreen({ restaurant, selectedMoods, onBa
             );
           })}
         </View>
+        )}
 
         {/* Actions grid */}
         <View style={styles.actionsGrid}>

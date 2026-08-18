@@ -226,6 +226,7 @@
   "restaurantDetail": {
     "openNow": "Open",
     "closed": "Closed",
+    "open24h": "Open 24 hours",
     "hours": "Hours",
     "distance": "{{distance}} min walk",
     "seeReviews": "See reviews →",
