@@ -78,6 +78,12 @@
       "invalidTitle": "Link expired",
       "invalidMessage": "This reset link is invalid or has expired. Request a new one from the sign-in screen.",
       "backToSignIn": "Back to sign in"
+    },
+    "legal": {
+      "prefix": "By continuing you agree to our",
+      "terms": "Terms of Service",
+      "and": "and",
+      "privacy": "Privacy Policy"
     }
   },
   "onboarding": {
@@ -507,7 +513,15 @@
       "changePassword": "Change password",
       "currentPassword": "Current password",
       "newPassword": "New password",
-      "passwordChanged": "Password updated"
+      "passwordChanged": "Password updated",
+      "deleteAccount": "Delete account",
+      "deleting": "Deleting account…",
+      "deleteConfirmTitle": "Delete your account?",
+      "deleteConfirmMessage": "This permanently erases your profile, points, badges, swipe history and group rooms. It cannot be undone.",
+      "deleteFinalTitle": "This cannot be undone",
+      "deleteFinalMessage": "Your account and all of your data will be deleted immediately.",
+      "deleteConfirmAction": "Delete forever",
+      "deleteFailed": "We couldn't delete your account. Please try again."
     },
     "notifications": {
       "groupInvites": "Group invites",

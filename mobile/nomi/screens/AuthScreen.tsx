@@ -11,12 +11,14 @@ import {
   ScrollView,
   AccessibilityInfo,
   Image,
+  Linking,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { StatusBar } from "expo-status-bar";
 import { useTranslation } from "react-i18next";
 import { Colors, Typography, Spacing, BorderRadius } from "../theme/colors";
 import { useAuth } from "../context/AuthContext";
+import { PRIVACY_URL, TERMS_URL } from "../config/links";
 
 type TabType = "signin" | "signup";
 
@@ -324,6 +326,27 @@ export default function AuthScreen() {
             <Text style={styles.guestNote}>
               {t('auth.guestNote')}
             </Text>
+
+            {/* Legal — must be reachable before an account is created */}
+            <Text style={styles.legalNote}>
+              {t('auth.legal.prefix')}{' '}
+              <Text
+                style={styles.legalLink}
+                onPress={() => Linking.openURL(TERMS_URL)}
+                accessibilityRole="link"
+              >
+                {t('auth.legal.terms')}
+              </Text>
+              {' '}{t('auth.legal.and')}{' '}
+              <Text
+                style={styles.legalLink}
+                onPress={() => Linking.openURL(PRIVACY_URL)}
+                accessibilityRole="link"
+              >
+                {t('auth.legal.privacy')}
+              </Text>
+              .
+            </Text>
           </View>
         </ScrollView>
       </KeyboardAvoidingView>
@@ -440,5 +463,16 @@ const styles = StyleSheet.create({
     color: Colors.textTertiary,
     textAlign: "center",
     marginTop: Spacing.sm,
+  },
+  legalNote: {
+    fontSize: Typography.caption,
+    color: Colors.textTertiary,
+    textAlign: "center",
+    marginTop: Spacing.md,
+    lineHeight: 18,
+  },
+  legalLink: {
+    color: Colors.accent,
+    fontWeight: Typography.semibold,
   },
 });

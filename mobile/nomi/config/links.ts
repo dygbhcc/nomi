@@ -16,3 +16,10 @@ export function buildGroupInviteMessage(
     ? t("waitingRoom.shareMessageWithLink", { code, link: APP_INVITE_URL })
     : t("waitingRoom.shareMessage", { code });
 }
+
+// Public legal pages, served by Firebase Hosting from the repo's hosting/ folder.
+// nomi.app is registered but not yet pointed at Hosting (it 404s), so these use
+// the Hosting domain for now — switch both to https://nomi.app/... once the
+// custom domain is connected.
+export const PRIVACY_URL = "https://nomi-mvp.web.app/privacy";
+export const TERMS_URL = "https://nomi-mvp.web.app/terms";

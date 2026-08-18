@@ -78,6 +78,12 @@
       "invalidTitle": "Link expirado",
       "invalidMessage": "Este link de recuperação é inválido ou expirou. Pede um novo no ecrã de início de sessão.",
       "backToSignIn": "Voltar ao início de sessão"
+    },
+    "legal": {
+      "prefix": "Ao continuar, aceita os nossos",
+      "terms": "Termos de Serviço",
+      "and": "e",
+      "privacy": "Política de Privacidade"
     }
   },
   "onboarding": {
@@ -507,7 +513,15 @@
       "changePassword": "Alterar palavra-passe",
       "currentPassword": "Palavra-passe atual",
       "newPassword": "Nova palavra-passe",
-      "passwordChanged": "Palavra-passe atualizada"
+      "passwordChanged": "Palavra-passe atualizada",
+      "deleteAccount": "Eliminar conta",
+      "deleting": "A eliminar conta…",
+      "deleteConfirmTitle": "Eliminar a sua conta?",
+      "deleteConfirmMessage": "Isto apaga permanentemente o seu perfil, pontos, distintivos, histórico de swipes e salas de grupo. Não pode ser revertido.",
+      "deleteFinalTitle": "Esta ação é irreversível",
+      "deleteFinalMessage": "A sua conta e todos os seus dados serão eliminados imediatamente.",
+      "deleteConfirmAction": "Eliminar para sempre",
+      "deleteFailed": "Não foi possível eliminar a sua conta. Tente novamente."
     },
     "notifications": {
       "groupInvites": "Convites de grupo",

@@ -17,8 +17,9 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 import { Colors } from "../theme/colors";
 import i18n, { changeLanguage } from "../i18n";
 import { useAuth } from "../context/AuthContext";
-import { updateDisplayName, changePassword } from "../services/authService";
+import { updateDisplayName, changePassword, deleteAccount } from "../services/authService";
 import { syncNotificationPreferences } from "../services/notificationService";
+import { PRIVACY_URL, TERMS_URL } from "../config/links";
 
 const ACCENT = Colors.accent;
 const BG = Colors.background;
@@ -70,6 +71,7 @@ export default function SettingsScreen({ onBack }: Props) {
 
   // Account — populated from the real signed-in user (not hardcoded).
   const isGuest = !!user?.isAnonymous;
+  const [deleteBusy, setDeleteBusy] = useState(false);
   const accountEmail = user?.email || "";
   const [displayName, setDisplayName] = useState("");
   const [editingName, setEditingName] = useState(false);
@@ -139,6 +141,49 @@ export default function SettingsScreen({ onBack }: Props) {
           text: t("settings.account.signOut"),
           style: "destructive",
           onPress: () => signOut(),
+        },
+      ]
+    );
+  };
+
+  // Erasing an account cannot be undone, so confirm twice: the first alert
+  // states what is removed, the second is the point of no return.
+  const runDeleteAccount = async () => {
+    setDeleteBusy(true);
+    try {
+      await deleteAccount();
+      // The auth listener drops the session and the app returns to the auth
+      // screen on its own once the backend has erased the user.
+    } catch (e) {
+      if (__DEV__) console.error("deleteAccount failed:", e);
+      Alert.alert(t("common.error"), t("settings.account.deleteFailed"));
+    } finally {
+      setDeleteBusy(false);
+    }
+  };
+
+  const handleDeleteAccount = () => {
+    Alert.alert(
+      t("settings.account.deleteConfirmTitle"),
+      t("settings.account.deleteConfirmMessage"),
+      [
+        { text: t("common.cancel"), style: "cancel" },
+        {
+          text: t("common.continue"),
+          style: "destructive",
+          onPress: () =>
+            Alert.alert(
+              t("settings.account.deleteFinalTitle"),
+              t("settings.account.deleteFinalMessage"),
+              [
+                { text: t("common.cancel"), style: "cancel" },
+                {
+                  text: t("settings.account.deleteConfirmAction"),
+                  style: "destructive",
+                  onPress: runDeleteAccount,
+                },
+              ]
+            ),
         },
       ]
     );
@@ -346,6 +391,27 @@ export default function SettingsScreen({ onBack }: Props) {
               {t("settings.account.signOut")}
             </Text>
           </TouchableOpacity>
+
+          {/* Account deletion — required by GDPR and App Store 5.1.1(v).
+              Guests have no persistent account to erase. */}
+          {!isGuest && (
+            <>
+              <View style={styles.divider} />
+              <TouchableOpacity
+                style={styles.row}
+                onPress={handleDeleteAccount}
+                disabled={deleteBusy}
+                accessibilityRole="button"
+                accessibilityLabel={t("settings.account.deleteAccount")}
+              >
+                <Text style={[styles.rowLabel, { color: RED }, deleteBusy && { opacity: 0.5 }]}>
+                  {deleteBusy
+                    ? t("settings.account.deleting")
+                    : t("settings.account.deleteAccount")}
+                </Text>
+              </TouchableOpacity>
+            </>
+          )}
         </View>
 
         {/* ====== Notifications ====== */}
@@ -539,7 +605,7 @@ export default function SettingsScreen({ onBack }: Props) {
         <View style={styles.section}>
           <TouchableOpacity
             style={styles.row}
-            onPress={() => Linking.openURL("https://nomi.app/privacy")}
+            onPress={() => Linking.openURL(PRIVACY_URL)}
           >
             <Text style={styles.rowLabel}>Privacy Policy</Text>
             <Text style={styles.rowChevron}>{"\u203A"}</Text>
@@ -547,7 +613,7 @@ export default function SettingsScreen({ onBack }: Props) {
           <View style={styles.divider} />
           <TouchableOpacity
             style={styles.row}
-            onPress={() => Linking.openURL("https://nomi.app/terms")}
+            onPress={() => Linking.openURL(TERMS_URL)}
           >
             <Text style={styles.rowLabel}>Terms of Service</Text>
             <Text style={styles.rowChevron}>{"\u203A"}</Text>

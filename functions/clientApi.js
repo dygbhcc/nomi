@@ -307,6 +307,86 @@ async function recordValidation(uid, restaurantId, moodTag, direction) {
   return {ok: true};
 }
 
+// ── Account deletion ─────────────────────────────────────────────────
+
+// Delete every document matching a query, in batches, so a user with a long
+// swipe history does not blow the 500-write batch limit.
+async function deleteQueryInBatches(query) {
+  let deleted = 0;
+  for (;;) {
+    const snap = await query.limit(400).get();
+    if (snap.empty) return deleted;
+    const batch = db.batch();
+    snap.docs.forEach((doc) => batch.delete(doc.ref));
+    await batch.commit();
+    deleted += snap.size;
+    if (snap.size < 400) return deleted;
+  }
+}
+
+/**
+ * Erase the user's account and every trace of their personal data.
+ *
+ * Required by GDPR (right to erasure) and App Store guideline 5.1.1(v).
+ * Order matters: the Auth record is removed last, so a failure part-way
+ * through leaves the user signed in and able to retry rather than stranded
+ * with an unreachable half-deleted account.
+ *
+ * @param {string} uid Authenticated user id, derived from request.auth.
+ * @return {Promise<Object>} Counts of the records removed.
+ */
+async function deleteAccount(uid) {
+  const summary = {swipes: 0, votes: 0, roomsDeleted: 0, roomsLeft: 0, restaurantsCleared: 0};
+
+  summary.swipes = await deleteQueryInBatches(
+      db.collection("swipes").where("user_id", "==", uid),
+  );
+  summary.votes = await deleteQueryInBatches(
+      db.collection("votes").where("user_id", "==", uid),
+  );
+
+  // The trendsetter badge stamps the uid onto restaurant docs — clear it so no
+  // identifier survives on shared records.
+  const firstLikerSnap = await db.collection("restaurants")
+      .where("first_liker", "==", uid).get();
+  if (!firstLikerSnap.empty) {
+    const batch = db.batch();
+    firstLikerSnap.docs.forEach((doc) => batch.update(doc.ref, {first_liker: FieldValue.delete()}));
+    await batch.commit();
+    summary.restaurantsCleared = firstLikerSnap.size;
+  }
+
+  // Rooms the user organised are their own records — remove them outright,
+  // together with the room's realtime state.
+  const organisedSnap = await db.collection("rooms")
+      .where("organizer_uid", "==", uid).get();
+  for (const doc of organisedSnap.docs) {
+    await admin.database().ref(`rooms/${doc.id}`).remove();
+    await doc.ref.delete();
+    summary.roomsDeleted += 1;
+  }
+
+  // Rooms hosted by someone else belong to that group — take the user out of
+  // them instead of destroying other participants' data.
+  const joinedSnap = await db.collection("rooms")
+      .where(new admin.firestore.FieldPath("participants", uid), "!=", null).get();
+  for (const doc of joinedSnap.docs) {
+    await doc.ref.update({[`participants.${uid}`]: FieldValue.delete()});
+    await Promise.all([
+      admin.database().ref(`rooms/${doc.id}/final_votes/${uid}`).remove(),
+      admin.database().ref(`rooms/${doc.id}/preference_votes/${uid}`).remove(),
+      admin.database().ref(`rooms/${doc.id}/event/attendance/${uid}`).remove(),
+    ]);
+    summary.roomsLeft += 1;
+  }
+
+  await db.collection("users").doc(uid).delete();
+  await admin.auth().deleteUser(uid);
+
+  logger.info("account deleted", {uid, ...summary});
+  return {ok: true, ...summary};
+}
+
 exports.userApi = onCall(
     {
       region: REGION,
@@ -338,6 +418,8 @@ exports.userApi = onCall(
             return await recordSwipe(uid, requireString(data.restaurantId, "restaurantId"), data.direction, data.moods);
           case "recordValidation":
             return await recordValidation(uid, requireString(data.restaurantId, "restaurantId"), data.moodTag, data.direction);
+          case "deleteAccount":
+            return await deleteAccount(uid);
           default:
             throw new HttpsError("invalid-argument", `Unknown action: ${action}`);
         }

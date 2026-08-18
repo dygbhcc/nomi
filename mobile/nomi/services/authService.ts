@@ -81,6 +81,19 @@ export const signOut = async (): Promise<void> => {
 };
 
 /**
+ * Permanently delete the signed-in user's account and all of their data.
+ *
+ * The backend erases the Firestore/RTDB records and the Auth user, so the
+ * local session is already invalid when this resolves — sign out to clear the
+ * cached credential and let the app fall back to the auth screen.
+ */
+export const deleteAccount = async (): Promise<void> => {
+  if (!auth.currentUser) return;
+  await callUserApi('deleteAccount', {});
+  await firebaseSignOut(auth);
+};
+
+/**
  * Update the user's display name on both the auth profile and the Firestore
  * user document so it stays consistent across the app.
  */
