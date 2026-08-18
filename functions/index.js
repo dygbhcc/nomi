@@ -285,9 +285,8 @@ async function writeRegionCache(regionKey, restaurants, uploadNewPhotos = false)
           payload.photos.map(async (photo, idx) => {
             if (!photo.photo_reference) return photo;
             const url = await getOrUploadPhoto(photo.photo_reference, docId, idx);
-            return url
-              ? {url, source: "cloudinary", width: photo.width, height: photo.height}
-              : photo;
+            if (url) return {url, source: "cloudinary", width: photo.width, height: photo.height};
+            return photo;
           }),
       );
     }
