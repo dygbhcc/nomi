@@ -277,19 +277,19 @@ async function writeRegionCache(regionKey, restaurants, uploadNewPhotos = false)
     if (existingIds.has(docId)) {
       payload = {...restaurant};
       for (const field of ENRICHMENT_FIELDS) delete payload[field];
-    } else if (uploadNewPhotos && payload.photos?.[0]?.photo_reference) {
-      // New restaurant discovered by the crawl: put its primary photo on
-      // Cloudinary right away so clients never depend on the Google photo
-      // endpoint (which shares the tight Places daily quota). Failure keeps
-      // the Google reference as fallback.
-      const first = payload.photos[0];
-      const url = await getOrUploadPhoto(first.photo_reference, docId, 0);
-      if (url) {
-        payload.photos = [
-          {url, source: "cloudinary", width: first.width, height: first.height},
-          ...payload.photos.slice(1),
-        ];
-      }
+    } else if (uploadNewPhotos && payload.photos?.some((p) => p.photo_reference)) {
+      // New restaurant: upload ALL photos to Cloudinary so the carousel never
+      // falls back to the Google Photos endpoint (which is billed per request).
+      // Failures keep the original photo_reference as a fallback.
+      payload.photos = await Promise.all(
+          payload.photos.map(async (photo, idx) => {
+            if (!photo.photo_reference) return photo;
+            const url = await getOrUploadPhoto(photo.photo_reference, docId, idx);
+            return url
+              ? {url, source: "cloudinary", width: photo.width, height: photo.height}
+              : photo;
+          }),
+      );
     }
     batch.set(db.collection("restaurants").doc(docId), payload, {merge: true});
   }
@@ -757,8 +757,8 @@ exports.markClosedRestaurants = onCall(
             continue;
           }
 
-          // Get current status from Google Places
-          const details = await placeDetails(placeId);
+          // Get current status from Google Places — must be fresh, bypass cache.
+          const details = await placeDetails(placeId, {force: true});
           checked++;
 
           if (!details) {

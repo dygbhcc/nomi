@@ -107,7 +107,24 @@ async function nearbySearch({lat, lng, radius, type = "restaurant", force = fals
   return results;
 }
 
-async function placeDetails(placeId) {
+const DETAILS_CACHE_COLLECTION = "place_details_cache";
+
+async function placeDetails(placeId, {force = false} = {}) {
+  const db = admin.firestore();
+  const cacheRef = db.collection(DETAILS_CACHE_COLLECTION).doc(placeId);
+
+  if (!force) {
+    try {
+      const cacheDoc = await cacheRef.get();
+      if (isCacheValid(cacheDoc)) {
+        logger.info("[Places Cache] HIT details:", placeId);
+        return cacheDoc.data().result;
+      }
+    } catch (e) {
+      logger.warn("[Places Cache] details read failed:", e.message);
+    }
+  }
+
   const key = getApiKey();
   const url = `${PLACES_BASE_URL}/details/json`;
   const response = await axios.get(url, {
@@ -122,6 +139,10 @@ async function placeDetails(placeId) {
   if (status === "ZERO_RESULTS" || status === "NOT_FOUND") return null;
   if (status !== "OK") {
     throw new Error(`Place details failed: ${status} ${errorMessage || ""}`);
+  }
+
+  if (result) {
+    cacheRef.set({result, cache_date: admin.firestore.FieldValue.serverTimestamp()}).catch(() => {});
   }
   return result || null;
 }
