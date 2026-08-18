@@ -218,8 +218,5 @@ export const getPhotoUrl = (
   if (photo.url) {
     return optimizeCloudinary(photo.url, width);
   }
-  if (photo.photo_reference) {
-    return `https://maps.googleapis.com/maps/api/place/photo?maxwidth=${width}&photo_reference=${photo.photo_reference}&key=${process.env.EXPO_PUBLIC_GOOGLE_PLACES_API_KEY}`;
-  }
   return null;
 };
