@@ -1450,6 +1450,9 @@ exports.getSmartRecommendations = onCall(
           }
         }
 
+        // Exclude restaurants with no Cloudinary photo — they would show a blank card
+        candidates = candidates.filter((c) => c.photos?.[0]?.url);
+
         meta.candidateCount = candidates.length;
 
         // --- 1b. Distance filtering ---
