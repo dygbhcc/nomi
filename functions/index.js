@@ -103,8 +103,7 @@ async function buildRestaurantDocument(place) {
   let photos = [];
 
   if (place.photos && place.photos.length > 0) {
-    // Get first 5 photos (or total available)
-    const maxPhotos = Math.min(5, place.photos.length);
+    const maxPhotos = Math.min(3, place.photos.length);
 
     // Sort photos by size (highest resolution first)
     const sortedPhotos = [...place.photos]

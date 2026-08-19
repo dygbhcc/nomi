@@ -134,7 +134,7 @@ export default function RestaurantDetailScreen({ restaurant, selectedMoods, onBa
       ),
     [restaurant.opening_hours?.periods, t]
   );
-  const photos = (restaurant.photos || []).slice(0, 5);
+  const photos = (restaurant.photos || []).slice(0, 3);
 
   const onViewRef = React.useRef(({ viewableItems }: any) => {
     if (viewableItems.length > 0 && viewableItems[0].index != null) {
