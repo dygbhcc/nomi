@@ -206,6 +206,7 @@ async function fetchNewRestaurants(targetCount = 20) {
         if (!details || details.business_status === "CLOSED_PERMANENTLY") continue;
 
         const restaurant = await buildRestaurantDocument(details);
+        restaurant.created_at = admin.firestore.FieldValue.serverTimestamp();
         await db.collection("restaurants").doc(restaurant.place_id).set(restaurant);
         newCount++;
         logger.info(`[fetchNew] Added: ${restaurant.name} (${hood.name})`);
