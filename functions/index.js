@@ -205,6 +205,10 @@ async function fetchNewRestaurants(targetCount = 20) {
         detailsCalls++;
         if (!details || details.business_status === "CLOSED_PERMANENTLY") continue;
 
+        if (!details.user_ratings_total || details.user_ratings_total < 10) {
+          logger.info(`[fetchNew] Skipped (no reviews): ${details.name}`);
+          continue;
+        }
         const restaurant = await buildRestaurantDocument(details);
         restaurant.created_at = admin.firestore.FieldValue.serverTimestamp();
         await db.collection("restaurants").doc(restaurant.place_id).set(restaurant);
