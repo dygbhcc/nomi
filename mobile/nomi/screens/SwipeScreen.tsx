@@ -70,7 +70,12 @@ export default function SwipeScreen({ selectedMoods, budgetLevel, selectedDistan
   const MAX_RETRIES = 6;
 
   useEffect(() => {
-    const fetchRestaurants = async () => {
+    // Debounce location changes — GPS accuracy updates fire rapidly on mount.
+    // Mood/budget/distance changes are intentional so they fire immediately (0ms).
+    const isLocationChange = userLat !== undefined && userLng !== undefined;
+    const delay = isLocationChange ? 800 : 0;
+
+    const timer = setTimeout(async () => {
       setLoading(true);
       setError(null);
       try {
@@ -102,8 +107,9 @@ export default function SwipeScreen({ selectedMoods, budgetLevel, selectedDistan
       } finally {
         setLoading(false);
       }
-    };
-    fetchRestaurants();
+    }, delay);
+
+    return () => clearTimeout(timer);
   }, [selectedMoods, budgetLevel, selectedDistance, userLat, userLng]);
 
   const batchEnd = batchStart + BATCH_SIZE;

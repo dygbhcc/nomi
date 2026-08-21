@@ -73,20 +73,15 @@ export const getRestaurantsByMood = async (
   userLng?: number | null,
   maxDistance?: number | null
 ): Promise<{ restaurants: Restaurant[]; sessionId?: string }> => {
-  try {
-    const result = await callRestaurantApi<{ restaurants: Restaurant[]; sessionId?: string }>('getByMood', {
-      moods,
-      budgetLevel,
-      maxResults,
-      userLat,
-      userLng,
-      maxDistance,
-    });
-    return { restaurants: result.restaurants, sessionId: result.sessionId };
-  } catch (error) {
-    __DEV__ && console.error('getRestaurantsByMood error:', error);
-    return { restaurants: [] };
-  }
+  const result = await callRestaurantApi<{ restaurants: Restaurant[]; sessionId?: string }>('getByMood', {
+    moods,
+    budgetLevel,
+    maxResults,
+    userLat,
+    userLng,
+    maxDistance,
+  });
+  return { restaurants: result.restaurants, sessionId: result.sessionId };
 };
 
 export const getRestaurantsByIds = async (ids: string[]): Promise<Restaurant[]> => {
