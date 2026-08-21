@@ -69,6 +69,11 @@ export default function SwipeScreen({ selectedMoods, budgetLevel, selectedDistan
 
   const MAX_RETRIES = 6;
 
+  const errorMessage = (e: unknown) =>
+    (e as any)?.code === 'functions/resource-exhausted'
+      ? t('swipe.rateLimited')
+      : t('swipe.errorLoading');
+
   useEffect(() => {
     // Debounce location changes — GPS accuracy updates fire rapidly on mount.
     // Mood/budget/distance changes are intentional so they fire immediately (0ms).
@@ -103,7 +108,7 @@ export default function SwipeScreen({ selectedMoods, budgetLevel, selectedDistan
         setFetchFailCount(0);
       } catch (e) {
         setFetchFailCount((n) => n + 1);
-        setError(t('swipe.errorLoading'));
+        setError(errorMessage(e));
       } finally {
         setLoading(false);
       }

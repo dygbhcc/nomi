@@ -205,6 +205,7 @@
       "Almost there, good things take a second..."
     ],
     "errorLoading": "Failed to load restaurants",
+    "rateLimited": "Too many requests — please wait a moment and try again.",
     "startOver": "Start Over",
     "noResults": "No restaurants found. Try adjusting your preferences.",
     "noMore": "That's all for now! Check back later for more.",

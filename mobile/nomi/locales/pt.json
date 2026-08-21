@@ -205,6 +205,7 @@
       "Quase lá, as coisas boas levam um momento..."
     ],
     "errorLoading": "Falha ao carregar restaurantes",
+    "rateLimited": "Demasiados pedidos — aguarda um momento e tenta novamente.",
     "startOver": "Recomeçar",
     "noResults": "Nenhum restaurante encontrado. Tenta ajustar as tuas preferências.",
     "noMore": "É tudo por agora! Volta mais tarde para mais.",
