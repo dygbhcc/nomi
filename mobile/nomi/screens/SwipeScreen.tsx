@@ -60,11 +60,14 @@ export default function SwipeScreen({ selectedMoods, budgetLevel, selectedDistan
   const [restaurants, setRestaurants] = useState<Restaurant[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [fetchFailCount, setFetchFailCount] = useState(0);
   const [currentIndex, setCurrentIndex] = useState(0);
   const [batchStart, setBatchStart] = useState(0);
   const [likedRestaurants, setLikedRestaurants] = useState<Restaurant[]>([]);
   const [sessionId, setSessionId] = useState<string | undefined>(undefined);
   const transitionedRef = useRef(false);
+
+  const MAX_RETRIES = 6;
 
   useEffect(() => {
     const fetchRestaurants = async () => {
@@ -92,7 +95,9 @@ export default function SwipeScreen({ selectedMoods, budgetLevel, selectedDistan
           if (url) ExpoImage.prefetch(url).catch(() => {});
         });
         transitionedRef.current = false; // Reset when new restaurants load
+        setFetchFailCount(0);
       } catch (e) {
+        setFetchFailCount((n) => n + 1);
         setError(t('swipe.errorLoading'));
       } finally {
         setLoading(false);
@@ -251,7 +256,9 @@ export default function SwipeScreen({ selectedMoods, budgetLevel, selectedDistan
         reason: buildReason(r, selectedMoods),
       }));
       setRestaurants(withReasons);
+      setFetchFailCount(0);
     } catch (e) {
+      setFetchFailCount((n) => n + 1);
       setError(t('swipe.errorLoading'));
     } finally {
       setLoading(false);
@@ -267,19 +274,31 @@ export default function SwipeScreen({ selectedMoods, budgetLevel, selectedDistan
   }
 
   if (error) {
+    const exhausted = fetchFailCount >= MAX_RETRIES;
     return (
       <SafeAreaView style={styles.container}>
         <View style={styles.emptyContainer}>
           <Text style={styles.emptyTitle}>{t('common.error')}</Text>
           <Text style={styles.emptySubtitle}>{error}</Text>
-          <TouchableOpacity
-            style={styles.loadMoreButton}
-            onPress={refetchRestaurants}
-            accessibilityLabel="Try again"
-            accessibilityRole="button"
-          >
-            <Text style={styles.loadMoreText}>{t('common.ok')}</Text>
-          </TouchableOpacity>
+          {exhausted ? (
+            <TouchableOpacity
+              style={styles.preferencesButton}
+              onPress={onBack}
+              accessibilityLabel="Start over"
+              accessibilityRole="button"
+            >
+              <Text style={styles.preferencesButtonText}>{t('swipe.startOver')}</Text>
+            </TouchableOpacity>
+          ) : (
+            <TouchableOpacity
+              style={styles.loadMoreButton}
+              onPress={refetchRestaurants}
+              accessibilityLabel="Try again"
+              accessibilityRole="button"
+            >
+              <Text style={styles.loadMoreText}>{t('common.ok')}</Text>
+            </TouchableOpacity>
+          )}
         </View>
       </SafeAreaView>
     );
