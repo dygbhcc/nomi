@@ -72,9 +72,9 @@ export const getRestaurantsByMood = async (
   userLat?: number | null,
   userLng?: number | null,
   maxDistance?: number | null
-): Promise<Restaurant[]> => {
+): Promise<{ restaurants: Restaurant[]; sessionId?: string }> => {
   try {
-    const result = await callRestaurantApi<{ restaurants: Restaurant[] }>('getByMood', {
+    const result = await callRestaurantApi<{ restaurants: Restaurant[]; sessionId?: string }>('getByMood', {
       moods,
       budgetLevel,
       maxResults,
@@ -82,10 +82,10 @@ export const getRestaurantsByMood = async (
       userLng,
       maxDistance,
     });
-    return result.restaurants;
+    return { restaurants: result.restaurants, sessionId: result.sessionId };
   } catch (error) {
     __DEV__ && console.error('getRestaurantsByMood error:', error);
-    return [];
+    return { restaurants: [] };
   }
 };
 
@@ -107,6 +107,7 @@ export type SmartRecommendationsMeta = {
 export type SmartRecommendationsResult = {
   restaurants: Restaurant[];
   meta: SmartRecommendationsMeta;
+  sessionId?: string;
 };
 
 export const getSmartRecommendations = async (
@@ -120,26 +121,28 @@ export const getSmartRecommendations = async (
   try {
     const callable = httpsCallable<
       { userId: string | null; moods: string[]; budgetLevel: number; distance?: number | null; userLat?: number | null; userLng?: number | null },
-      { restaurants: Restaurant[]; meta: SmartRecommendationsMeta }
+      { restaurants: Restaurant[]; meta: SmartRecommendationsMeta; sessionId?: string }
     >(functions, 'getSmartRecommendations');
 
     const result = await callable({ userId, moods, budgetLevel, distance, userLat, userLng });
     return {
       restaurants: result.data.restaurants,
       meta: result.data.meta,
+      sessionId: result.data.sessionId,
     };
   } catch (error) {
     __DEV__ && console.error('getSmartRecommendations error, falling back:', error);
     // Fallback to the plain mood query (also server-side)
-    const restaurants = await getRestaurantsByMood(moods, budgetLevel, 6, userLat, userLng, distance);
+    const fallback = await getRestaurantsByMood(moods, budgetLevel, 6, userLat, userLng, distance);
     return {
-      restaurants,
+      restaurants: fallback.restaurants,
       meta: {
         algorithm: 'fallback_direct',
-        candidateCount: restaurants.length,
+        candidateCount: fallback.restaurants.length,
         fallback: true,
         secondChance: false,
       },
+      sessionId: fallback.sessionId,
     };
   }
 };

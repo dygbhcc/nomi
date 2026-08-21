@@ -63,6 +63,7 @@ export default function SwipeScreen({ selectedMoods, budgetLevel, selectedDistan
   const [currentIndex, setCurrentIndex] = useState(0);
   const [batchStart, setBatchStart] = useState(0);
   const [likedRestaurants, setLikedRestaurants] = useState<Restaurant[]>([]);
+  const [sessionId, setSessionId] = useState<string | undefined>(undefined);
   const transitionedRef = useRef(false);
 
   useEffect(() => {
@@ -78,6 +79,7 @@ export default function SwipeScreen({ selectedMoods, budgetLevel, selectedDistan
           userLat ?? DEFAULT_LAT,
           userLng ?? DEFAULT_LNG
         );
+        setSessionId(result.sessionId);
         const withReasons = result.restaurants.slice(0, 6).map(r => ({
           ...r,
           reason: buildReason(r, selectedMoods),
@@ -125,6 +127,8 @@ export default function SwipeScreen({ selectedMoods, budgetLevel, selectedDistan
     }
   }, [batchDone, batchEnd, restaurants.length]);
 
+  const swipingRef = useRef(false);
+
   const translateX = useRef(new Animated.Value(0)).current;
   const rotate = translateX.interpolate({
     inputRange: [-SCREEN_WIDTH, 0, SCREEN_WIDTH],
@@ -145,12 +149,18 @@ export default function SwipeScreen({ selectedMoods, budgetLevel, selectedDistan
 
   // Reset card position after the next card has mounted. Resetting only inside
   // the animation callback races with the native-driver state under Fabric and
-  // can leave the new card stuck off-screen.
+  // can leave the new card stuck off-screen. Also resets the swipe guard so
+  // the next card is interactive immediately.
   useEffect(() => {
+    swipingRef.current = false;
     translateX.setValue(0);
   }, [currentIndex, batchStart, translateX]);
 
   const animateOut = (direction: "left" | "right") => {
+    // Guard against simultaneous button-tap + gesture both firing for the same card.
+    if (swipingRef.current) return;
+    swipingRef.current = true;
+
     // FIX 3 - Haptic feedback on swipe
     if (direction === "right") {
       Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
@@ -169,7 +179,8 @@ export default function SwipeScreen({ selectedMoods, budgetLevel, selectedDistan
         user.uid,
         restaurant.id,
         direction === "right" ? "like" : "pass",
-        selectedMoods
+        selectedMoods,
+        sessionId
       );
     }
 
@@ -219,6 +230,12 @@ export default function SwipeScreen({ selectedMoods, budgetLevel, selectedDistan
   const refetchRestaurants = async () => {
     setLoading(true);
     setError(null);
+    // Reset all per-session state so the refetched batch starts clean.
+    setLikedRestaurants([]);
+    setCurrentIndex(0);
+    setBatchStart(0);
+    setSessionId(undefined);
+    transitionedRef.current = false;
     try {
       const result = await getSmartRecommendations(
         user?.uid ?? null,
@@ -228,6 +245,7 @@ export default function SwipeScreen({ selectedMoods, budgetLevel, selectedDistan
         userLat ?? DEFAULT_LAT,
         userLng ?? DEFAULT_LNG
       );
+      setSessionId(result.sessionId);
       const withReasons = result.restaurants.slice(0, 6).map(r => ({
         ...r,
         reason: buildReason(r, selectedMoods),

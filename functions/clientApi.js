@@ -205,11 +205,21 @@ async function getSavedRestaurants(uid) {
 }
 
 async function setRestaurantSaved(uid, restaurantId, saved) {
-  await db.collection("users").doc(uid).set({
+  const batch = db.batch();
+  batch.set(db.collection("users").doc(uid), {
     liked_restaurants: saved ?
       FieldValue.arrayUnion(restaurantId) :
       FieldValue.arrayRemove(restaurantId),
   }, {merge: true});
+  if (!saved) {
+    batch.set(db.collection("save_events").doc(), {
+      uid,
+      restaurant_id: restaurantId,
+      action: "unsave",
+      timestamp: FieldValue.serverTimestamp(),
+    });
+  }
+  await batch.commit();
   return {ok: true};
 }
 
@@ -219,7 +229,7 @@ async function isRestaurantSaved(uid, restaurantId) {
   return {saved: liked.includes(restaurantId)};
 }
 
-async function recordSwipe(uid, restaurantId, direction, moods) {
+async function recordSwipe(uid, restaurantId, direction, moods, sessionId) {
   if (direction !== "like" && direction !== "pass") {
     throw new HttpsError("invalid-argument", "direction must be like or pass");
   }
@@ -230,15 +240,18 @@ async function recordSwipe(uid, restaurantId, direction, moods) {
   // UTC hour is stored so night_owl badge can be computed via a count query.
   const hour = new Date().getUTCHours();
 
-  const batch = db.batch();
-  batch.set(db.collection("swipes").doc(), {
+  const swipeDoc = {
     user_id: uid,
     restaurant_id: restaurantId,
     direction,
     moods: safeMoods,
     hour,
     timestamp: FieldValue.serverTimestamp(),
-  });
+  };
+  if (sessionId) swipeDoc.session_id = sessionId;
+
+  // Swipe doc is always written independently of the like-specific logic below.
+  await db.collection("swipes").doc().set(swipeDoc);
 
   if (direction === "like") {
     const userUpdate = {
@@ -246,27 +259,25 @@ async function recordSwipe(uid, restaurantId, direction, moods) {
       points: FieldValue.increment(2),
     };
 
-    // Read restaurant once to derive badge signals.
-    const restaurantSnap = await db.collection("restaurants").doc(restaurantId).get();
-    if (restaurantSnap.exists) {
-      const r = restaurantSnap.data();
-
-      // hidden_gem_hunter: liked a restaurant with a below-average rating.
-      if (typeof r.google_rating === "number" && r.google_rating < 3.8) {
-        userUpdate.hidden_gem_count = FieldValue.increment(1);
+    // Transaction ensures exactly one user claims first_liker even under
+    // concurrent likes — fixes the race condition in the previous best-effort check.
+    await db.runTransaction(async (t) => {
+      const restaurantRef = db.collection("restaurants").doc(restaurantId);
+      const rSnap = await t.get(restaurantRef);
+      if (rSnap.exists) {
+        const r = rSnap.data();
+        if (typeof r.google_rating === "number" && r.google_rating < 3.8) {
+          userUpdate.hidden_gem_count = FieldValue.increment(1);
+        }
+        if (!r.first_liker) {
+          t.update(restaurantRef, {first_liker: uid});
+          userUpdate.trendsetter_count = FieldValue.increment(1);
+        }
       }
-
-      // trendsetter: first user to like this restaurant (best-effort, no transaction).
-      if (!r.first_liker) {
-        batch.update(db.collection("restaurants").doc(restaurantId), {first_liker: uid});
-        userUpdate.trendsetter_count = FieldValue.increment(1);
-      }
-    }
-
-    batch.set(db.collection("users").doc(uid), userUpdate, {merge: true});
+      t.set(db.collection("users").doc(uid), userUpdate, {merge: true});
+    });
   }
 
-  await batch.commit();
   computeAndUpdateBadges(uid).catch((e) =>
     logger.error("badge compute error", {uid, error: e.message}),
   );
@@ -279,6 +290,17 @@ async function recordValidation(uid, restaurantId, moodTag, direction) {
   }
   if (typeof direction !== "boolean") {
     throw new HttpsError("invalid-argument", "direction must be a boolean");
+  }
+
+  // Deduplication: one vote per user per restaurant per tag.
+  const existingSnap = await db.collection("votes")
+      .where("user_id", "==", uid)
+      .where("restaurant_id", "==", restaurantId)
+      .where("tag", "==", moodTag)
+      .limit(1)
+      .get();
+  if (!existingSnap.empty) {
+    throw new HttpsError("already-exists", "Already voted on this tag for this restaurant");
   }
 
   const restaurantRef = db.collection("restaurants").doc(restaurantId);
@@ -296,9 +318,11 @@ async function recordValidation(uid, restaurantId, moodTag, direction) {
     points: FieldValue.increment(5),
   }, {merge: true});
   if (restaurantSnap.exists) {
-    batch.set(restaurantRef, {
-      confidence_scores: {[moodTag]: FieldValue.increment(direction ? 5 : -5)},
-    }, {merge: true});
+    // Dot-notation update so only this mood's score is touched — a plain set()
+    // with merge:true replaces the entire confidence_scores map and loses other moods.
+    batch.update(restaurantRef, {
+      [`confidence_scores.${moodTag}`]: FieldValue.increment(direction ? 5 : -5),
+    });
   }
   await batch.commit();
   computeAndUpdateBadges(uid).catch((e) =>
@@ -415,7 +439,7 @@ exports.userApi = onCall(
           case "isRestaurantSaved":
             return await isRestaurantSaved(uid, requireString(data.restaurantId, "restaurantId"));
           case "recordSwipe":
-            return await recordSwipe(uid, requireString(data.restaurantId, "restaurantId"), data.direction, data.moods);
+            return await recordSwipe(uid, requireString(data.restaurantId, "restaurantId"), data.direction, data.moods, data.sessionId);
           case "recordValidation":
             return await recordValidation(uid, requireString(data.restaurantId, "restaurantId"), data.moodTag, data.direction);
           case "deleteAccount":
@@ -434,7 +458,12 @@ exports.userApi = onCall(
 // ── Room actions ─────────────────────────────────────────────────────
 
 async function createRoom(uid, code, name, preferences) {
-  await db.collection("rooms").doc(code).set({
+  const roomRef = db.collection("rooms").doc(code);
+  const snap = await roomRef.get();
+  if (snap.exists) {
+    throw new HttpsError("already-exists", "Room code already in use — try a different code");
+  }
+  await roomRef.set({
     code,
     organizer_uid: uid,
     participants: {
@@ -461,6 +490,10 @@ async function joinRoom(uid, code, name, token) {
   const roomRef = db.collection("rooms").doc(code);
   const snap = await roomRef.get();
   if (!snap.exists) return {ok: false};
+
+  if (snap.data().status !== "waiting") {
+    throw new HttpsError("failed-precondition", "Voting has already started for this room");
+  }
 
   await roomRef.update({
     [`participants.${uid}`]: {
@@ -500,7 +533,10 @@ async function setRoomPreferences(code, preferences) {
   if (!preferences || typeof preferences !== "object") {
     throw new HttpsError("invalid-argument", "preferences is required");
   }
-  await db.collection("rooms").doc(code).update({preferences});
+  const roomRef = db.collection("rooms").doc(code);
+  const snap = await roomRef.get();
+  if (!snap.exists) throw new HttpsError("not-found", "Room not found");
+  await roomRef.update({preferences});
   return {ok: true};
 }
 
@@ -514,7 +550,14 @@ async function recordRoomVote(uid, code, restaurantId, vote) {
   if (vote !== "like" && vote !== "pass") {
     throw new HttpsError("invalid-argument", "vote must be like or pass");
   }
-  await db.collection("rooms").doc(code).update({
+  const roomRef = db.collection("rooms").doc(code);
+  const snap = await roomRef.get();
+  if (!snap.exists) throw new HttpsError("not-found", "Room not found");
+  const participants = snap.data().participants || {};
+  if (!participants[uid]) {
+    throw new HttpsError("permission-denied", "You are not a participant in this room");
+  }
+  await roomRef.update({
     [`votes.${uid}.${restaurantId}`]: vote,
   });
   return {ok: true};
@@ -529,20 +572,34 @@ async function declareWinner(uid, code, winnerId) {
   if (snap.data().organizer_uid !== uid) {
     throw new HttpsError("permission-denied", "Only the organizer can declare a winner");
   }
+  // Idempotency guard: calling twice must not double-grant points or change the winner.
+  if (snap.data().status === "decided") {
+    return {ok: true};
+  }
 
   const batch = db.batch();
-  batch.update(roomRef, {winner_id: winnerId, status: "decided"});
-  batch.set(db.collection("users").doc(uid), {
-    points: FieldValue.increment(100),
-  }, {merge: true});
+  // winnerId is empty string when no restaurant received any likes (no-consensus case).
+  batch.update(roomRef, {winner_id: winnerId || null, status: "decided"});
+  if (winnerId) {
+    batch.set(db.collection("users").doc(uid), {
+      points: FieldValue.increment(100),
+    }, {merge: true});
+  }
   await batch.commit();
   return {ok: true};
 }
 
-async function setEventDetails(code, details) {
+async function setEventDetails(uid, code, details) {
   if (!details || typeof details !== "object") {
     throw new HttpsError("invalid-argument", "details is required");
   }
+  const roomRef = db.collection("rooms").doc(code);
+  const snap = await roomRef.get();
+  if (!snap.exists) throw new HttpsError("not-found", "Room not found");
+  if (snap.data().organizer_uid !== uid) {
+    throw new HttpsError("permission-denied", "Only the organizer can set event details");
+  }
+
   const payload = {
     event_time: details.event_time || "",
     restaurant_id: details.restaurant_id || "",
@@ -552,7 +609,7 @@ async function setEventDetails(code, details) {
 
   // RTDB for real-time sync, Firestore for persistence.
   await admin.database().ref(`rooms/${code}/event`).update(payload);
-  await db.collection("rooms").doc(code).update({
+  await roomRef.update({
     event_time: payload.event_time,
     restaurant_id: payload.restaurant_id,
     note: payload.note,
@@ -616,9 +673,10 @@ exports.roomApi = onCall(
           case "recordVote":
             return await recordRoomVote(uid, code, requireString(data.restaurantId, "restaurantId"), data.vote);
           case "declareWinner":
-            return await declareWinner(uid, code, requireString(data.winnerId, "winnerId"));
+            // winnerId may be empty string when no restaurant received any likes.
+            return await declareWinner(uid, code, data.winnerId || "");
           case "setEventDetails":
-            return await setEventDetails(code, data.details);
+            return await setEventDetails(uid, code, data.details);
           case "updateAttendance":
             return await updateAttendance(uid, code, data.status);
           case "recordFinalVote":
@@ -638,29 +696,32 @@ exports.roomApi = onCall(
 
 // ── Restaurant actions ───────────────────────────────────────────────
 
+// Returns a new array of restaurant objects with distance/distance string attached.
+// Does NOT mutate the input objects so callers can safely share references.
 function attachDistances(restaurants, userLat, userLng, maxDistance) {
   if (userLat == null || userLng == null) return restaurants;
 
-  for (const r of restaurants) {
+  const withDist = restaurants.map((r) => {
     const lat = r.location?.lat;
     const lng = r.location?.lng;
     if (lat != null && lng != null) {
       const dist = haversineDistance(userLat, userLng, lat, lng);
-      r._m = dist;
-      r.distance = formatDistance(dist);
+      return {...r, _m: dist, distance: formatDistance(dist)};
     }
-  }
+    return {...r};
+  });
 
-  restaurants.sort((a, b) => (a._m ?? Infinity) - (b._m ?? Infinity));
+  withDist.sort((a, b) => (a._m ?? Infinity) - (b._m ?? Infinity));
 
+  let sorted = withDist;
   if (maxDistance) {
-    const inside = restaurants.filter((r) => r._m == null || r._m <= maxDistance);
-    const outside = restaurants.filter((r) => r._m != null && r._m > maxDistance);
-    restaurants = [...inside, ...outside];
+    const inside = withDist.filter((r) => r._m == null || r._m <= maxDistance);
+    const outside = withDist.filter((r) => r._m != null && r._m > maxDistance);
+    sorted = [...inside, ...outside];
   }
 
-  for (const r of restaurants) delete r._m;
-  return restaurants;
+  // Strip the internal _m key before returning.
+  return sorted.map(({_m, ...r}) => r);
 }
 
 async function getRestaurantById(id) {
@@ -669,7 +730,7 @@ async function getRestaurantById(id) {
   return {id: snap.id, ...snap.data()};
 }
 
-async function getRestaurantsByMood(data) {
+async function getRestaurantsByMood(uid, data) {
   const moods = Array.isArray(data.moods) ?
     data.moods.filter((m) => CANONICAL_MOODS.includes(m)) :
     [];
@@ -698,7 +759,9 @@ async function getRestaurantsByMood(data) {
           .where("budget_level", "==", budgetLevel)
           .limit(pool).get());
     }
-  } catch (_) {/* index missing, skip */}
+  } catch (e) {
+    logger.warn("getByMood tier-1 failed", {error: e.message});
+  }
 
   // Tier 2: mood only
   if (restaurants.length < pool && moods.length > 0) {
@@ -706,25 +769,43 @@ async function getRestaurantsByMood(data) {
       addDocs(await col
           .where("mood_tags", "array-contains-any", moods)
           .limit(pool).get());
-    } catch (_) {/* skip */}
+    } catch (e) {
+      logger.warn("getByMood tier-2 failed", {error: e.message});
+    }
   }
 
   // Tier 3: budget only
   if (restaurants.length < pool) {
     try {
       addDocs(await col.where("budget_level", "==", budgetLevel).limit(pool).get());
-    } catch (_) {/* skip */}
+    } catch (e) {
+      logger.warn("getByMood tier-3 failed", {error: e.message});
+    }
   }
 
   // Tier 4: all restaurants
   if (restaurants.length < maxResults) {
     try {
       addDocs(await col.limit(pool).get());
-    } catch (_) {/* skip */}
+    } catch (e) {
+      logger.warn("getByMood tier-4 failed", {error: e.message});
+    }
   }
 
   restaurants = attachDistances(restaurants, data.userLat, data.userLng, data.maxDistance);
-  return {restaurants: restaurants.slice(0, maxResults)};
+  const finalList = restaurants.slice(0, maxResults);
+
+  const sessionRef = db.collection("recommendation_sessions").doc();
+  await sessionRef.set({
+    uid,
+    moods: Array.isArray(data.moods) ? data.moods : [],
+    budget_level: Number(data.budgetLevel) || 2,
+    shown_restaurant_ids: finalList.map((r) => r.id),
+    algorithm: "mood_query",
+    created_at: FieldValue.serverTimestamp(),
+  });
+
+  return {restaurants: finalList, sessionId: sessionRef.id};
 }
 
 async function getRestaurantsForValidation(uid, data) {
@@ -762,12 +843,16 @@ async function getRestaurantsForValidation(uid, data) {
           .where("mood_tags", "array-contains-any", moods)
           .limit(fetchLimit).get());
     }
-  } catch (_) {/* index missing, skip */}
+  } catch (e) {
+    logger.warn("getForValidation mood query failed", {error: e.message});
+  }
 
   if (pool.length < maxResults) {
     try {
       addDocs(await col.limit(fetchLimit).get());
-    } catch (_) {/* skip */}
+    } catch (e) {
+      logger.warn("getForValidation fallback query failed", {error: e.message});
+    }
   }
 
   // 3. Display distances (no filtering)
@@ -808,7 +893,7 @@ exports.restaurantApi = onCall(
           case "getById":
             return await getRestaurantById(requireString(data.id, "id"));
           case "getByMood":
-            return await getRestaurantsByMood(data);
+            return await getRestaurantsByMood(uid, data);
           case "getForValidation":
             return await getRestaurantsForValidation(uid, data);
           default:

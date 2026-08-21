@@ -69,7 +69,7 @@ export default function VotingScreen({ roomCode, selectedMoods, budgetLevel, isH
     setLoading(true);
     setError(null);
     getRestaurantsByMood(selectedMoods, budgetLevel, 6)
-      .then(data => {
+      .then(({ restaurants: data }) => {
         const withReasons = data.map(r => ({ ...r, reason: buildReason(r, selectedMoods) }));
         setRestaurants(withReasons);
         if (data.length > 0) {
@@ -90,7 +90,7 @@ export default function VotingScreen({ roomCode, selectedMoods, budgetLevel, isH
       if (!participantLoadStartedRef.current) {
         participantLoadStartedRef.current = true;
         getRestaurantsByMood(selectedMoods, budgetLevel, 6)
-          .then(data => {
+          .then(({ restaurants: data }) => {
             const withReasons = data.map(r => ({ ...r, reason: buildReason(r, selectedMoods) }));
             setRestaurants(withReasons);
           })
@@ -194,9 +194,10 @@ export default function VotingScreen({ roomCode, selectedMoods, budgetLevel, isH
           { ...room?.votes, [user.uid]: newVotes },
           restaurants.map(r => r.id)
         );
-        if (winner) {
-          await declareWinner(roomCode, winner, user.uid);
-        }
+        // Pass empty string when winner is null (no restaurant got any likes).
+        // declareWinner still sets status:"decided" so all participants are
+        // unblocked and GroupLikedScreen shows the no-consensus empty state.
+        await declareWinner(roomCode, winner || "", user.uid);
       }
     }
   };

@@ -1680,7 +1680,17 @@ exports.getSmartRecommendations = onCall(
           return c;
         });
 
-        return {restaurants, meta};
+        const sessionRef = db.collection("recommendation_sessions").doc();
+        await sessionRef.set({
+          uid: request.auth?.uid ?? null,
+          moods: normalizedMoods,
+          budget_level: budgetLevel || 2,
+          shown_restaurant_ids: restaurants.map((r) => r.id),
+          algorithm: meta.algorithm,
+          created_at: admin.firestore.FieldValue.serverTimestamp(),
+        });
+
+        return {restaurants, meta, sessionId: sessionRef.id};
       } catch (error) {
         logger.error("getSmartRecommendations error:", error);
         throw new HttpsError("internal", "Failed to get recommendations");

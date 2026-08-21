@@ -8,10 +8,11 @@ export const recordSwipe = async (
   _userId: string,
   restaurantId: string,
   direction: 'like' | 'pass',
-  moods: string[]
+  moods: string[],
+  sessionId?: string
 ): Promise<void> => {
   try {
-    await callUserApi('recordSwipe', { restaurantId, direction, moods });
+    await callUserApi('recordSwipe', { restaurantId, direction, moods, ...(sessionId ? { sessionId } : {}) });
   } catch (error) {
     __DEV__ && console.error('recordSwipe error:', error);
   }

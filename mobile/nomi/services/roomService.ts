@@ -238,13 +238,14 @@ export const calculateConsensus = (
     .filter(([_, count]) => count >= threshold)
     .map(([mood]) => mood);
 
-  // Calculate budget - round average
-  const avgBudget = voteArray.reduce((sum, vote) => sum + vote.budget, 0) / voteArray.length;
-  const consensusBudget = Math.round(avgBudget);
+  // Lower-median budget: avoids the upward bias Math.round introduces when
+  // the group is split evenly (e.g. votes of 1 and 2 round up to 2 rather
+  // than defaulting to the lower option participants may have preferred).
+  const sortedBudgets = voteArray.map((v) => v.budget).sort((a, b) => a - b);
+  const consensusBudget = sortedBudgets[Math.floor((sortedBudgets.length - 1) / 2)];
 
-  // Calculate distance - round average
-  const avgDistance = voteArray.reduce((sum, vote) => sum + vote.distance, 0) / voteArray.length;
-  const consensusDistance = Math.round(avgDistance);
+  const sortedDistances = voteArray.map((v) => v.distance).sort((a, b) => a - b);
+  const consensusDistance = sortedDistances[Math.floor((sortedDistances.length - 1) / 2)];
 
   return {
     moods: consensusMoods,

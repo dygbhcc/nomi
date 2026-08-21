@@ -7,7 +7,10 @@ service cloud.firestore {
     // realtime room listener used during group voting, and restaurant reads
     // used to synchronize the shared voting list across participants.
     match /rooms/{roomId} {
-      allow read: if request.auth != null;
+      // Only participants may read a room — any auth'd user could otherwise enumerate
+      // room codes (which are short) and read vote data for sessions they're not in.
+      allow read: if request.auth != null
+                  && request.auth.uid in resource.data.participants;
       allow write: if false;
     }
 

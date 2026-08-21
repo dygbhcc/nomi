@@ -26,6 +26,15 @@
       ]
     },
     {
+      "collectionGroup": "votes",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "user_id", "order": "ASCENDING" },
+        { "fieldPath": "restaurant_id", "order": "ASCENDING" },
+        { "fieldPath": "tag", "order": "ASCENDING" }
+      ]
+    },
+    {
       "collectionGroup": "restaurants",
       "queryScope": "COLLECTION",
       "fields": [
