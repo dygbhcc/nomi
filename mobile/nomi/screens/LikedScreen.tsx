@@ -87,7 +87,7 @@ export default function LikedScreen({ likedRestaurants, onSelect, onStartOver }:
           <Text style={styles.emptySubtitle}>{t('swipe.noMore')}</Text>
           <TouchableOpacity
             style={styles.startOverButton}
-            onPress={handleStartOver}
+            onPress={onStartOver}
             accessibilityLabel="Start over"
             accessibilityRole="button"
           >
