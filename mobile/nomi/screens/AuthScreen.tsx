@@ -41,6 +41,7 @@ export default function AuthScreen() {
   const cleanErrorMessage = (errorCode: string): string => {
     switch (errorCode) {
       case "auth/user-not-found":
+      case "auth/invalid-credential":
         return t('auth.errors.userNotFound');
       case "auth/wrong-password":
         return t('auth.errors.wrongPassword');
