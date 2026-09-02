@@ -793,6 +793,25 @@ async function getRestaurantsByMood(uid, data) {
   }
 
   restaurants = attachDistances(restaurants, data.userLat, data.userLng, data.maxDistance);
+
+  // Budget post-filter: strict match → escalate one level → full pool.
+  if (budgetLevel) {
+    const strictMatch = restaurants.filter(
+        (r) => !r.budget_level || r.budget_level <= budgetLevel,
+    );
+    if (strictMatch.length >= maxResults) {
+      restaurants = strictMatch;
+    } else if (budgetLevel < 3) {
+      const nextLevel = restaurants.filter(
+          (r) => !r.budget_level || r.budget_level <= budgetLevel + 1,
+      );
+      if (nextLevel.length >= maxResults) {
+        restaurants = nextLevel;
+      }
+      // else: keep full pool as last resort
+    }
+  }
+
   const finalList = restaurants.slice(0, maxResults);
 
   const sessionRef = db.collection("recommendation_sessions").doc();

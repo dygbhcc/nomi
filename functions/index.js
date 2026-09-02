@@ -1349,6 +1349,7 @@ exports.getSmartRecommendations = onCall(
                     const lng = c.location?.lng;
                     if (lat == null || lng == null) return false;
                     if (c.business_status && c.business_status !== "OPERATIONAL") return false;
+                    if (budgetLevel && c.budget_level && c.budget_level > budgetLevel) return false;
                     return haversineDistance(userLat, userLng, lat, lng) <= searchRadius;
                   });
               meta.localCount = candidates.length;
@@ -1451,6 +1452,26 @@ exports.getSmartRecommendations = onCall(
             });
           } catch (e) {
             logger.warn("recommendation_cache write failed:", e?.message);
+          }
+        }
+
+        // Budget post-filter: strict match → escalate one level → full pool.
+        // Keeps expensive restaurants out when enough cheaper ones exist, but
+        // never leaves the user with an empty deck.
+        if (budgetLevel) {
+          const strictMatch = candidates.filter(
+              (c) => !c.budget_level || c.budget_level <= budgetLevel,
+          );
+          if (strictMatch.length >= 6) {
+            candidates = strictMatch;
+          } else if (budgetLevel < 3) {
+            const nextLevel = candidates.filter(
+                (c) => !c.budget_level || c.budget_level <= budgetLevel + 1,
+            );
+            if (nextLevel.length >= 6) {
+              candidates = nextLevel;
+            }
+            // else: keep full pool as last resort
           }
         }
 
@@ -1582,12 +1603,17 @@ exports.getSmartRecommendations = onCall(
           // Random factor
           const randomFactor = Math.random() * 100;
 
+          // Budget penalty: heavily demote restaurants that exceed the selected level.
+          const overBudget = budgetLevel && c.budget_level && c.budget_level > budgetLevel;
+          const budgetPenalty = overBudget ? -80 : 0;
+
           const selectionScore =
             moodScore * 0.50 +
             qualityScore * 0.18 +
             freshness * 0.12 +
             photoBonus * 0.12 +
-            randomFactor * 0.08;
+            randomFactor * 0.08 +
+            budgetPenalty;
 
           return {...c, _selectionScore: selectionScore};
         });
