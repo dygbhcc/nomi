@@ -1280,6 +1280,22 @@ exports.getSmartRecommendations = onCall(
         secondChance: false,
       };
 
+      // Daily Firestore read quota guard — tracked in RTDB (free, sub-ms).
+      // Soft-throttles at 40K/day to stay safely under the 50K free-tier limit.
+      const today = new Date().toISOString().slice(0, 10);
+      const quotaRef = admin.database().ref(`quotaGuard/firestoreReads/${today}`);
+      let estimatedReads = 1; // counts reads accumulated during this call
+      try {
+        const currentReads = (await quotaRef.once("value")).val() || 0;
+        if (currentReads >= 40000) {
+          logger.warn("[quota] Daily Firestore read limit reached", {currentReads});
+          throw new HttpsError("resource-exhausted", "Service busy, try again later");
+        }
+      } catch (e) {
+        if (e instanceof HttpsError) throw e;
+        logger.warn("[quota] read counter check failed:", e.message);
+      }
+
       try {
         // --- 1. Build candidate pool ---
         let candidates = [];
@@ -1322,7 +1338,7 @@ exports.getSmartRecommendations = onCall(
         // to the selected range. The city-wide mood/budget queries below only
         // top up when this local list is thin, so a "Nearby/500m" user in
         // Cascais is never handed a Lisbon restaurant while closer ones exist.
-        const LOCAL_DOC_CAP = 200;
+        const LOCAL_DOC_CAP = 60;
         if (!cacheHit && userLat != null && userLng != null) {
           const searchRadius = distance || 10000;
           const nearbyHoods = neighborhoods.filter((n) =>
@@ -1331,6 +1347,7 @@ exports.getSmartRecommendations = onCall(
             const regionRefs = nearbyHoods.map((n) =>
               db.collection("cache_regions").doc(normalizeRegionKey(n.lat, n.lng, n.radius)));
             const regionSnaps = await db.getAll(...regionRefs);
+            estimatedReads += regionSnaps.length;
             const localIds = new Set();
             regionSnaps.forEach((s) => {
               if (s.exists) {
@@ -1341,6 +1358,7 @@ exports.getSmartRecommendations = onCall(
             if (idList.length > 0) {
               const docs = await db.getAll(
                   ...idList.map((id) => db.collection("restaurants").doc(id)));
+              estimatedReads += idList.length;
               candidates = docs
                   .filter((d) => d.exists)
                   .map((d) => ({id: d.id, ...d.data(), _local: true}))
@@ -1367,6 +1385,7 @@ exports.getSmartRecommendations = onCall(
               .orderBy("google_rating", "desc")
               .limit(CANDIDATE_LIMIT);
           const primarySnap = await primaryQuery.get();
+          estimatedReads += primarySnap.size;
           const existingIds = new Set(candidates.map((c) => c.id));
           primarySnap.docs.forEach((doc) => {
             if (!existingIds.has(doc.id)) {
@@ -1384,6 +1403,7 @@ exports.getSmartRecommendations = onCall(
               .orderBy("google_rating", "desc")
               .limit(CANDIDATE_LIMIT);
           const moodStatusSnap = await moodStatusQuery.get();
+          estimatedReads += moodStatusSnap.size;
           const existingIds = new Set(candidates.map((c) => c.id));
           moodStatusSnap.docs.forEach((doc) => {
             if (!existingIds.has(doc.id)) {
@@ -1400,6 +1420,7 @@ exports.getSmartRecommendations = onCall(
               .orderBy("google_rating", "desc")
               .limit(CANDIDATE_LIMIT);
           const moodOnlySnap = await moodOnlyQuery.get();
+          estimatedReads += moodOnlySnap.size;
           const existingIds = new Set(candidates.map((c) => c.id));
           moodOnlySnap.docs.forEach((doc) => {
             if (!existingIds.has(doc.id)) {
@@ -1416,6 +1437,7 @@ exports.getSmartRecommendations = onCall(
               .orderBy("google_rating", "desc")
               .limit(CANDIDATE_LIMIT);
           const budgetSnap = await budgetQuery.get();
+          estimatedReads += budgetSnap.size;
           const existingIds = new Set(candidates.map((c) => c.id));
           budgetSnap.docs.forEach((doc) => {
             if (!existingIds.has(doc.id)) {
@@ -1431,6 +1453,7 @@ exports.getSmartRecommendations = onCall(
               .orderBy("google_rating", "desc")
               .limit(CANDIDATE_LIMIT);
           const allSnap = await allQuery.get();
+          estimatedReads += allSnap.size;
           const existingIds = new Set(candidates.map((c) => c.id));
           allSnap.docs.forEach((doc) => {
             if (!existingIds.has(doc.id)) {
@@ -1535,6 +1558,7 @@ exports.getSmartRecommendations = onCall(
               .orderBy("timestamp", "desc")
               .limit(400); // cost: bound the per-call swipe history read
           const swipeSnap = await swipeQuery.get();
+          estimatedReads += swipeSnap.size;
 
           swipeSnap.docs.forEach((doc) => {
             const data = doc.data();
@@ -1716,8 +1740,14 @@ exports.getSmartRecommendations = onCall(
           created_at: admin.firestore.FieldValue.serverTimestamp(),
         });
 
+        // Persist read count to RTDB — fire-and-forget, never blocks the response.
+        quotaRef.transaction((n) => (n || 0) + estimatedReads).catch((e) =>
+          logger.warn("[quota] counter update failed:", e.message),
+        );
+
         return {restaurants, meta, sessionId: sessionRef.id};
       } catch (error) {
+        if (error instanceof HttpsError) throw error;
         logger.error("getSmartRecommendations error:", error);
         throw new HttpsError("internal", "Failed to get recommendations");
       }
